@@ -21,39 +21,33 @@ def generate_swift_question(platforms, topics=None, keywords=None):
         topics = [topic for topic in topics if topic in all_topics]
     
     if not topics:
-        return {"error": "No valid topics provided."}
+        return [{"error": "No valid topics provided."}]
     
     questions = []
     for topic in topics:
         question_text = all_topics[topic]
         tags = [topic, "Swift"] + (keywords if keywords else [])
         
-        levels = [
+        answer_levels = [
             {
                 "name": "Beginner Level",
-                "answer": f"{question_text} - basic explanation.",
+                "answer": "`CheckedContinuation` is a mechanism in Swift Concurrency that allows bridging between synchronous and asynchronous code. It ensures safety by verifying that the continuation is resumed exactly once.",
                 "tests": [
-                    {"question": "What is the purpose of this concept in Swift?", "correctAnswer": "To improve efficiency and safety."},
-                    {"question": "Which Swift feature supports this concept?", "correctAnswer": "Async/Await."},
-                    {"question": "How does it affect performance?", "correctAnswer": "It optimizes memory and execution flow."}
+                    {"question": "Which of the following best describes `CheckedContinuation`?\n\na) A way to call synchronous functions inside `async` code.\nb) A mechanism to transition from callback-based APIs to async/await.\nc) A tool for executing code on the main thread.\nd) A type used for thread synchronization.", "correctAnswer": "b) A mechanism to transition from callback-based APIs to async/await."}
                 ]
             },
             {
                 "name": "Intermediate Level",
-                "answer": f"{question_text} - deeper insight with practical examples.",
+                "answer": "`CheckedContinuation` is used when interfacing with callback-based or delegate-based APIs in an async/await environment. It ensures safety by detecting double-resume or missing resume issues at runtime.",
                 "tests": [
-                    {"question": "How is this implemented in Swift?", "correctAnswer": "Using specific API calls."},
-                    {"question": "What common issues can occur?", "correctAnswer": "Deadlocks and race conditions."},
-                    {"question": "How can developers optimize it?", "correctAnswer": "By using best practices and debugging tools."}
+                    {"question": "How does `CheckedContinuation` differ from `UnsafeContinuation` in Swift?\n\na) `CheckedContinuation` enforces safety checks to ensure proper usage.\nb) `UnsafeContinuation` is recommended for all cases.\nc) `CheckedContinuation` runs only on the main thread.\nd) `CheckedContinuation` allows multiple resumptions.", "correctAnswer": "a) `CheckedContinuation` enforces safety checks to ensure proper usage."}
                 ]
             },
             {
                 "name": "Advanced Level",
-                "answer": f"{question_text} - detailed analysis and performance considerations.",
+                "answer": "`CheckedContinuation` provides a structured way to convert existing callback-based functions to async/await. It ensures that functions follow the Swift Concurrency model by enforcing single-resume rules.",
                 "tests": [
-                    {"question": "What advanced techniques improve this?", "correctAnswer": "Custom thread management."},
-                    {"question": "What are potential drawbacks?", "correctAnswer": "Increased complexity and debugging difficulty."},
-                    {"question": "How does Swift handle edge cases?", "correctAnswer": "Through specific runtime checks."}
+                    {"question": "What does `CheckedContinuation` do if a continuation is never resumed?\n\na) The task waits indefinitely.\nb) The app crashes immediately.\nc) A runtime warning is logged, and the app may hang.\nd) Swift automatically cancels the operation.", "correctAnswer": "c) A runtime warning is logged, and the app may hang."}
                 ]
             }
         ]
@@ -63,7 +57,7 @@ def generate_swift_question(platforms, topics=None, keywords=None):
             "topic": [{"name": topic, "platform": platform} for platform in platforms],
             "text": question_text,
             "tags": tags,
-            "answerLevels": levels
+            "answerLevels": answer_levels
         })
     
     return questions
@@ -82,4 +76,8 @@ def api_generate_question():
     return jsonify(questions)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)
+    # Локальний тест генерації питання
+    test_data = generate_swift_question(["Apple"], ["Memory Management"], ["ARC", "Retain Cycle"])
+    print(json.dumps(test_data, indent=4))
+    
+    app.run(host="0.0.0.0", port=10000, debug=False)
