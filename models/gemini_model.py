@@ -9,10 +9,6 @@ import os
 
 G_API_KEY = os.getenv("GOOGLEAI_API_KEY")
 
-# print(G_API_KEY)
-
-genai.configure(api_key=G_API_KEY)
-
 def generate_swift_question_gemini(topic, platform, keywords=None):
 
     if genai is None:
@@ -20,6 +16,8 @@ def generate_swift_question_gemini(topic, platform, keywords=None):
 
     if not G_API_KEY:
         return {"error": "Gemini API key is missing. Set it in your environment variables."}
+
+    genai.configure(api_key=G_API_KEY)
 
     """
     Викликає Google Gemini AI для генерації Swift-питань, відповідей і тестів у повному форматі.
