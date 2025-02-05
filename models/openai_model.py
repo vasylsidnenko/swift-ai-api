@@ -35,10 +35,11 @@ def generate_swift_question_openai(topic, platform, keywords=None):
     Return the response in JSON format exactly as shown below:
     """
     
+    ai_model = "gpt-3.5-turbo"
     try:
         client = openai.OpenAI(api_key=O_API_KEY)
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=ai_model,
             messages=[{"role": "user", "content": prompt}]
         )
         ai_response = json.loads(response.choices[0].message.content)
@@ -48,6 +49,7 @@ def generate_swift_question_openai(topic, platform, keywords=None):
             for word in ["**Question:**", "**Code:**", "**Explanation:**"]:
                 ai_response["text"] = ai_response["text"].replace(word, "").strip()
 
+        ai_response["source"] = {"ai": "openAI", "model": ai_model}
         return ai_response
     except Exception as e:
         return {"error": str(e)}

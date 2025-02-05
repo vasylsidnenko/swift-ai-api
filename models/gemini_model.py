@@ -76,8 +76,9 @@ def generate_swift_question_gemini(topic, platform, keywords=None):
     }}
     """
 
+    ai_model = "gemini-pro"
     try:
-        model = genai.GenerativeModel("gemini-pro")
+        model = genai.GenerativeModel(ai_model)
         response = model.generate_content(prompt)
         ai_response = json.loads(response.text)
 
@@ -87,6 +88,7 @@ def generate_swift_question_gemini(topic, platform, keywords=None):
                 ai_response["text"] = ai_response["text"].replace(word, "").strip()
         
         del model 
+        ai_response["source"] = {"ai": "googleAI", "model": ai_model}
         return ai_response
     except Exception as e:
         return {"error": str(e)}
