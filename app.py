@@ -6,14 +6,15 @@ from models.openai_model import generate_swift_question_openai
 
 app = Flask(__name__)
 
-def generate_swift_question(topic, platform, keywords=None, ai_model="openai"):
-    """
-    Викликає відповідну AI-модель для генерації Swift-питання
-    """
+defualt_api_model = "gemini"
+
+def generate_swift_question(topic, platform, keywords=None, ai_model=defualt_api_model):
     if ai_model == "gemini":
         return generate_swift_question_gemini(topic, platform, keywords)
-    else:
+    elif ai_model == "openai":
         return generate_swift_question_openai(topic, platform, keywords)
+    else:
+        return {"error": f"Unsupported AI model '{ai_model}'. Please use 'openai' or 'gemini' or nothing."}
 
 @app.route("/generate_question", methods=["POST"])
 def api_generate_question():
@@ -21,7 +22,7 @@ def api_generate_question():
     topic = data.get("topic")
     platform = data.get("platform", "Apple")
     keywords = data.get("keywords", [])
-    ai_model = data.get("ai_model", "gemini")
+    ai_model = data.get("ai_model", defualt_api_model)
 
     if not topic:
         return jsonify({"error": "Topic is required."}), 400
