@@ -6,13 +6,12 @@ except ModuleNotFoundError:
 import json
 import random
 import os
+from utils.json_utils import fix_malformed_json
 
 O_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def generate_swift_question_openai(topic, platform, keywords=None):
-    """
-    Викликає OpenAI GPT для генерації Swift-питань, відповідей і тестів у повному форматі.
-    """
+    
     if openai is None:
         return {"error": "OpenAI module is not installed. Please install it using 'pip install openai'."}
     
@@ -21,18 +20,77 @@ def generate_swift_question_openai(topic, platform, keywords=None):
     
     prompt = f"""
     Generate a Swift programming question related to the topic "{topic}" on the "{platform}" platform.
-    The response must include:
-    - A detailed programming question.
-    - Tags related to the question (including topic-related keywords).
-    - Three levels of answers:
-        - Beginner Level
-        - Intermediate Level
-        - Advanced Level
-    - Each level must have:
-        - A detailed answer
-        - Three multiple-choice test questions with correct answers
-
-    Return the response in JSON format exactly as shown below:
+    The response must include the following in JSON format:
+    {{
+        "id": "{random.randint(100, 1000)}",
+        "topic": {{
+            "name": "{topic}",
+            "platform": "{platform}"
+        }},
+        "source": {{
+            "ai": "openAI",
+            "model": "{ai_model}"
+        }},
+        "text": "The detailed programming question",
+        "tags": ["{', '.join(keywords) if keywords else ''}"],
+        "answerLevels": [
+            {{
+                "name": "Beginner Level",
+                "answer": "Detailed answer for beginners",
+                "tests": [
+                    {{
+                        "question": "First multiple-choice question",
+                        "correctAnswer": "Correct answer for the first question"
+                    }},
+                    {{
+                        "question": "Second multiple-choice question",
+                        "correctAnswer": "Correct answer for the second question"
+                    }},
+                    {{
+                        "question": "Third multiple-choice question",
+                        "correctAnswer": "Correct answer for the third question"
+                    }}
+                ]
+            }},
+            {{
+                "name": "Intermediate Level",
+                "answer": "Detailed answer for intermediate level",
+                "tests": [
+                    {{
+                        "question": "First multiple-choice question",
+                        "correctAnswer": "Correct answer for the first question"
+                    }},
+                    {{
+                        "question": "Second multiple-choice question",
+                        "correctAnswer": "Correct answer for the second question"
+                    }},
+                    {{
+                        "question": "Third multiple-choice question",
+                        "correctAnswer": "Correct answer for the third question"
+                    }}
+                ]
+            }},
+            {{
+                "name": "Advanced Level",
+                "answer": "Detailed answer for advanced level",
+                "tests": [
+                    {{
+                        "question": "First multiple-choice question",
+                        "correctAnswer": "Correct answer for the first question"
+                    }},
+                    {{
+                        "question": "Second multiple-choice question",
+                        "correctAnswer": "Correct answer for the second question"
+                    }},
+                    {{
+                        "question": "Third multiple-choice question",
+                        "correctAnswer": "Correct answer for the third question"
+                    }}
+                ]
+            }}
+        ]
+    }}
+    Ensure the JSON response matches this structure exactly.
     """
     
     ai_model = "gpt-3.5-turbo"
@@ -42,9 +100,9 @@ def generate_swift_question_openai(topic, platform, keywords=None):
             model=ai_model,
             messages=[{"role": "user", "content": prompt}]
         )
-        ai_response = json.loads(response.choices[0].message.content)
+        #ai_response = json.loads(response.choices[0].message.content)
+        ai_response = fix_malformed_json(response.choices[0].message.content)
 
-        # Видаляємо зайві слова
         if "text" in ai_response:
             for word in ["**Question:**", "**Code:**", "**Explanation:**"]:
                 ai_response["text"] = ai_response["text"].replace(word, "").strip()
@@ -55,6 +113,5 @@ def generate_swift_question_openai(topic, platform, keywords=None):
         return {"error": str(e)}
 
 if __name__ == "__main__":
-    # Локальний тест для OpenAI
     test_question = generate_swift_question_openai("Memory Management", "Apple", ["ARC", "Retain Cycle"])
     print(json.dumps(test_question, indent=4))
