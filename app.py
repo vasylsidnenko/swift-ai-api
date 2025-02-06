@@ -3,6 +3,7 @@ import random
 from flask import Flask, request, jsonify
 from models.gemini_model import generate_swift_question_gemini
 from models.openai_model import generate_swift_question_openai
+from models.deepseek_model import generate_swift_question_deepseek
 
 app = Flask(__name__)
 
@@ -13,8 +14,10 @@ def generate_swift_question(topic, platform, keywords=None, ai_model=defualt_api
         return generate_swift_question_gemini(topic, platform, keywords)
     elif ai_model == "openai":
         return generate_swift_question_openai(topic, platform, keywords)
+    elif ai_model == "deepseek":
+        return generate_swift_question_deepseek(topic, platform, keywords)
     else:
-        return {"error": f"Unsupported AI model '{ai_model}'. Please use 'openai' or 'gemini' or nothing."}
+        return {"error": f"Unsupported AI model '{ai_model}'. Please use 'openai' or 'gemini' or 'deepseek' nothing."}
 
 @app.route("/generate_question", methods=["POST"])
 def api_generate_question():
