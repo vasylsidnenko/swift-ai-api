@@ -50,7 +50,7 @@ def generate_swift_question_deepseek(topic, platform, keywords=None):
             "platform": "{platform}"
         }},
         "source": {{
-            "ai": "openAI",
+            "ai": "deepseekAI",
             "model": "{ai_model}"
         }},
         "text": "The detailed programming question",
