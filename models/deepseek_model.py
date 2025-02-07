@@ -119,11 +119,12 @@ def generate_swift_question_deepseek(model, topic, platform, keywords=None):
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt}
         ],
-        "stream" : False
+        "stream" : False,
+        "max_tokens": 500
     }
 
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data, timeout=20)
         response.raise_for_status() 
         result = response.json()
         
