@@ -110,15 +110,15 @@ def generate_swift_question_gemini(model, topic, platform, keywords=None):
     """
     
     try:
-        model = genai.GenerativeModel(model)
-        response = model.generate_content(prompt)
+        g_model = genai.GenerativeModel(model)
+        response = g_model.generate_content(prompt)
         ai_response = fix_malformed_json(response.text)
 
         if "text" in ai_response:
             for word in ["**Question:**", "**Code:**", "**Explanation:**", "**Answer:*", "**Test Questions:**"]:
                 ai_response["text"] = ai_response["text"].replace(word, "").strip()
         
-        del model 
+        del g_model 
         ai_response["source"] = {"ai": "googleAI", "model": model}
         return ai_response
     except Exception as e:
