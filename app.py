@@ -7,7 +7,7 @@ from models.deepseek_model import generate_swift_question_deepseek
 
 app = Flask(__name__)
 
-def generate_swift_question(model, ai, topic, platform, keywords=None):
+def generate_swift_question(ai, model, topic, platform, keywords=None):
     if ai == "gemini":
         return generate_swift_question_gemini(model, topic, platform, keywords)
     elif ai == "openai":
