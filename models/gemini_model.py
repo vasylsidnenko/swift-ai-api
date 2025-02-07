@@ -22,20 +22,22 @@ def generate_swift_question_gemini(topic, platform, keywords=None):
 
     ai_model = "gemini-pro"
 
-    # Generate a Swift programming question related to the topic "{topic}" on the "{platform}" platform.
-    # The response must include:
-    # - A detailed programming question.
-    # - Tags related to the question (including topic-related keywords).
-    # - Three levels of answers:
-    #     - Beginner Level
-    #     - Intermediate Level
-    #     - Advanced Level
-    # - Each level must have:
-    #     - A detailed answer
-    #     - Three multiple-choice test questions with correct answers
-
     prompt = f"""
     Generate a Swift programming question related to the topic "{topic}" on the "{platform}" platform.
+
+    The response must include:
+    - A detailed programming question.
+    - Tags related to the question (including topic-related keywords).
+    - Three levels of answers:
+        - Beginner Level
+        - Intermediate Level
+        - Advanced Level
+    - Each level must have:
+        - A detailed answer
+        - Three multiple-choice test questions with correct answers
+    
+    Return ONLY a valid JSON, without explanations or formatting markers (e.g., no **Answer:**, **Solution:** ... ).
+
     The response must include the following in JSON format:
     {{
         "id": "{random.randint(100, 1000)}",

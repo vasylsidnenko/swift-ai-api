@@ -18,7 +18,7 @@ def generate_swift_question_deepseek(topic, platform, keywords=None):
     if not D_API_KEY:
         return {"error": "DeepSeek API key is missing. Set DEEPSEEK_API_KEY in your environment."}
     
-    ai_model = "deepseek-chat" #"deepseek-reasoner" 
+    ai_model = "deepseek-chat" 
 
     url = "https://api.deepseek.com/chat/completions"
     headers = {
@@ -151,20 +151,20 @@ def generate_swift_question_deepseek(topic, platform, keywords=None):
         return {"error": "DeepSeek returned invalid JSON"}
 
 
-
-    try:
-        client = openai.OpenAI(api_key=D_API_KEY, base_url="https://api.deepseek.com")
-        response = client.chat.completions.create(
-            model=ai_model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            stream=False
-        )
-        return fix_malformed_json(response.choices[0].message.content)
-    except Exception as e:
-        return {"error": str(e)}
+    # TODO:  doesn't work ?
+    # try:
+    #     client = openai.OpenAI(api_key=D_API_KEY, base_url="https://api.deepseek.com")
+    #     response = client.chat.completions.create(
+    #         model=ai_model,
+    #         messages=[
+    #             {"role": "system", "content": "You are a helpful assistant."},
+    #             {"role": "user", "content": prompt}
+    #         ],
+    #         stream=False
+    #     )
+    #     return fix_malformed_json(response.choices[0].message.content)
+    # except Exception as e:
+    #     return {"error": str(e)}
 
 if __name__ == "__main__":
     test_question = generate_swift_question_deepseek("Memory Management", "Apple", ["UnsafePointer"])

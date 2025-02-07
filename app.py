@@ -17,7 +17,7 @@ def generate_swift_question(topic, platform, keywords=None, ai_model=defualt_api
     elif ai_model == "deepseek":
         return generate_swift_question_deepseek(topic, platform, keywords)
     else:
-        return {"error": f"Unsupported AI model '{ai_model}'. Please use 'openai' or 'gemini' or 'deepseek' nothing."}
+        return {"error": f"Unsupported AI model '{ai_model}'. Please use 'openai' or 'gemini' or 'deepseek' or nothing."}
 
 @app.route("/generate_question", methods=["POST"])
 def api_generate_question():

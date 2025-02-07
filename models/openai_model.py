@@ -18,19 +18,7 @@ def generate_swift_question_openai(topic, platform, keywords=None):
     if not O_API_KEY:
         return {"error": "OpenAI API key is missing. Set it in your environment variables."}
     
-    ai_model = "gpt-3.5-turbo"
-
-    # Generate a Swift programming question related to the topic "{topic}" on the "{platform}" platform.
-    # The response must include:
-    # - A detailed programming question.
-    # - Tags related to the question (including topic-related keywords).
-    # - Three levels of answers:
-    #     - Beginner Level
-    #     - Intermediate Level
-    #     - Advanced Level
-    # - Each level must have:
-    #     - A detailed answer
-    #     - Three multiple-choice test questions with correct answers
+    ai_model = "gpt-4o"
     
     prompt = f"""
     Generate a Swift programming question related to the topic "{topic}" on the "{platform}" platform.
