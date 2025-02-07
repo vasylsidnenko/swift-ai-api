@@ -9,19 +9,18 @@ app = Flask(__name__)
 
 def generate_swift_question(ai, model, topic, platform, keywords=None):
     print(ai, model, topic, platform, keywords)
-    
-    if ai == "gemini":
+
+    if ai == "googleai":
         return generate_swift_question_gemini(model, topic, platform, keywords)
     elif ai == "openai":
         return generate_swift_question_openai(model, topic, platform, keywords)
-    elif ai == "deepseek":
+    elif ai == "deepseekai":
         return generate_swift_question_deepseek(model, topic, platform, keywords)
     else:
-        return {"error": f"Unsupported AI model '{ai}'. Please use 'openai' or 'gemini' or 'deepseek' or nothing."}
+        return {"error": f"Unsupported AI model '{ai}'. Please use 'openai' or 'googleai' or 'deepseekai' or nothing (by default for AI)."}
 
 
 @app.route("/generate_question", methods=["POST"])
-
 
 
 def api_generate_question():
