@@ -7,30 +7,54 @@ from models.deepseek_model import generate_swift_question_deepseek
 
 app = Flask(__name__)
 
-defualt_api_model = "gemini"
-
-def generate_swift_question(topic, platform, keywords=None, ai_model=defualt_api_model):
-    if ai_model == "gemini":
-        return generate_swift_question_gemini(topic, platform, keywords)
-    elif ai_model == "openai":
-        return generate_swift_question_openai(topic, platform, keywords)
-    elif ai_model == "deepseek":
-        return generate_swift_question_deepseek(topic, platform, keywords)
+def generate_swift_question(model, ai, topic, platform, keywords=None):
+    if ai == "gemini":
+        return generate_swift_question_gemini(model, topic, platform, keywords)
+    elif ai == "openai":
+        return generate_swift_question_openai(model, topic, platform, keywords)
+    elif ai == "deepseek":
+        return generate_swift_question_deepseek(model, topic, platform, keywords)
     else:
-        return {"error": f"Unsupported AI model '{ai_model}'. Please use 'openai' or 'gemini' or 'deepseek' or nothing."}
+        return {"error": f"Unsupported AI model '{ai}'. Please use 'openai' or 'gemini' or 'deepseek' or nothing."}
 
 @app.route("/generate_question", methods=["POST"])
+
+
+
 def api_generate_question():
     data = request.get_json()
+
     topic = data.get("topic")
     platform = data.get("platform", "Apple")
     keywords = data.get("keywords", [])
-    ai_model = data.get("ai_model", defualt_api_model)
+    ai = data.get("ai", "gemini").lower()
+    model = data.get("model")
 
     if not topic:
-        return jsonify({"error": "Topic is required."}), 400
+        return jsonify({"error": "Topic is required."})
 
-    result = generate_swift_question(topic, platform, keywords, ai_model)
+    AI_MODELS = {
+        "googleai": ["gemini-pro"],
+        "openai": ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
+        "deepseekai": ["deepseek-chat"]
+    }
+
+    DEFAULT_MODELS = {
+        "googleai": "gemini-pro",
+        "openai": "gpt-3.5-turbo",
+        "deepseekai": "deepseek-chat"
+    }
+
+    if ai not in AI_MODELS:
+        return jsonify({"error": f"AI '{ai}' is unknown."})
+
+    model = model or DEFAULT_MODELS[ai]
+
+    if model not in AI_MODELS[ai]:
+        return jsonify({"error": f"Model '{model}' is unknown for AI '{ai}'."})
+
+    result = generate_swift_question(ai, model, topic, platform, keywords)
+    
     return jsonify(result)
 
 if __name__ == "__main__":

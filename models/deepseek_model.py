@@ -11,14 +11,12 @@ from utils.json_utils import fix_malformed_json
 
 D_API_KEY = os.getenv("DEEPSEEKAI_API_KEY")
         
-def generate_swift_question_deepseek(topic, platform, keywords=None):
+def generate_swift_question_deepseek(ai_model, topic, platform, keywords=None):
     if openai is None:
         return {"error": "OpenAI module for DeepSeek is not installed. Please install it using 'pip install openai'."}
     
     if not D_API_KEY:
         return {"error": "DeepSeek API key is missing. Set DEEPSEEK_API_KEY in your environment."}
-    
-    ai_model = "deepseek-chat" 
 
     url = "https://api.deepseek.com/chat/completions"
     headers = {

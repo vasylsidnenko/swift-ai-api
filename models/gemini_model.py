@@ -10,7 +10,7 @@ from utils.json_utils import fix_malformed_json
 
 G_API_KEY = os.getenv("GOOGLEAI_API_KEY")
 
-def generate_swift_question_gemini(topic, platform, keywords=None):
+def generate_swift_question_gemini(ai_model, topic, platform, keywords=None):
 
     if genai is None:
         return {"error": "Gemini module is not installed. Please install it using 'pip install openai'."}
@@ -19,8 +19,6 @@ def generate_swift_question_gemini(topic, platform, keywords=None):
         return {"error": "Gemini API key is missing. Set it in your environment variables."}
 
     genai.configure(api_key=G_API_KEY)
-
-    ai_model = "gemini-pro"
 
     prompt = f"""
     Generate a Swift programming question related to the topic "{topic}" on the "{platform}" platform.
