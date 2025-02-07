@@ -126,9 +126,10 @@ def generate_swift_question_deepseek(model, topic, platform, keywords=None):
     try:
         response = requests.post(url, headers=headers, json=data, timeout=20)
         response.raise_for_status() 
+        
         result = response.json()
         
-        print(result)
+        #print(result)
 
         # check JSON
         if "choices" not in result or not result["choices"]:

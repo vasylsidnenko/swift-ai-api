@@ -6,7 +6,7 @@ except ModuleNotFoundError:
 import json
 import random
 import os
-from utils.json_utils import fix_malformed_json
+from utils.json_utils import fix_malformed_json, extract_json
 
 O_API_KEY = os.getenv("OPENAI_API_KEY")
 
@@ -99,7 +99,12 @@ def generate_swift_question_openai(model, topic, platform, keywords=None):
             model=model,
             messages=[{"role": "user", "content": prompt}]
         )
-        ai_response = fix_malformed_json(response.choices[0].message.content)
+        
+        raw_text = response.choices[0].message.content
+
+        clean_json_text = extract_json(raw_text)
+
+        ai_response = fix_malformed_json(clean_json_text)
 
         if "text" in ai_response:
             for word in ["**Question:**", "**Code:**", "**Explanation:**"]:
