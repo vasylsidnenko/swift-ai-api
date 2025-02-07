@@ -10,7 +10,7 @@ from utils.json_utils import fix_malformed_json
 
 G_API_KEY = os.getenv("GOOGLEAI_API_KEY")
 
-def generate_swift_question_gemini(ai_model, topic, platform, keywords=None):
+def generate_swift_question_gemini(model, topic, platform, keywords=None):
 
     if genai is None:
         return {"error": "Gemini module is not installed. Please install it using 'pip install openai'."}
@@ -45,7 +45,7 @@ def generate_swift_question_gemini(ai_model, topic, platform, keywords=None):
         }},
         "source": {{
             "ai": "googleAI",
-            "model": "{ai_model}"
+            "model": "{model}"
         }},
         "text": "The detailed programming question",
         "tags": ["{', '.join(keywords) if keywords else ''}"],
@@ -110,7 +110,7 @@ def generate_swift_question_gemini(ai_model, topic, platform, keywords=None):
     """
     
     try:
-        model = genai.GenerativeModel(ai_model)
+        model = genai.GenerativeModel(model)
         response = model.generate_content(prompt)
         ai_response = fix_malformed_json(response.text)
 
@@ -119,7 +119,7 @@ def generate_swift_question_gemini(ai_model, topic, platform, keywords=None):
                 ai_response["text"] = ai_response["text"].replace(word, "").strip()
         
         del model 
-        ai_response["source"] = {"ai": "googleAI", "model": ai_model}
+        ai_response["source"] = {"ai": "googleAI", "model": model}
         return ai_response
     except Exception as e:
         return {"error": str(e)}

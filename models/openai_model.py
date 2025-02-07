@@ -10,16 +10,14 @@ from utils.json_utils import fix_malformed_json
 
 O_API_KEY = os.getenv("OPENAI_API_KEY")
 
-def generate_swift_question_openai(topic, platform, keywords=None):
+def generate_swift_question_openai(model, topic, platform, keywords=None):
     
     if openai is None:
         return {"error": "OpenAI module is not installed. Please install it using 'pip install openai'."}
     
     if not O_API_KEY:
         return {"error": "OpenAI API key is missing. Set it in your environment variables."}
-    
-    ai_model = "gpt-4o"
-    
+        
     prompt = f"""
     Generate a Swift programming question related to the topic "{topic}" on the "{platform}" platform.
     The response must include the following in JSON format:
@@ -31,7 +29,7 @@ def generate_swift_question_openai(topic, platform, keywords=None):
         }},
         "source": {{
             "ai": "openAI",
-            "model": "{ai_model}"
+            "model": "{model}"
         }},
         "text": "The detailed programming question",
         "tags": ["{', '.join(keywords) if keywords else ''}"],
@@ -98,7 +96,7 @@ def generate_swift_question_openai(topic, platform, keywords=None):
     try:
         client = openai.OpenAI(api_key=O_API_KEY)
         response = client.chat.completions.create(
-            model=ai_model,
+            model=model,
             messages=[{"role": "user", "content": prompt}]
         )
         ai_response = fix_malformed_json(response.choices[0].message.content)
@@ -107,7 +105,7 @@ def generate_swift_question_openai(topic, platform, keywords=None):
             for word in ["**Question:**", "**Code:**", "**Explanation:**"]:
                 ai_response["text"] = ai_response["text"].replace(word, "").strip()
 
-        ai_response["source"] = {"ai": "openAI", "model": ai_model}
+        ai_response["source"] = {"ai": "openAI", "model": model}
         return ai_response
     except Exception as e:
         return {"error": str(e)}

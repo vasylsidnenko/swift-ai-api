@@ -11,7 +11,7 @@ from utils.json_utils import fix_malformed_json
 
 D_API_KEY = os.getenv("DEEPSEEKAI_API_KEY")
         
-def generate_swift_question_deepseek(ai_model, topic, platform, keywords=None):
+def generate_swift_question_deepseek(model, topic, platform, keywords=None):
     if openai is None:
         return {"error": "OpenAI module for DeepSeek is not installed. Please install it using 'pip install openai'."}
     
@@ -49,7 +49,7 @@ def generate_swift_question_deepseek(ai_model, topic, platform, keywords=None):
         }},
         "source": {{
             "ai": "deepseekAI",
-            "model": "{ai_model}"
+            "model": "{model}"
         }},
         "text": "The detailed programming question",
         "tags": ["{', '.join(keywords) if keywords else ''}"],
@@ -114,7 +114,7 @@ def generate_swift_question_deepseek(ai_model, topic, platform, keywords=None):
     """
 
     data = {
-        "model": ai_model,
+        "model": model,
         "messages" : [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt}
@@ -153,7 +153,7 @@ def generate_swift_question_deepseek(ai_model, topic, platform, keywords=None):
     # try:
     #     client = openai.OpenAI(api_key=D_API_KEY, base_url="https://api.deepseek.com")
     #     response = client.chat.completions.create(
-    #         model=ai_model,
+    #         model=model,
     #         messages=[
     #             {"role": "system", "content": "You are a helpful assistant."},
     #             {"role": "user", "content": prompt}
