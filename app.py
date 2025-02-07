@@ -8,6 +8,8 @@ from models.deepseek_model import generate_swift_question_deepseek
 app = Flask(__name__)
 
 def generate_swift_question(ai, model, topic, platform, keywords=None):
+    print(ai, model, topic, platform, keywords)
+    
     if ai == "gemini":
         return generate_swift_question_gemini(model, topic, platform, keywords)
     elif ai == "openai":
@@ -16,6 +18,7 @@ def generate_swift_question(ai, model, topic, platform, keywords=None):
         return generate_swift_question_deepseek(model, topic, platform, keywords)
     else:
         return {"error": f"Unsupported AI model '{ai}'. Please use 'openai' or 'gemini' or 'deepseek' or nothing."}
+
 
 @app.route("/generate_question", methods=["POST"])
 
