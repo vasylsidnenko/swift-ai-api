@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify
 from models.gemini_model import generate_swift_question_gemini
 from models.openai_model import generate_swift_question_openai
 from models.deepseek_model import generate_swift_question_deepseek
+from models.structuredOpenAI import generate_questions_dataset, client
 
 app = Flask(__name__)
 
@@ -21,8 +22,6 @@ def generate_swift_question(ai, model, topic, platform, keywords=None):
 
 
 @app.route("/generate_question", methods=["POST"])
-
-
 def api_generate_question():
     data = request.get_json()
 
@@ -58,6 +57,32 @@ def api_generate_question():
     result = generate_swift_question(ai, model, topic, platform, keywords)
     
     return jsonify(result)
+
+@app.route("/generate_structured_openai", methods=["POST"])
+def api_generate_structured_questions():
+    data = request.get_json()
+
+    topic = data.get("topic")
+    platform = data.get("platform", "Apple")
+    keywords = data.get("keywords", [])
+    number = data.get("number", 1)
+    max_retries = data.get("max_retries", 3)
+
+    if not topic:
+        return jsonify({"error": "Topic is required."})
+
+    try:
+        questions = generate_questions_dataset(
+            client=client,
+            platform=platform,
+            topic=topic,
+            tags=keywords,
+            max_retries=max_retries,
+            number=number
+        )
+        return jsonify([question.model_dump() for question in questions])
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=False)
