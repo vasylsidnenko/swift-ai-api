@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('questionForm');
     const resultDiv = document.getElementById('result');
-    const loadingIndicator = document.getElementById('loadingIndicator');
     const aiSelect = document.getElementById('ai');
     const modelSelect = document.getElementById('model');
 
@@ -35,8 +34,15 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
-            loadingIndicator.style.display = 'block';
-            resultDiv.innerHTML = 'Generating question...';
+            // Показуємо індикатор завантаження
+            resultDiv.innerHTML = `
+                <div class="loading-container">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="loading-text mt-3">Generating questions...</div>
+                </div>
+            `;
 
             const response = await fetch('/generate_question', {
                 method: 'POST',
@@ -58,8 +64,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
-        } finally {
-            loadingIndicator.style.display = 'none';
         }
     });
 
