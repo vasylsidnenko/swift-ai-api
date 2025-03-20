@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 const formattedResult = formatResult(result);
                 resultDiv.innerHTML = formattedResult;
+                // Підсвічуємо синтаксис після додавання контенту
+                Prism.highlightAll();
             }
         } catch (error) {
             resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
@@ -64,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatCode(text) {
         // Знаходимо блоки коду в форматі ```swift ... ```
         return text.replace(/```swift\n([\s\S]*?)```/g, (match, code) => {
-            return `<pre class="bg-light p-3 rounded"><code class="language-swift">${code.trim()}</code></pre>`;
+            return `<pre class="line-numbers language-swift"><code>${code.trim()}</code></pre>`;
         });
     }
 
