@@ -42,7 +42,12 @@ def generate_swift_question(ai, model, topic, platform, keywords=None):
             logger.error(error_msg)
             return {"error": error_msg}
     except Exception as e:
-        logger.error(f"Error in generate_swift_question: {str(e)}")
+        logger.error(f"Error in generate_swift_question: {str(e)}", exc_info=True)
+        # Check for specific errors related to API keys
+        error_message = str(e).lower()
+        if "api key" in error_message or "apikey" in error_message or "authentication" in error_message or "credential" in error_message:
+            logger.error(f"Possible API key issue detected: {str(e)}")
+            return {"error": f"API key error: {str(e)}"}
         return {"error": str(e)}
 
 @app.route("/generate_question", methods=["POST"])
@@ -89,13 +94,30 @@ def api_generate_question():
             logger.error(error_msg)
             return jsonify({"error": error_msg})
 
+        # Check if required API keys are set
+        if ai == "openai" and not os.environ.get("OPENAI_API_KEY"):
+            error_msg = "OPENAI_API_KEY is not set in environment variables"
+            logger.error(error_msg)
+            return jsonify({"error": error_msg})
+        elif ai == "googleai" and not os.environ.get("GOOGLE_API_KEY"):
+            error_msg = "GOOGLE_API_KEY is not set in environment variables"
+            logger.error(error_msg)
+            return jsonify({"error": error_msg})
+        elif ai == "deepseekai" and not os.environ.get("DEEPSEEK_API_KEY"):
+            error_msg = "DEEPSEEK_API_KEY is not set in environment variables"
+            logger.error(error_msg)
+            return jsonify({"error": error_msg})
+
         logger.info("Calling generate_swift_question")
-        result = generate_swift_question(ai, model, topic, platform, keywords)
-        logger.info(f"Generated result: {json.dumps(result, indent=2)}")
-        
-        return jsonify(result)
+        try:
+            result = generate_swift_question(ai, model, topic, platform, keywords)
+            logger.info(f"Generated result: {json.dumps(result, indent=2)}")
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error during question generation: {str(e)}", exc_info=True)
+            return jsonify({"error": f"Failed to generate question: {str(e)}"})
     except Exception as e:
-        logger.error(f"Error in api_generate_question: {str(e)}")
+        logger.error(f"Error in api_generate_question: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)})
 
 @app.route("/generate_structured_openai", methods=["POST"])
@@ -116,6 +138,12 @@ def api_generate_structured_questions():
         if not topic:
             logger.error("Topic is required")
             return jsonify({"error": "Topic is required."})
+            
+        # Check if OpenAI API key is set
+        if not os.environ.get("OPENAI_API_KEY"):
+            error_msg = "OPENAI_API_KEY is not set in environment variables"
+            logger.error(error_msg)
+            return jsonify({"error": error_msg})
 
         try:
             logger.info("Calling generate_questions_dataset")
@@ -130,12 +158,13 @@ def api_generate_structured_questions():
             logger.info(f"Generated {len(questions)} questions")
             return jsonify([question.model_dump() for question in questions])
         except Exception as e:
-            logger.error(f"Error in generate_questions_dataset: {str(e)}")
-            return jsonify({"error": str(e)})
+            logger.error(f"Error in generate_questions_dataset: {str(e)}", exc_info=True)
+            return jsonify({"error": f"Failed to generate questions: {str(e)}"})
     except Exception as e:
-        logger.error(f"Error in api_generate_structured_questions: {str(e)}")
+        logger.error(f"Error in api_generate_structured_questions: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)})
 
 if __name__ == "__main__":
     logger.info("Starting Flask application")
-    app.run(host="0.0.0.0", port=10000, debug=False)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, debug=False)
