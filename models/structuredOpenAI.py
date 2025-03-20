@@ -23,8 +23,8 @@ class OptionsTestModel(BaseModel):
     answer: str = Field(description="Correct number of option for the test question")
 
 class CodeTestModel(BaseModel):
-    snippet: str = Field(description="Multiple choice test code snippet")
-    options: List[str] = Field(description="Answer options set with numbering, must be more than 2 options. The code block should be highlighted with appropriate formatting (for example: ```swift )")
+    snippet: str = Field(description="Multiple choice test code snippet. The code block must be highlighted with appropriate formatting (for example: ```swift ")
+    options: List[str] = Field(description="Answer options set with numbering, must be more than 2 options.")
     answer: str = Field(description="Correct number of option for the test code")
 
 class LevelName(str, Enum):
@@ -44,7 +44,7 @@ class AnswerLevels(BaseModel):
 
 class QuestionModel(BaseModel):
     topic: TopicModel = Field(description="Topic and platform information")
-    text: str = Field(description="The main programming question text")
+    text: str = Field(description="The main programming question text. If text contains code block,it must be highlighted with appropriate formatting (for example: ```swift )")
     tags: List[str] = Field(description="Keywords and tags related to the question within the context of the platform and the topic")
     answerLevels: AnswerLevels = Field(description="Answers for different difficulty levels. Must be all levels:  Beginner, Intermediate, Advanced")
 
