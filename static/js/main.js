@@ -68,69 +68,85 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function formatCode(text) {
+        if (!text) return '';
+        
         // Знаходимо блоки коду в форматі ```swift ... ```
-        return text.replace(/```swift\n([\s\S]*?)```/g, (match, code) => {
-            return `<pre class="line-numbers language-swift"><code>${code.trim()}</code></pre>`;
+        return text.replace(/```(?:swift)?\n?([\s\S]*?)```/g, (match, code) => {
+            // Видаляємо зайві пробіли та переноси рядків
+            const cleanCode = code.trim();
+            return `<pre class="line-numbers language-swift"><code>${cleanCode}</code></pre>`;
         });
     }
 
     function formatResult(result) {
-        return result.map(question => `
-            <div class="question mb-4">
-                <h4>${question.text}</h4>
-                <p>Tags: ${question.tags.join(', ')}</p>
-                <div class="answer-level beginner">
-                    <h5>Beginner</h5>
-                    <div class="answer-content">${formatCode(question.answerLevels.beginer.answer)}</div>
-                    <ul class="mt-3">
-                        ${question.answerLevels.beginer.tests.map(test => `
-                            <li class="mb-3">
-                                <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                <ul class="mt-2">
-                                    ${test.options.map(option => `
-                                        <li>${option}</li>
-                                    `).join('')}
-                                </ul>
-                                <p class="mt-2">Correct Answer: <strong>${test.answer}</strong></p>
-                            </li>
-                        `).join('')}
-                    </ul>
+        if (!Array.isArray(result)) {
+            console.error('Result is not an array:', result);
+            return '<div class="alert alert-danger">Invalid result format</div>';
+        }
+
+        return result.map(question => {
+            if (!question || !question.answerLevels) {
+                console.error('Invalid question format:', question);
+                return '';
+            }
+
+            return `
+                <div class="question mb-4">
+                    <h4>${question.text || 'No question text'}</h4>
+                    <p>Tags: ${(question.tags || []).join(', ')}</p>
+                    <div class="answer-level beginner">
+                        <h5>Beginner</h5>
+                        <div class="answer-content">${formatCode(question.answerLevels.beginer?.answer)}</div>
+                        <ul class="mt-3">
+                            ${(question.answerLevels.beginer?.tests || []).map(test => `
+                                <li class="mb-3">
+                                    <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                    <ul class="mt-2">
+                                        ${(test.options || []).map(option => `
+                                            <li>${option}</li>
+                                        `).join('')}
+                                    </ul>
+                                    <p class="mt-2">Correct Answer: <strong>${test.answer || 'Not specified'}</strong></p>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    <div class="answer-level intermediate">
+                        <h5>Intermediate</h5>
+                        <div class="answer-content">${formatCode(question.answerLevels.intermediate?.answer)}</div>
+                        <ul class="mt-3">
+                            ${(question.answerLevels.intermediate?.tests || []).map(test => `
+                                <li class="mb-3">
+                                    <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                    <ul class="mt-2">
+                                        ${(test.options || []).map(option => `
+                                            <li>${option}</li>
+                                        `).join('')}
+                                    </ul>
+                                    <p class="mt-2">Correct Answer: <strong>${test.answer || 'Not specified'}</strong></p>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    <div class="answer-level advanced">
+                        <h5>Advanced</h5>
+                        <div class="answer-content">${formatCode(question.answerLevels.advanced?.answer)}</div>
+                        <ul class="mt-3">
+                            ${(question.answerLevels.advanced?.tests || []).map(test => `
+                                <li class="mb-3">
+                                    <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                    <ul class="mt-2">
+                                        ${(test.options || []).map(option => `
+                                            <li>${option}</li>
+                                        `).join('')}
+                                    </ul>
+                                    <p class="mt-2">Correct Answer: <strong>${test.answer || 'Not specified'}</strong></p>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
                 </div>
-                <div class="answer-level intermediate">
-                    <h5>Intermediate</h5>
-                    <div class="answer-content">${formatCode(question.answerLevels.intermediate.answer)}</div>
-                    <ul class="mt-3">
-                        ${question.answerLevels.intermediate.tests.map(test => `
-                            <li class="mb-3">
-                                <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                <ul class="mt-2">
-                                    ${test.options.map(option => `
-                                        <li>${option}</li>
-                                    `).join('')}
-                                </ul>
-                                <p class="mt-2">Correct Answer: <strong>${test.answer}</strong></p>
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-                <div class="answer-level advanced">
-                    <h5>Advanced</h5>
-                    <div class="answer-content">${formatCode(question.answerLevels.advanced.answer)}</div>
-                    <ul class="mt-3">
-                        ${question.answerLevels.advanced.tests.map(test => `
-                            <li class="mb-3">
-                                <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                <ul class="mt-2">
-                                    ${test.options.map(option => `
-                                        <li>${option}</li>
-                                    `).join('')}
-                                </ul>
-                                <p class="mt-2">Correct Answer: <strong>${test.answer}</strong></p>
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 }); 
