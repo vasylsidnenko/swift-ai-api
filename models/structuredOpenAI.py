@@ -91,6 +91,7 @@ class QuestionValidation(BaseModel):
 
 def generate_and_validate_question(
     client: OpenAI,
+    model: str,
     platform: str,
     topic: str,
     tags: List[str] = [],
@@ -106,7 +107,7 @@ def generate_and_validate_question(
         generation_prompt = f"Generate a programming question related to the topic {topic} on the {platform} platform, linked with tags: {tags}, if they are exist. Add tags and keywords that make sense in the question context."
 
         response = client.beta.chat.completions.parse(
-            model="gpt-4o-mini",
+            model=model, # "gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a programming teacher. Ensure the creation of a question and answers based on the selected topic."},
                 {"role": "user", "content": generation_prompt}],
@@ -156,6 +157,7 @@ def generate_and_validate_question(
 
 def generate_questions_dataset(
     client: OpenAI,
+    model: str,
     platform: str,
     topic: str,
     tags: List[str] = [],
@@ -176,6 +178,7 @@ def generate_questions_dataset(
 
         result, attempts_made = generate_and_validate_question(
             client = client,
+            model = model,
             platform = platform,
             topic = topic,
             tags = tags,
@@ -208,18 +211,20 @@ def generate_questions_dataset(
     
     return questions
 
-def serialize_questions(questions: List[AIQuestionModel]) -> List[dict]:
+def generate_structured_question_openai(model, topic, platform, keywords=None, number=1):
     questions = generate_questions_dataset(
         client=client,
-        platform="Apple",
-        topic="Swift Concurrency",
-        tags=[],
+        model = model,
+        platform=platform,
+        topic=topic,
+        tags=keywords,
         max_retries=3,
-        number=2
+        number=number
     )
     print(f"Generated {len(questions)} questions")
-    
     return [question.model_dump() for question in questions]
+
+
 
 def main():
     questions = generate_questions_dataset(
@@ -232,10 +237,5 @@ def main():
     )
     print(f"Generated {len(questions)} questions")
     
-    # Serialize questions
-    serialized_questions = serialize_questions(questions)
-    print("\nSerialized questions:")
-    print(json.dumps(serialized_questions, indent=2))
-
 if __name__ == "__main__":
     main()

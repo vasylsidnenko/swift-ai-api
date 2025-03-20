@@ -1,12 +1,22 @@
 import json
 import random
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from models.gemini_model import generate_swift_question_gemini
 from models.openai_model import generate_swift_question_openai
 from models.deepseek_model import generate_swift_question_deepseek
 from models.structuredOpenAI import generate_questions_dataset, client
+from models.structuredOpenAI import generate_structured_question_openai
+from dotenv import load_dotenv
+import os
 
-app = Flask(__name__)
+# Load environment variables from .env file
+load_dotenv()
+
+app = Flask(__name__, static_folder='static', template_folder='templates')
+
+@app.route("/")
+def index():
+    return render_template('index.html')
 
 def generate_swift_question(ai, model, topic, platform, keywords=None):
     print(ai, model, topic, platform, keywords)
@@ -14,7 +24,8 @@ def generate_swift_question(ai, model, topic, platform, keywords=None):
     if ai == "googleai":
         return generate_swift_question_gemini(model, topic, platform, keywords)
     elif ai == "openai":
-        return generate_swift_question_openai(model, topic, platform, keywords)
+        # return generate_swift_question_openai(model, topic, platform, keywords)
+        return generate_structured_question_openai(model, topic, platform, keywords)
     elif ai == "deepseekai":
         return generate_swift_question_deepseek(model, topic, platform, keywords)
     else:
