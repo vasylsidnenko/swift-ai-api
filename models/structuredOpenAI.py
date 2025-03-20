@@ -24,7 +24,7 @@ class OptionsTestModel(BaseModel):
 
 class CodeTestModel(BaseModel):
     snippet: str = Field(description="Multiple choice test code snippet")
-    options: List[str] = Field(description="Answer options set with numbering, must be more than 2 options. Every option text must start with the appropriate number")
+    options: List[str] = Field(description="Answer options set with numbering, must be more than 2 options. The code block should be highlighted with appropriate formatting (for example: ```swift )")
     answer: str = Field(description="Correct number of option for the test code")
 
 class LevelName(str, Enum):
@@ -87,6 +87,9 @@ class QuestionValidation(BaseModel):
     )
     is_answer_for_options_test_contain_number: bool = Field(
         description="The answer must be a number corresponding to one of the options."
+    )
+    are_code_blocks_marked:bool = Field(
+         description="Code blocks must be highlighted with appropriate formatting."
     )
 
 def generate_and_validate_question(
