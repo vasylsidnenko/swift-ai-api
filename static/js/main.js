@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = {
             topic: document.getElementById('topic').value,
             platform: document.getElementById('platform').value,
+            tech: document.getElementById('tech').value,
             keywords: document.getElementById('keywords').value.split(',').map(k => k.trim()).filter(k => k),
             ai: document.getElementById('ai').value,
             model: document.getElementById('model').value

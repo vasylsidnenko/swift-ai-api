@@ -16,6 +16,7 @@ client = OpenAI(api_key=O_API_KEY)
 class TopicModel(BaseModel):
     name: str = Field(description="Name of the programming topic")
     platform: str = Field(description="Platform for which the topic is relevant (e.g., 'iOS', 'Apple')")
+    technology: Optional[str] = Field(description="Specific technology stack (e.g. 'Kotlin' for Android)") 
 
 class OptionsTestModel(BaseModel):
     question: str = Field(description="Multiple choice test question")
@@ -97,6 +98,7 @@ def generate_and_validate_question(
     model: str,
     platform: str,
     topic: str,
+    tech: Optional[str] = None,
     tags: List[str] = [],
     max_retries: int = 1,
     existing_questions: List[str] = []
@@ -107,7 +109,12 @@ def generate_and_validate_question(
   for attempt in range(max_retries):
       attempts += 1
       try:
-        generation_prompt = f"Generate a programming question related to the topic {topic} on the {platform} platform, linked with tags: {tags}, if they are exist. Add tags and keywords that make sense in the question context."
+        generation_prompt = f"Generate a programming question related to the topic {topic} on the {platform} platform, "
+        
+        if tech:
+          generation_prompt += f"with technology stack {tech}, "
+         
+        generation_prompt += f"linked with tags: {tags}, if they are exist. Add tags and keywords that make sense in the question context."
 
         response = client.beta.chat.completions.parse(
             model=model, # "gpt-4o-mini",
@@ -163,6 +170,7 @@ def generate_questions_dataset(
     model: str,
     platform: str,
     topic: str,
+    tech: Optional[str] = None,
     tags: List[str] = [],
     max_retries: int = 3,
     number: int = 1
@@ -184,6 +192,7 @@ def generate_questions_dataset(
             model = model,
             platform = platform,
             topic = topic,
+            tech = tech,
             tags = tags,
             max_retries = max_retries,
             existing_questions = questions_text
@@ -214,12 +223,13 @@ def generate_questions_dataset(
     
     return questions
 
-def generate_structured_question_openai(model, topic, platform, keywords=None, number=1):
+def generate_structured_question_openai(model, topic, platform, tech=None, keywords=None, number=1):
     questions = generate_questions_dataset(
         client=client,
         model = model,
         platform=platform,
         topic=topic,
+        tech=tech,
         tags=keywords,
         max_retries=3,
         number=number
@@ -234,9 +244,7 @@ def main():
         client=client,
         platform="Apple",
         topic="Swift Concurrency",
-        tags=[],
-        max_retries=3,
-        number=2
+        tags=[]
     )
     print(f"Generated {len(questions)} questions")
     
