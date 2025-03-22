@@ -31,7 +31,7 @@ body {
 }
 
 #result {
-    margin-top: 20px;
+    margin-top: 2em;
 }
 
 .question {
@@ -108,11 +108,12 @@ code {
 
 /* Стилі для підсвічування синтаксису */
 pre[class*="language-"] {
+    margin: 1.5em 0;
+    padding: 1em;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 5px;
-    padding: 15px;
-    margin: 10px 0;
+    border: 1px solid #e9ecef;
 }
 
 .line-numbers .line-numbers-rows {
@@ -215,4 +216,121 @@ pre[class*="language-"] {
     100% {
         opacity: 0.6;
     }
+}
+
+/* Стилі для контейнера результату */
+#result {
+    margin-top: 2em;
+}
+
+/* Стилі для кожного блоку питання */
+.question-block {
+    margin-bottom: 2em;
+    padding: 1.5em;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e9ecef;
+}
+
+/* Стилі для заголовків питання */
+.question-title {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin-bottom: 1em;
+    color: #2c3e50;
+}
+
+/* Стилі для опису питання */
+.question-description {
+    margin-bottom: 1.5em;
+    line-height: 1.6;
+    color: #495057;
+}
+
+/* Стилі для блоків коду всередині питання */
+.question-block pre[class*="language-"] {
+    margin: 1em 0;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+/* Стилі для тегів */
+.question-tags {
+    margin-top: 1em;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+.tag {
+    padding: 0.25em 0.75em;
+    background: #e9ecef;
+    border-radius: 15px;
+    font-size: 0.9em;
+    color: #495057;
+}
+
+/* Адаптивність для мобільних пристроїв */
+@media (max-width: 768px) {
+    .question-block {
+        padding: 1em;
+    }
+    
+    pre[class*="language-"] {
+        padding: 0.75em;
+    }
+}
+
+/* Стилі для блоків з опціями відповідей */
+.test-options {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1em;
+    margin: 1em 0;
+    border: 1px solid #e9ecef;
+}
+
+.test-options ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.test-options li {
+    padding: 0.5em 1em;
+    margin: 0.5em 0;
+    background: white;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    transition: all 0.2s ease;
+}
+
+.test-options li:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.correct-answer {
+    margin-top: 1em;
+    padding: 0.75em;
+    background: #e8f5e9;
+    border-radius: 4px;
+    border-left: 4px solid #28a745;
+    color: #2e7d32;
+}
+
+.test-block {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5em;
+    margin: 1em 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e9ecef;
+}
+
+.test-block .code-snippet {
+    margin-bottom: 1em;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 1em;
 } 

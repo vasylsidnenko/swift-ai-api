@@ -16,22 +16,22 @@ client = OpenAI(api_key=O_API_KEY)
 class TopicModel(BaseModel):
     name: str = Field(description="Name of the programming topic")
     platform: str = Field(description="Platform for which the topic is relevant (e.g., 'iOS', 'Apple')")
-    technology: Optional[str] = Field(description="Specific technology stack (e.g. 'Kotlin' for Android)") 
+    technology: Optional[str] = Field(description="Specific technology stack (e.g. 'Kotlin' for Android)")
 
 class OptionsTestModel(BaseModel):
     question: str = Field(description="Multiple choice test question")
-    options: List[str] = Field(description="Answer options set with numbering, must be more than 2 options. Every option must have the number")
+    options: List[str] = Field(description="Answer options set with numbering, must be more than 2 options.")
     answer: str = Field(description="Correct number of option for the test question")
 
 class CodeTestModel(BaseModel):
-    snippet: str = Field(description="Multiple choice test code snippet. The code block must be highlighted with appropriate formatting (for example: ```swift ")
+    snippet: str = Field(description="Multiple choice test code snippet and question for it. The code block must be highlighted with appropriate formatting (for example: ```swift )")
     options: List[str] = Field(description="Answer options set with numbering, must be more than 2 options.")
     answer: str = Field(description="Correct number of option for the test code")
 
 class LevelName(str, Enum):
-    BEGINNER = "Beginner Level"
-    INTERMEDIATE = "Intermediate Level"
-    ADVANCED = "Advanced Level"
+    BEGINNER = Field("Beginner Level", description="Answers at the Beginner Level should provide a basic, high-level understanding of the topi with simple explanations and minimal technical detail. The focus is on foundational concepts.")
+    INTERMEDIATE = Field("Intermediate Level", description="Answers at the Intermediate Level should demonstrate a deeper understanding of the topic, including practical implications, relevant Swift-specific details, and typical use cases. Explanations should bridge theory and practice.")
+    ADVANCED = Field("Advanced Level", description="Answers at the Advanced Level should be thorough, technically precise, and cover the topic in-depth. They should include language-specific behaviors, edge cases, implications for performance or architecture, and real-world usage in production code. The answer should significantly expand on Beginner and Intermediate explanations.")
 
 class AnswerLevelModel(BaseModel):
     name: LevelName = Field(description="Difficulty level of the answer")
@@ -63,13 +63,13 @@ class QuestionValidation(BaseModel):
         description="The question text must correspond to the topic and any included tags."
     )
     is_question_not_trivial: bool = Field(
-        description="The question shouldn't just repeat the section from the topic but should be more challenging."
+        description="The question shouldn’t just repeat the section from the topic but should be more challenging."
     )
     are_answer_levels_exist: bool = Field(
         description="Question must contain 3 levels: Beginner, Intermediate, Advanced"
     )
     are_answer_levels_must_be_different: bool = Field(
-        description="The answers at each level should be different and match the difficulty of that level."
+        description="The answers at each level must be different and match the difficulty of that level."
     )
     are_test_exist: bool = Field(
         description="Each answer level must contain 3 tests"
@@ -91,6 +91,12 @@ class QuestionValidation(BaseModel):
     )
     are_code_blocks_marked:bool = Field(
          description="Code blocks must be highlighted with appropriate formatting."
+    )
+    is_snippet_have_question:bool = Field(
+         description="Snippet in CodeTestModel must have quesion."
+    )
+    is_snippet_have_code:bool = Field(
+         description="Snippet in CodeTestModel must have test code."
     )
 
 def generate_and_validate_question(

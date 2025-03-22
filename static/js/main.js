@@ -92,56 +92,73 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             return `
-                <div class="question mb-4">
-                    <h4>${question.text || 'No question text'}</h4>
-                    <p>Tags: ${(question.tags || []).join(', ')}</p>
+                <div class="question-block">
+                    <div class="question-title">${question.text || 'No question text'}</div>
+                    <div class="question-tags">
+                        ${(question.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                    
                     <div class="answer-level beginner">
-                        <h5>Beginner</h5>
-                        <div class="answer-content">${formatCode(question.answerLevels.beginer?.answer)}</div>
+                        <h5 class="question-title">Beginner</h5>
+                        <div class="question-description">${formatCode(question.answerLevels.beginer?.answer)}</div>
                         <ul class="mt-3">
                             ${(question.answerLevels.beginer?.tests || []).map(test => `
-                                <li class="mb-3">
+                                <li class="test-block">
                                     <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                    <ul class="mt-2">
-                                        ${(test.options || []).map(option => `
-                                            <li>${option}</li>
-                                        `).join('')}
-                                    </ul>
-                                    <p class="mt-2">Correct Answer: <strong>${test.answer || 'Not specified'}</strong></p>
+                                    <div class="test-options">
+                                        <ul>
+                                            ${(test.options || []).map(option => `
+                                                <li>${option}</li>
+                                            `).join('')}
+                                        </ul>
+                                    </div>
+                                    <div class="correct-answer">
+                                        Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                    </div>
                                 </li>
                             `).join('')}
                         </ul>
                     </div>
+                    
                     <div class="answer-level intermediate">
-                        <h5>Intermediate</h5>
-                        <div class="answer-content">${formatCode(question.answerLevels.intermediate?.answer)}</div>
+                        <h5 class="question-title">Intermediate</h5>
+                        <div class="question-description">${formatCode(question.answerLevels.intermediate?.answer)}</div>
                         <ul class="mt-3">
                             ${(question.answerLevels.intermediate?.tests || []).map(test => `
-                                <li class="mb-3">
+                                <li class="test-block">
                                     <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                    <ul class="mt-2">
-                                        ${(test.options || []).map(option => `
-                                            <li>${option}</li>
-                                        `).join('')}
-                                    </ul>
-                                    <p class="mt-2">Correct Answer: <strong>${test.answer || 'Not specified'}</strong></p>
+                                    <div class="test-options">
+                                        <ul>
+                                            ${(test.options || []).map(option => `
+                                                <li>${option}</li>
+                                            `).join('')}
+                                        </ul>
+                                    </div>
+                                    <div class="correct-answer">
+                                        Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                    </div>
                                 </li>
                             `).join('')}
                         </ul>
                     </div>
+                    
                     <div class="answer-level advanced">
-                        <h5>Advanced</h5>
-                        <div class="answer-content">${formatCode(question.answerLevels.advanced?.answer)}</div>
+                        <h5 class="question-title">Advanced</h5>
+                        <div class="question-description">${formatCode(question.answerLevels.advanced?.answer)}</div>
                         <ul class="mt-3">
                             ${(question.answerLevels.advanced?.tests || []).map(test => `
-                                <li class="mb-3">
+                                <li class="test-block">
                                     <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                    <ul class="mt-2">
-                                        ${(test.options || []).map(option => `
-                                            <li>${option}</li>
-                                        `).join('')}
-                                    </ul>
-                                    <p class="mt-2">Correct Answer: <strong>${test.answer || 'Not specified'}</strong></p>
+                                    <div class="test-options">
+                                        <ul>
+                                            ${(test.options || []).map(option => `
+                                                <li>${option}</li>
+                                            `).join('')}
+                                        </ul>
+                                    </div>
+                                    <div class="correct-answer">
+                                        Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                    </div>
                                 </li>
                             `).join('')}
                         </ul>
