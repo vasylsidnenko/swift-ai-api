@@ -1,11 +1,7 @@
 import json
-import random
 from flask import Flask, request, jsonify, render_template
-from models.gemini_model import generate_swift_question_gemini
-from models.openai_model import generate_swift_question_openai
-from models.deepseek_model import generate_swift_question_deepseek
-from models.structuredOpenAI import generate_questions_dataset, client
-from models.structuredOpenAI import generate_structured_question_openai
+from models.mcp_server import MCPServer, MCPContext, ModelType
+from models.structuredOpenAI import OpenAIAgent
 from dotenv import load_dotenv
 import os
 import logging
@@ -18,32 +14,52 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
+mcp_server = MCPServer()
 
 @app.route("/")
 def index():
     logger.info("Accessing index page")
     return render_template('index.html')
 
-def generate_swift_question(ai, model, topic, platform, keywords=None):
+def get_api_key_from_header():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        raise ValueError("Missing or invalid Authorization header. Use Bearer token.")
+    return auth_header[7:]  # Remove 'Bearer ' prefix
+
+def generate_swift_question(ai, model, topic, platform, api_key, tech=None, keywords=None, number=1):
     logger.info(f"Generating question with parameters: ai={ai}, model={model}, topic={topic}, platform={platform}, keywords={keywords}")
     
     try:
-        if ai == "googleai":
-            logger.info("Using Google AI (Gemini)")
-            return generate_swift_question_gemini(model, topic, platform, keywords)
-        elif ai == "openai":
-            logger.info("Using OpenAI")
-            return generate_structured_question_openai(model, topic, platform, keywords)
-        elif ai == "deepseekai":
-            logger.info("Using DeepSeek AI")
-            return generate_swift_question_deepseek(model, topic, platform, keywords)
-        else:
-            error_msg = f"Unsupported AI model '{ai}'. Please use 'openai' or 'googleai' or 'deepseekai' or nothing (by default for AI)."
+        # Конвертуємо ai в ModelType
+        try:
+            model_type = ModelType(ai)
+        except ValueError:
+            error_msg = f"Unsupported AI model '{ai}'. Please use 'openai' or 'googleai' or 'deepseekai'."
             logger.error(error_msg)
             return {"error": error_msg}
+
+        # Встановлюємо контекст
+        context = MCPContext(
+            model_type=model_type,
+            model_name=model,
+            topic=topic,
+            platform=platform,
+            api_key=api_key,
+            tech=tech,
+            keywords=keywords,
+            number=number
+        )
+        
+        # Обробляємо запит через MCP, передаючи контекст напряму
+        response = mcp_server.process_request(context)
+        
+        # Перевіряємо успішність відповіді
+        if not response.get("success", False):
+            return {"error": response.get("error", "Unknown error")}
+        return response.get("data", {})
     except Exception as e:
         logger.error(f"Error in generate_swift_question: {str(e)}", exc_info=True)
-        # Check for specific errors related to API keys
         error_message = str(e).lower()
         if "api key" in error_message or "apikey" in error_message or "authentication" in error_message or "credential" in error_message:
             logger.error(f"Possible API key issue detected: {str(e)}")
@@ -59,9 +75,26 @@ def api_generate_question():
 
         topic = data.get("topic")
         platform = data.get("platform", "Apple")
+        tech = data.get("tech")
         keywords = data.get("keywords", [])
         ai = data.get("ai", "openai").lower()
         model = data.get("model")
+        number = data.get("number", 1)
+
+        # Отримуємо API ключ з заголовка або з оточення
+        api_key = None
+        try:
+            api_key = get_api_key_from_header()
+        except ValueError:
+            # Якщо ключ не передано через заголовок, використовуємо з оточення
+            env_key_map = {
+                "openai": "OPENAI_API_KEY",
+                "googleai": "GOOGLE_API_KEY",
+                "deepseekai": "DEEPSEEK_API_KEY"
+            }
+            env_key = env_key_map.get(ai)
+            if env_key:
+                api_key = os.environ.get(env_key)
 
         logger.info(f"Parsed parameters: topic={topic}, platform={platform}, ai={ai}, model={model}, keywords={keywords}")
 
@@ -77,7 +110,7 @@ def api_generate_question():
 
         DEFAULT_MODELS = {
             "googleai": "gemini-pro",
-            "openai": "gpt-4o-mini",
+            "openai": "gpt-4o",
             "deepseekai": "deepseek-chat"
         }
 
@@ -94,23 +127,15 @@ def api_generate_question():
             logger.error(error_msg)
             return jsonify({"error": error_msg})
 
-        # Check if required API keys are set
-        if ai == "openai" and not os.environ.get("OPENAI_API_KEY"):
-            error_msg = "OPENAI_API_KEY is not set in environment variables"
-            logger.error(error_msg)
-            return jsonify({"error": error_msg})
-        elif ai == "googleai" and not os.environ.get("GOOGLE_API_KEY"):
-            error_msg = "GOOGLE_API_KEY is not set in environment variables"
-            logger.error(error_msg)
-            return jsonify({"error": error_msg})
-        elif ai == "deepseekai" and not os.environ.get("DEEPSEEK_API_KEY"):
-            error_msg = "DEEPSEEK_API_KEY is not set in environment variables"
+        # Перевіряємо наявність API ключа
+        if not api_key:
+            error_msg = "API key is required. Either set it in environment variables or provide via Authorization header."
             logger.error(error_msg)
             return jsonify({"error": error_msg})
 
         logger.info("Calling generate_swift_question")
         try:
-            result = generate_swift_question(ai, model, topic, platform, keywords)
+            result = generate_swift_question(ai, model, topic, platform, api_key, tech, keywords, number)
             logger.info(f"Generated result: {json.dumps(result, indent=2)}")
             return jsonify(result)
         except Exception as e:
@@ -124,6 +149,12 @@ def api_generate_question():
 def api_generate_structured_questions():
     logger.info("Received POST request to /generate_structured_openai")
     try:
+        # Отримуємо API ключ з заголовка
+        try:
+            api_key = get_api_key_from_header()
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 401
+
         data = request.get_json()
         logger.info(f"Request data: {json.dumps(data, indent=2)}")
 
@@ -138,17 +169,13 @@ def api_generate_structured_questions():
         if not topic:
             logger.error("Topic is required")
             return jsonify({"error": "Topic is required."})
-            
-        # Check if OpenAI API key is set
-        if not os.environ.get("OPENAI_API_KEY"):
-            error_msg = "OPENAI_API_KEY is not set in environment variables"
-            logger.error(error_msg)
-            return jsonify({"error": error_msg})
 
         try:
+            # Створюємо новий екземпляр OpenAIAgent для кожного запиту
+            agent = OpenAIAgent(api_key=api_key)
             logger.info("Calling generate_questions_dataset")
-            questions = generate_questions_dataset(
-                client=client,
+            questions = agent.generate_questions_dataset(
+                model="gpt-4o",
                 platform=platform,
                 topic=topic,
                 tags=keywords,

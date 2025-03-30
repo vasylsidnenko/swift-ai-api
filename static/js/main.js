@@ -45,11 +45,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
 
+            // Отримуємо API ключ
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
+            // Формуємо заголовки
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Додаємо Authorization заголовок якщо є API ключ
+            if (apiKey) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+            }
+
             const response = await fetch('/generate_question', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: headers,
                 body: JSON.stringify(data)
             });
 
@@ -99,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     
                     <div class="answer-level beginner">
-                        <h5 class="question-title">Beginner</h5>
+                        <h5 class="question-title">${question.answerLevels.beginer?.name || 'Beginner Level'}</h5>
                         <div class="question-description">${formatCode(question.answerLevels.beginer?.answer)}</div>
                         <ul class="mt-3">
                             ${(question.answerLevels.beginer?.tests || []).map(test => `
@@ -121,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     
                     <div class="answer-level intermediate">
-                        <h5 class="question-title">Intermediate</h5>
+                        <h5 class="question-title">${question.answerLevels.intermediate?.name || 'Intermediate Level'}</h5>
                         <div class="question-description">${formatCode(question.answerLevels.intermediate?.answer)}</div>
                         <ul class="mt-3">
                             ${(question.answerLevels.intermediate?.tests || []).map(test => `
@@ -143,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     
                     <div class="answer-level advanced">
-                        <h5 class="question-title">Advanced</h5>
+                        <h5 class="question-title">${question.answerLevels.advanced?.name || 'Advanced Level'}</h5>
                         <div class="question-description">${formatCode(question.answerLevels.advanced?.answer)}</div>
                         <ul class="mt-3">
                             ${(question.answerLevels.advanced?.tests || []).map(test => `
