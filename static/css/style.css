@@ -10,6 +10,74 @@ body {
     margin-bottom: 20px;
 }
 
+/* Styles for AI settings block */
+.ai-settings-card {
+    background-color: #f0f5ff;
+    border: 1px solid #d0e0ff;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.tech-header {
+    background-color: #e0e8ff;
+    border-bottom: 1px solid #c0d0ff;
+    color: #2c3e50;
+    font-weight: 500;
+}
+
+.tech-label {
+    color: #2c3e50;
+    font-weight: 500;
+}
+
+.tech-input {
+    border: 1px solid #c0d0ff;
+    background-color: #f8faff;
+}
+
+.tech-input:focus {
+    border-color: #a0b8ff;
+    box-shadow: 0 0 0 0.2rem rgba(100, 150, 255, 0.25);
+}
+
+.main-card {
+    border: 1px solid #dee2e6;
+}
+
+/* Styles for expand/collapse button */
+.btn-outline-secondary {
+    color: #6c757d;
+    background-color: #f8f9fa;
+    border-color: #ced4da;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+}
+
+/* Animation for expand/collapse */
+.collapse {
+    transition: all 0.3s ease;
+}
+
+.collapse.show {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .card-header {
     background-color: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
@@ -106,7 +174,7 @@ code {
     font-weight: bold;
 }
 
-/* Стилі для підсвічування синтаксису */
+/* Styles for syntax highlighting */
 pre[class*="language-"] {
     margin: 1.5em 0;
     padding: 1em;
@@ -124,7 +192,7 @@ pre[class*="language-"] {
     color: #999;
 }
 
-/* Стилі для різних елементів коду */
+/* Styles for different code elements */
 .token.comment,
 .token.prolog,
 .token.doctype,
@@ -176,7 +244,7 @@ pre[class*="language-"] {
     color: #9cdcfe;
 }
 
-/* Стилі для анімації завантаження */
+/* Styles for loading animation */
 .loading-container {
     display: flex;
     flex-direction: column;
@@ -218,12 +286,12 @@ pre[class*="language-"] {
     }
 }
 
-/* Стилі для контейнера результату */
+/* Styles for result container */
 #result {
     margin-top: 2em;
 }
 
-/* Стилі для кожного блоку питання */
+/* Styles for each question block */
 .question-block {
     margin-bottom: 2em;
     padding: 1.5em;
@@ -233,7 +301,7 @@ pre[class*="language-"] {
     border: 1px solid #e9ecef;
 }
 
-/* Стилі для заголовків питання */
+/* Styles for question headers */
 .question-title {
     font-size: 1.2em;
     font-weight: 600;
@@ -241,21 +309,21 @@ pre[class*="language-"] {
     color: #2c3e50;
 }
 
-/* Стилі для опису питання */
+/* Styles for question description */
 .question-description {
     margin-bottom: 1.5em;
     line-height: 1.6;
     color: #495057;
 }
 
-/* Стилі для блоків коду всередині питання */
+/* Styles for code blocks inside questions */
 .question-block pre[class*="language-"] {
     margin: 1em 0;
     background: #f8f9fa;
     border: 1px solid #e9ecef;
 }
 
-/* Стилі для тегів */
+/* Styles for tags */
 .question-tags {
     margin-top: 1em;
     display: flex;
@@ -282,7 +350,7 @@ pre[class*="language-"] {
     }
 }
 
-/* Стилі для блоків з опціями відповідей */
+/* Styles for answer option blocks */
 .test-options {
     background: #f8f9fa;
     border-radius: 8px;

@@ -33,8 +33,22 @@ class MCPResponse:
 class ModelType(str, Enum):
     """Supported AI model types"""
     OPENAI = "openai"
-    GOOGLEAI = "googleai"
-    DEEPSEEKAI = "deepseekai"
+    GOOGLEAI = "google"
+    DEEPSEEKAI = "deepseek"
+    
+# Available models for each provider
+AVAILABLE_MODELS = {
+    ModelType.OPENAI: ["gpt-4o", "gpt-4o-mini"],
+    ModelType.GOOGLEAI: ["gemini-pro"],
+    ModelType.DEEPSEEKAI: ["deepseek-chat"]
+}
+
+# Default model for each provider
+DEFAULT_MODELS = {
+    ModelType.OPENAI: "gpt-4o",
+    ModelType.GOOGLEAI: "gemini-pro",
+    ModelType.DEEPSEEKAI: "deepseek-chat"
+}
 
 class AIResource(MCPResource):
     """MCP resource for AI model interactions"""
@@ -60,7 +74,7 @@ class AIResource(MCPResource):
             
     def _handle_openai(self, context: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Handle OpenAI model requests"""
-        from models.structuredOpenAI import OpenAIAgent
+        from models.openai_model import OpenAIAgent
         agent = OpenAIAgent(api_key=context.get('api_key'))
         return agent.generate_structured_question(
             model=context.get('model_name'),
@@ -120,3 +134,23 @@ class MCPServer:
             return MCPResponse(False, error=f"Unsupported model type: {context.model_type}").to_dict()
 
         return resource.execute(context.to_dict())
+        
+    def get_available_providers(self) -> List[str]:
+        """Get list of available AI providers"""
+        return [model_type.value for model_type in ModelType]
+        
+    def get_available_models(self, provider: str) -> List[str]:
+        """Get list of available models for a specific provider"""
+        try:
+            model_type = ModelType(provider)
+            return AVAILABLE_MODELS.get(model_type, [])
+        except ValueError:
+            return []
+            
+    def get_default_model(self, provider: str) -> str:
+        """Get default model for a specific provider"""
+        try:
+            model_type = ModelType(provider)
+            return DEFAULT_MODELS.get(model_type, "")
+        except ValueError:
+            return ""

@@ -3,23 +3,94 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultDiv = document.getElementById('result');
     const aiSelect = document.getElementById('ai');
     const modelSelect = document.getElementById('model');
-
-    // Update available models based on selected AI
-    aiSelect.addEventListener('change', function() {
-        const ai = this.value;
-        const models = {
-            'googleai': ['gemini-pro'],
-            'openai': ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'],
-            'deepseekai': ['deepseek-chat']
-        };
-
-        modelSelect.innerHTML = '';
-        models[ai].forEach(model => {
-            const option = document.createElement('option');
-            option.value = model;
-            option.textContent = model;
-            modelSelect.appendChild(option);
+    const aiSettingsToggle = document.querySelector('[data-bs-toggle="collapse"]');
+    
+    // Change icon when expanding/collapsing AI settings block
+    if (aiSettingsToggle) {
+        const chevronIcon = aiSettingsToggle.querySelector('.bi-chevron-down');
+        
+        document.getElementById('aiSettings').addEventListener('show.bs.collapse', function () {
+            chevronIcon.classList.remove('bi-chevron-down');
+            chevronIcon.classList.add('bi-chevron-up');
         });
+        
+        document.getElementById('aiSettings').addEventListener('hide.bs.collapse', function () {
+            chevronIcon.classList.remove('bi-chevron-up');
+            chevronIcon.classList.add('bi-chevron-down');
+        });
+    }
+    
+    // Load available providers
+    async function loadProviders() {
+        try {
+            const response = await fetch('/api/providers');
+            const providers = await response.json();
+            
+            // Clear providers select
+            aiSelect.innerHTML = '';
+            
+            // Add received providers
+            providers.forEach(provider => {
+                const option = document.createElement('option');
+                option.value = provider;
+                
+                // Format provider name correctly
+                let displayName = '';
+                if (provider === 'openai') {
+                    displayName = 'OpenAI';
+                } else if (provider === 'google') {
+                    displayName = 'Google';
+                } else if (provider === 'deepseek') {
+                    displayName = 'DeepSeek';
+                } else {
+                    displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
+                }
+                
+                option.textContent = displayName;
+                aiSelect.appendChild(option);
+            });
+            
+            // Load models for the first provider
+            if (providers.length > 0) {
+                loadModels(providers[0]);
+            }
+        } catch (error) {
+            console.error('Error loading providers:', error);
+        }
+    }
+    
+    // Load available models for a specific provider
+    async function loadModels(provider) {
+        try {
+            const response = await fetch(`/api/models/${provider}`);
+            const data = await response.json();
+            
+            // Clear models select
+            modelSelect.innerHTML = '';
+            
+            // Add received models
+            data.models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                // Set default model
+                if (model === data.default) {
+                    option.selected = true;
+                }
+                modelSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error(`Error loading models for ${provider}:`, error);
+        }
+    }
+    
+    // Load providers when page loads
+    loadProviders();
+
+    // Update available models when provider changes
+    aiSelect.addEventListener('change', function() {
+        const provider = this.value;
+        loadModels(provider);
     });
 
     form.addEventListener('submit', async function(e) {
@@ -35,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
-            // Показуємо індикатор завантаження
+            // Show loading indicator
             resultDiv.innerHTML = `
                 <div class="loading-container">
                     <div class="spinner-border text-primary" role="status">
@@ -53,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Content-Type': 'application/json'
             };
             
-            // Додаємо Authorization заголовок якщо є API ключ
+            // Add Authorization header if API key exists
             if (apiKey) {
                 headers['Authorization'] = `Bearer ${apiKey}`;
             }

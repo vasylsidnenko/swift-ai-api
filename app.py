@@ -1,12 +1,12 @@
 import json
 from flask import Flask, request, jsonify, render_template
 from models.mcp_server import MCPServer, MCPContext, ModelType
-from models.structuredOpenAI import OpenAIAgent
+from models.openai_model import OpenAIAgent
 from dotenv import load_dotenv
 import os
 import logging
 
-# Налаштування логування
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -27,19 +27,19 @@ def get_api_key_from_header():
         raise ValueError("Missing or invalid Authorization header. Use Bearer token.")
     return auth_header[7:]  # Remove 'Bearer ' prefix
 
-def generate_swift_question(ai, model, topic, platform, api_key, tech=None, keywords=None, number=1):
+def generate_question(ai, model, topic, platform, api_key, tech=None, keywords=None, number=1):
     logger.info(f"Generating question with parameters: ai={ai}, model={model}, topic={topic}, platform={platform}, keywords={keywords}")
     
     try:
-        # Конвертуємо ai в ModelType
+        # Convert AI provider to ModelType
         try:
             model_type = ModelType(ai)
         except ValueError:
-            error_msg = f"Unsupported AI model '{ai}'. Please use 'openai' or 'googleai' or 'deepseekai'."
+            error_msg = f"Unsupported AI model '{ai}'. Please use 'openai', 'google', or 'deepseek'."
             logger.error(error_msg)
             return {"error": error_msg}
 
-        # Встановлюємо контекст
+        # Set up the context
         context = MCPContext(
             model_type=model_type,
             model_name=model,
@@ -51,15 +51,15 @@ def generate_swift_question(ai, model, topic, platform, api_key, tech=None, keyw
             number=number
         )
         
-        # Обробляємо запит через MCP, передаючи контекст напряму
+        # Process the request through MCP, passing the context directly
         response = mcp_server.process_request(context)
         
-        # Перевіряємо успішність відповіді
+        # Check if the response was successful
         if not response.get("success", False):
             return {"error": response.get("error", "Unknown error")}
         return response.get("data", {})
     except Exception as e:
-        logger.error(f"Error in generate_swift_question: {str(e)}", exc_info=True)
+        logger.error(f"Error in generate_question: {str(e)}", exc_info=True)
         error_message = str(e).lower()
         if "api key" in error_message or "apikey" in error_message or "authentication" in error_message or "credential" in error_message:
             logger.error(f"Possible API key issue detected: {str(e)}")
@@ -81,16 +81,16 @@ def api_generate_question():
         model = data.get("model")
         number = data.get("number", 1)
 
-        # Отримуємо API ключ з заголовка або з оточення
+        # Get API key from header or environment
         api_key = None
         try:
             api_key = get_api_key_from_header()
         except ValueError:
-            # Якщо ключ не передано через заголовок, використовуємо з оточення
+            # If key is not provided in header, use from environment
             env_key_map = {
                 "openai": "OPENAI_API_KEY",
-                "googleai": "GOOGLE_API_KEY",
-                "deepseekai": "DEEPSEEK_API_KEY"
+                "google": "GOOGLE_API_KEY",
+                "deepseek": "DEEPSEEK_API_KEY"
             }
             env_key = env_key_map.get(ai)
             if env_key:
@@ -103,15 +103,15 @@ def api_generate_question():
             return jsonify({"error": "Topic is required."})
 
         AI_MODELS = {
-            "googleai": ["gemini-pro"],
+            "google": ["gemini-pro"],
             "openai": ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
-            "deepseekai": ["deepseek-chat"]
+            "deepseek": ["deepseek-chat"]
         }
 
         DEFAULT_MODELS = {
-            "googleai": "gemini-pro",
+            "google": "gemini-pro",
             "openai": "gpt-4o",
-            "deepseekai": "deepseek-chat"
+            "deepseek": "deepseek-chat"
         }
 
         if ai not in AI_MODELS:
@@ -127,15 +127,15 @@ def api_generate_question():
             logger.error(error_msg)
             return jsonify({"error": error_msg})
 
-        # Перевіряємо наявність API ключа
+        # Check if API key is provided
         if not api_key:
             error_msg = "API key is required. Either set it in environment variables or provide via Authorization header."
             logger.error(error_msg)
             return jsonify({"error": error_msg})
 
-        logger.info("Calling generate_swift_question")
+        logger.info("Calling generate_question")
         try:
-            result = generate_swift_question(ai, model, topic, platform, api_key, tech, keywords, number)
+            result = generate_question(ai, model, topic, platform, api_key, tech, keywords, number)
             logger.info(f"Generated result: {json.dumps(result, indent=2)}")
             return jsonify(result)
         except Exception as e:
@@ -149,7 +149,7 @@ def api_generate_question():
 def api_generate_structured_questions():
     logger.info("Received POST request to /generate_structured_openai")
     try:
-        # Отримуємо API ключ з заголовка
+        # Get API key from header
         try:
             api_key = get_api_key_from_header()
         except ValueError as e:
@@ -171,7 +171,7 @@ def api_generate_structured_questions():
             return jsonify({"error": "Topic is required."})
 
         try:
-            # Створюємо новий екземпляр OpenAIAgent для кожного запиту
+            # Create a new OpenAIAgent instance for each request
             agent = OpenAIAgent(api_key=api_key)
             logger.info("Calling generate_questions_dataset")
             questions = agent.generate_questions_dataset(
@@ -189,6 +189,30 @@ def api_generate_structured_questions():
             return jsonify({"error": f"Failed to generate questions: {str(e)}"})
     except Exception as e:
         logger.error(f"Error in api_generate_structured_questions: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)})
+
+@app.route("/api/providers", methods=["GET"])
+def api_get_providers():
+    """Отримати список доступних провайдерів AI"""
+    try:
+        providers = mcp_server.get_available_providers()
+        return jsonify(providers)
+    except Exception as e:
+        logger.error(f"Error in api_get_providers: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)})
+
+@app.route("/api/models/<provider>", methods=["GET"])
+def api_get_models(provider):
+    """Отримати список доступних моделей для конкретного провайдера"""
+    try:
+        models = mcp_server.get_available_models(provider)
+        default_model = mcp_server.get_default_model(provider)
+        return jsonify({
+            "models": models,
+            "default": default_model
+        })
+    except Exception as e:
+        logger.error(f"Error in api_get_models: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)})
 
 if __name__ == "__main__":
