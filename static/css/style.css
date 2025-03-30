@@ -48,6 +48,24 @@ body {
     color: #0dcaf0;
 }
 
+/* Error container styling */
+.error-container {
+    border-left: 5px solid #dc3545;
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.error-container .alert-heading {
+    color: #721c24;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.error-container hr {
+    border-top-color: #f5c6cb;
+    margin: 10px 0;
+}
+
 .main-card {
     border: 1px solid #dee2e6;
 }

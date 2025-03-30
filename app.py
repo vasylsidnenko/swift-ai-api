@@ -29,11 +29,13 @@ def get_api_key_from_header():
 
 def generate_question(ai, model, topic, platform, api_key, tech=None, keywords=None, number=1):
     logger.info(f"Generating question with parameters: ai={ai}, model={model}, topic={topic}, platform={platform}, keywords={keywords}")
+    logger.info(f"API key length: {len(api_key) if api_key else 0}")
     
     try:
         # Convert AI provider to ModelType
         try:
             model_type = ModelType(ai)
+            logger.info(f"Converted AI provider to ModelType: {model_type}")
         except ValueError:
             error_msg = f"Unsupported AI model '{ai}'. Please use 'openai', 'google', or 'deepseek'."
             logger.error(error_msg)
@@ -52,19 +54,35 @@ def generate_question(ai, model, topic, platform, api_key, tech=None, keywords=N
         )
         
         # Process the request through MCP, passing the context directly
+        logger.info(f"Sending request to MCP server with context: {context}")
         response = mcp_server.process_request(context)
+        logger.info(f"Received response from MCP server: {response}")
         
         # Check if the response was successful
         if not response.get("success", False):
-            return {"error": response.get("error", "Unknown error")}
-        return response.get("data", {})
+            error = response.get("error", "Unknown error")
+            error_type = response.get("error_type", "mcp_error")
+            logger.error(f"MCP server returned error: {error}, type: {error_type}")
+            return {"error": error, "error_type": error_type}
+            
+        # Check if data is empty - this might indicate an error that wasn't properly caught
+        data = response.get("data", {})
+        if not data and isinstance(data, dict):
+            logger.warning("MCP server returned empty data but no error")
+            return {"error": "Failed to generate content. Please check your API key and try again.", "error_type": "empty_response"}
+            
+        return data
     except Exception as e:
         logger.error(f"Error in generate_question: {str(e)}", exc_info=True)
-        error_message = str(e).lower()
-        if "api key" in error_message or "apikey" in error_message or "authentication" in error_message or "credential" in error_message:
-            logger.error(f"Possible API key issue detected: {str(e)}")
-            return {"error": f"API key error: {str(e)}"}
-        return {"error": str(e)}
+        error_message = str(e)
+        error_lower = error_message.lower()
+        
+        # Preserve the original error message for API key errors
+        if "api key" in error_lower or "apikey" in error_lower or "authentication" in error_lower or "credential" in error_lower:
+            logger.error(f"Possible API key issue detected: {error_message}")
+            return {"error": error_message, "error_type": "api_key"}
+            
+        return {"error": error_message}
 
 @app.route("/generate_question", methods=["POST"])
 def api_generate_question():
@@ -135,12 +153,32 @@ def api_generate_question():
 
         logger.info("Calling generate_question")
         try:
+            logger.info("Calling generate_question function")
             result = generate_question(ai, model, topic, platform, api_key, tech, keywords, number)
             logger.info(f"Generated result: {json.dumps(result, indent=2)}")
+            
+            # Check if result contains error
+            if isinstance(result, dict) and "error" in result:
+                error_msg = result["error"]
+                error_type = result.get("error_type", "")
+                logger.error(f"Error returned from generate_question: {error_msg}, type: {error_type}")
+                return jsonify({"error": error_msg, "error_type": error_type})
+                
             return jsonify(result)
         except Exception as e:
-            logger.error(f"Error during question generation: {str(e)}", exc_info=True)
-            return jsonify({"error": f"Failed to generate question: {str(e)}"})
+            error_message = str(e)
+            logger.error(f"Exception during question generation: {error_message}", exc_info=True)
+            
+            # Check if it's an API key error from OpenAI
+            if "api key" in error_message.lower() or "apikey" in error_message.lower():
+                # Extract the full error message from OpenAI
+                logger.info(f"Detected API key error: {error_message}")
+                if "Incorrect API key provided" in error_message:
+                    logger.info("Returning API key error to client")
+                    return jsonify({"error": error_message, "error_type": "api_key"})
+                    
+            logger.info(f"Returning general error to client: {error_message}")
+            return jsonify({"error": error_message})
     except Exception as e:
         logger.error(f"Error in api_generate_question: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)})

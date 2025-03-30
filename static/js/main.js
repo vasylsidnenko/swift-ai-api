@@ -178,7 +178,53 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
             
             if (result.error) {
-                resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
+                // Parse the error message to provide more specific feedback
+                let errorMessage = result.error;
+                let errorType = result.error_type || 'error';
+                let errorTitle = 'Error';
+                let errorDetails = '';
+                
+                console.log('Error detected:', errorMessage, 'Type:', errorType);
+                
+                // Check for common error types
+                if (errorType === 'api_key' || errorMessage.toLowerCase().includes('api key') || errorMessage.toLowerCase().includes('incorrect api key')) {
+                    errorType = 'api-key';
+                    errorTitle = 'API Key Error';
+                    errorDetails = 'Please check that your API key is valid and has sufficient permissions.';
+                    
+                    // For OpenAI API key errors, extract the exact error message
+                    if (errorMessage.includes('Incorrect API key provided')) {
+                        // Keep the original error message as is
+                        errorDetails = 'Please enter a valid API key or remove the current key to use the environment variable.';
+                    }
+                } else if (errorType === 'empty_response') {
+                    errorType = 'api-error';
+                    errorTitle = 'API Error';
+                    errorDetails = 'The API returned an empty response. This often indicates an issue with your API key or account.';
+                } else if (errorMessage.toLowerCase().includes('validation')) {
+                    errorType = 'validation';
+                    errorTitle = 'Validation Error';
+                    errorDetails = 'The generated content did not pass validation. Try adjusting your parameters.';
+                } else if (errorMessage.toLowerCase().includes('rate limit')) {
+                    errorType = 'rate-limit';
+                    errorTitle = 'Rate Limit Exceeded';
+                    errorDetails = 'You have exceeded the rate limit for the API. Please try again later.';
+                } else if (errorMessage.toLowerCase().includes('timeout') || errorMessage.toLowerCase().includes('timed out')) {
+                    errorType = 'timeout';
+                    errorTitle = 'Request Timeout';
+                    errorDetails = 'The request took too long to complete. Try again or use a different model.';
+                }
+                
+                // Display a more informative error message
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger error-container">
+                        <h4 class="alert-heading">${errorTitle}</h4>
+                        <p>${errorMessage}</p>
+                        ${errorDetails ? `<hr><p class="mb-0">${errorDetails}</p>` : ''}
+                    </div>
+                `;
+                
+                console.log('Error displayed with title:', errorTitle);
             } else {
                 const formattedResult = formatResult(result);
                 resultDiv.innerHTML = formattedResult;
@@ -186,7 +232,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 Prism.highlightAll();
             }
         } catch (error) {
-            resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            // Handle network errors and other exceptions
+            let errorTitle = 'Connection Error';
+            let errorMessage = error.message || 'An unknown error occurred';
+            let errorDetails = 'There was a problem connecting to the server. Please check your internet connection and try again.';
+            
+            if (errorMessage.includes('Failed to fetch')) {
+                errorTitle = 'Network Error';
+                errorDetails = 'Could not connect to the server. Please check your internet connection.';
+            } else if (errorMessage.includes('Unexpected token')) {
+                errorTitle = 'Response Format Error';
+                errorDetails = 'The server response was not in the expected format. Please try again later.';
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger error-container">
+                    <h4 class="alert-heading">${errorTitle}</h4>
+                    <p>${errorMessage}</p>
+                    <hr>
+                    <p class="mb-0">${errorDetails}</p>
+                </div>
+            `;
         }
     });
 

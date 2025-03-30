@@ -16,10 +16,11 @@ class MCPResource(ABC):
 
 class MCPResponse:
     """Standard MCP response format"""
-    def __init__(self, success: bool, data: Optional[Dict[str, Any]] = None, error: Optional[str] = None):
+    def __init__(self, success: bool, data: Optional[Dict[str, Any]] = None, error: Optional[str] = None, error_type: Optional[str] = None):
         self.success = success
         self.data = data or {}
         self.error = error
+        self.error_type = error_type
 
     def to_dict(self) -> Dict[str, Any]:
         response = {
@@ -28,6 +29,8 @@ class MCPResponse:
         }
         if self.error:
             response["error"] = self.error
+            if self.error_type:
+                response["error_type"] = self.error_type
         return response
 
 class ModelType(str, Enum):
@@ -67,23 +70,46 @@ class AIResource(MCPResource):
             return MCPResponse(False, error=f"Unsupported model type: {self.model_type}").to_dict()
         try:
             result = handler(context)
+            # Check if empty result
+            if isinstance(result, list) and len(result) == 0:
+                # This might indicate an error that wasn't properly raised
+                logger.warning(f"Handler for {self.model_type} returned empty result")
+                
             return MCPResponse(True, data=result).to_dict()
+        except ValueError as e:
+            error_msg = str(e)
+            logger.error(f"ValueError in {self.model_type} handler: {error_msg}", exc_info=True)
+            
+            # Special handling for API key errors
+            if "api key" in error_msg.lower() or "apikey" in error_msg.lower() or "incorrect api key" in error_msg.lower():
+                logger.error(f"API key error detected: {error_msg}")
+                return MCPResponse(False, error=error_msg, error_type="api_key").to_dict()
+            return MCPResponse(False, error=error_msg).to_dict()
         except Exception as e:
-            logger.error(f"Error in {self.model_type} handler: {str(e)}", exc_info=True)
-            return MCPResponse(False, error=str(e)).to_dict()
+            error_msg = str(e)
+            logger.error(f"Error in {self.model_type} handler: {error_msg}", exc_info=True)
+            return MCPResponse(False, error=error_msg).to_dict()
             
     def _handle_openai(self, context: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Handle OpenAI model requests"""
-        from models.openai_model import OpenAIAgent
-        agent = OpenAIAgent(api_key=context.get('api_key'))
-        return agent.generate_structured_question(
-            model=context.get('model_name'),
-            topic=context.get('topic'),
-            platform=context.get('platform'),
-            tech=context.get('tech'),
-            keywords=context.get('keywords'),
-            number=context.get('number', 1)
-        )
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            from models.openai_model import OpenAIAgent
+            agent = OpenAIAgent(api_key=context.get('api_key'))
+            return agent.generate_structured_question(
+                model=context.get('model_name'),
+                topic=context.get('topic'),
+                platform=context.get('platform'),
+                tech=context.get('tech'),
+                keywords=context.get('keywords'),
+                number=context.get('number', 1)
+            )
+        except Exception as e:
+            logger.error(f"Error in OpenAI handler: {str(e)}", exc_info=True)
+            # Re-raise the exception to be caught by the process_request method
+            raise
         
     def _handle_googleai(self, context: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Handle Google AI model requests"""

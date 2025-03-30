@@ -177,7 +177,15 @@ class OpenAIAgent:
                 sleep(1)
 
             except Exception as e:
-                print(f"Attempt {attempt + 1} failed with error: {str(e)}")
+                error_msg = str(e)
+                print(f"Attempt {attempt + 1} failed with error: {error_msg}")
+                
+                # Check if this is an API key error
+                if "api key" in error_msg.lower() or "apikey" in error_msg.lower() or "incorrect api key" in error_msg.lower() or "401" in error_msg:
+                    # For API key errors, we want to immediately fail and propagate the error
+                    logger.error(f"API key error detected: {error_msg}")
+                    raise ValueError(f"API Key Error: {error_msg}")
+                    
                 if attempt == max_retries - 1:
                     print(f"All {max_retries} attempts failed due to errors")
                     return None, attempts
@@ -254,6 +262,7 @@ class OpenAIAgent:
     ) -> List[Dict[str, Any]]:
         """Generates structured question with answers"""
         try:
+            logger.info(f"Generating questions with model={model}, topic={topic}, platform={platform}, number={number}")
             questions = self.generate_questions_dataset(
                 model=model,
                 platform=platform,
@@ -264,10 +273,22 @@ class OpenAIAgent:
                 number=number
             )
             # Convert models to dictionaries
+            logger.info(f"Successfully generated {len(questions)} questions")
             return [q.model_dump() for q in questions]
         except Exception as e:
-            logger.error(f"Error generating question: {str(e)}", exc_info=True)
-            raise ValueError(f"Failed to generate question: {str(e)}")
+            error_str = str(e)
+            logger.error(f"Error generating question: {error_str}", exc_info=True)
+            
+            # Preserve the original error message, especially for API key errors
+            if "api key" in error_str.lower() or "apikey" in error_str.lower():
+                logger.error(f"API key error detected: {error_str}")
+                # Log the full error details for debugging
+                if hasattr(e, '__dict__'):
+                    logger.error(f"Error details: {e.__dict__}")
+                raise ValueError(error_str)
+            else:
+                logger.error(f"General error: {error_str}")
+                raise ValueError(f"Failed to generate question: {error_str}")
 
 
 

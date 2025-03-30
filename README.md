@@ -159,5 +159,42 @@ Each AI model can be tested independently:
   python models/deepseek_model.py
   ```
 
+## Error Handling
+
+The application implements comprehensive error handling to provide clear feedback to users when issues occur:
+
+### API Key Error Handling
+
+- **Detailed API Key Errors**: When an invalid API key is provided, the system returns the exact error message from the AI provider (e.g., OpenAI), including information about how to obtain a valid key.
+- **Environment Variable Support**: If an API key exists in the environment, the system will use it automatically and display a masked version (********) in the UI with a credit message.
+- **Graceful Fallback**: If no API key is provided in the UI and no environment variable is set, a clear error message is displayed.
+
+### Other Error Types
+
+The system handles various error types with specific messages and recommendations:
+
+1. **API Key Errors**: Detailed feedback for authentication issues, including the exact error from the provider.
+2. **Validation Errors**: When generated content fails validation checks.
+3. **Rate Limit Errors**: When API rate limits are exceeded.
+4. **Timeout Errors**: When requests take too long to complete.
+5. **Network Errors**: When connection issues occur.
+6. **Response Format Errors**: When unexpected response formats are received.
+
+### Error Response Format
+
+All error responses follow a consistent format:
+
+```json
+{
+    "error": "Detailed error message",
+    "error_type": "api_key|validation|rate-limit|timeout|network|format"
+}
+```
+
+In the UI, errors are displayed with:
+- A descriptive title
+- The detailed error message
+- Recommendations for resolving the issue
+
 ## License
 MIT License
