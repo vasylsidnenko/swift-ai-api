@@ -215,6 +215,36 @@ def api_get_models(provider):
         logger.error(f"Error in api_get_models: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)})
 
+@app.route("/api/check-env-key/<provider>", methods=["GET"])
+def api_check_env_key(provider):
+    """Перевірити наявність API ключа в оточенні для конкретного провайдера"""
+    logger.info(f"Checking environment API key for provider: {provider}")
+    try:
+        # Map provider to environment variable name
+        env_key_map = {
+            "openai": "OPENAI_API_KEY",
+            "google": "GOOGLE_API_KEY",
+            "deepseek": "DEEPSEEK_API_KEY"
+        }
+        
+        env_key_name = env_key_map.get(provider)
+        if not env_key_name:
+            return jsonify({"exists": False, "error": f"Unknown provider: {provider}"}), 400
+            
+        # Check if the key exists in environment
+        api_key = os.environ.get(env_key_name)
+        has_key = api_key is not None and len(api_key.strip()) > 0
+        
+        # Return whether the key exists, but not the key itself for security
+        return jsonify({
+            "exists": has_key,
+            "provider": provider,
+            "credit": "Vasil_OK ☕" if has_key else None
+        })
+    except Exception as e:
+        logger.error(f"Error in api_check_env_key: {str(e)}", exc_info=True)
+        return jsonify({"exists": False, "error": str(e)}), 500
+
 if __name__ == "__main__":
     logger.info("Starting Flask application")
     port = int(os.environ.get("PORT", 10000))

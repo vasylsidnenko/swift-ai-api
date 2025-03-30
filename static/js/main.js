@@ -62,8 +62,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load available models for a specific provider
     async function loadModels(provider) {
         try {
-            const response = await fetch(`/api/models/${provider}`);
-            const data = await response.json();
+            // Load models
+            const modelsResponse = await fetch(`/api/models/${provider}`);
+            const data = await modelsResponse.json();
             
             // Clear models select
             modelSelect.innerHTML = '';
@@ -79,6 +80,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 modelSelect.appendChild(option);
             });
+            
+            // Check if API key exists in environment
+            try {
+                const keyResponse = await fetch(`/api/check-env-key/${provider}`);
+                const keyData = await keyResponse.json();
+                
+                // If key exists in environment, show credit message and mark input
+                if (keyData.exists) {
+                    const apiKeyInput = document.getElementById('apiKey');
+                    apiKeyInput.value = '********'; // Show masked value to indicate key is present
+                    apiKeyInput.placeholder = 'Environment API key is being used';
+                    apiKeyInput.classList.add('has-env-key');
+                    
+                    // Show credit message
+                    const apiKeyCredit = document.getElementById('apiKeyCredit');
+                    apiKeyCredit.textContent = `Using environment API key - credit ${keyData.credit}`;
+                    apiKeyCredit.style.display = 'block';
+                } else {
+                    // Reset input if no environment key
+                    const apiKeyInput = document.getElementById('apiKey');
+                    apiKeyInput.value = '';
+                    apiKeyInput.placeholder = '';
+                    apiKeyInput.classList.remove('has-env-key');
+                    
+                    // Hide credit message
+                    document.getElementById('apiKeyCredit').style.display = 'none';
+                }
+            } catch (keyError) {
+                console.error(`Error checking environment key for ${provider}:`, keyError);
+            }
         } catch (error) {
             console.error(`Error loading models for ${provider}:`, error);
         }
@@ -91,6 +122,14 @@ document.addEventListener('DOMContentLoaded', function() {
     aiSelect.addEventListener('change', function() {
         const provider = this.value;
         loadModels(provider);
+    });
+    
+    // Handle API key input changes
+    document.getElementById('apiKey').addEventListener('input', function() {
+        // If user enters a custom key, hide the credit message
+        if (this.value && this.value !== '********') {
+            document.getElementById('apiKeyCredit').style.display = 'none';
+        }
     });
 
     form.addEventListener('submit', async function(e) {
@@ -125,8 +164,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Content-Type': 'application/json'
             };
             
-            // Add Authorization header if API key exists
-            if (apiKey) {
+            // Add Authorization header if API key exists and is not the placeholder
+            if (apiKey && apiKey !== '********') {
                 headers['Authorization'] = `Bearer ${apiKey}`;
             }
 

@@ -41,6 +41,13 @@ body {
     box-shadow: 0 0 0 0.2rem rgba(100, 150, 255, 0.25);
 }
 
+/* Environment API Key styling */
+.has-env-key {
+    background-color: #e8f4f8;
+    border-color: #0dcaf0;
+    color: #0dcaf0;
+}
+
 .main-card {
     border: 1px solid #dee2e6;
 }
