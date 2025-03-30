@@ -102,7 +102,8 @@ document.addEventListener('DOMContentLoaded', function() {
             tech: document.getElementById('tech').value,
             keywords: document.getElementById('keywords').value.split(',').map(k => k.trim()).filter(k => k),
             ai: document.getElementById('ai').value,
-            model: document.getElementById('model').value
+            model: document.getElementById('model').value,
+            number: parseInt(document.getElementById('number').value, 10)
         };
 
         try {
@@ -167,86 +168,134 @@ document.addEventListener('DOMContentLoaded', function() {
             return '<div class="alert alert-danger">Invalid result format</div>';
         }
 
-        return result.map(question => {
+        // If there's only one question, display it normally
+        if (result.length === 1) {
+            return formatSingleQuestion(result[0]);
+        }
+
+        // For multiple questions, use tabs
+        let tabsHtml = `
+            <ul class="nav nav-tabs" id="questionTabs" role="tablist">
+        `;
+
+        let tabContentHtml = `
+            <div class="tab-content" id="questionTabsContent">
+        `;
+
+        // Generate tabs and content
+        result.forEach((question, index) => {
             if (!question || !question.answerLevels) {
                 console.error('Invalid question format:', question);
-                return '';
+                return;
             }
 
-            return `
-                <div class="question-block">
-                    <div class="question-title">${question.text || 'No question text'}</div>
-                    <div class="question-tags">
-                        ${(question.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                    </div>
-                    
-                    <div class="answer-level beginner">
-                        <h5 class="question-title">${question.answerLevels.beginer?.name || 'Beginner Level'}</h5>
-                        <div class="question-description">${formatCode(question.answerLevels.beginer?.answer)}</div>
-                        <ul class="mt-3">
-                            ${(question.answerLevels.beginer?.tests || []).map(test => `
-                                <li class="test-block">
-                                    <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                    <div class="test-options">
-                                        <ul>
-                                            ${(test.options || []).map(option => `
-                                                <li>${option}</li>
-                                            `).join('')}
-                                        </ul>
-                                    </div>
-                                    <div class="correct-answer">
-                                        Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
-                                    </div>
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                    
-                    <div class="answer-level intermediate">
-                        <h5 class="question-title">${question.answerLevels.intermediate?.name || 'Intermediate Level'}</h5>
-                        <div class="question-description">${formatCode(question.answerLevels.intermediate?.answer)}</div>
-                        <ul class="mt-3">
-                            ${(question.answerLevels.intermediate?.tests || []).map(test => `
-                                <li class="test-block">
-                                    <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                    <div class="test-options">
-                                        <ul>
-                                            ${(test.options || []).map(option => `
-                                                <li>${option}</li>
-                                            `).join('')}
-                                        </ul>
-                                    </div>
-                                    <div class="correct-answer">
-                                        Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
-                                    </div>
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                    
-                    <div class="answer-level advanced">
-                        <h5 class="question-title">${question.answerLevels.advanced?.name || 'Advanced Level'}</h5>
-                        <div class="question-description">${formatCode(question.answerLevels.advanced?.answer)}</div>
-                        <ul class="mt-3">
-                            ${(question.answerLevels.advanced?.tests || []).map(test => `
-                                <li class="test-block">
-                                    <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                    <div class="test-options">
-                                        <ul>
-                                            ${(test.options || []).map(option => `
-                                                <li>${option}</li>
-                                            `).join('')}
-                                        </ul>
-                                    </div>
-                                    <div class="correct-answer">
-                                        Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
-                                    </div>
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
+            const isActive = index === 0 ? 'active' : '';
+            const tabId = `question-${index}`;
+            
+            // Tab header
+            tabsHtml += `
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link ${isActive}" id="${tabId}-tab" data-bs-toggle="tab" 
+                            data-bs-target="#${tabId}" type="button" role="tab" 
+                            aria-controls="${tabId}" aria-selected="${index === 0}">
+                        Question ${index + 1}
+                    </button>
+                </li>
+            `;
+
+            // Tab content
+            tabContentHtml += `
+                <div class="tab-pane fade show ${isActive}" id="${tabId}" role="tabpanel" aria-labelledby="${tabId}-tab">
+                    ${formatSingleQuestion(question)}
                 </div>
             `;
-        }).join('');
+        });
+
+        tabsHtml += `</ul>`;
+        tabContentHtml += `</div>`;
+
+        return tabsHtml + tabContentHtml;
+    }
+
+    function formatSingleQuestion(question) {
+        if (!question || !question.answerLevels) {
+            console.error('Invalid question format:', question);
+            return '';
+        }
+
+        return `
+            <div class="question-block">
+                <div class="question-title">${question.text || 'No question text'}</div>
+                <div class="question-tags">
+                    ${(question.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                </div>
+                
+                <div class="answer-level beginner">
+                    <h5 class="question-title">${question.answerLevels.beginer?.name || 'Beginner Level'}</h5>
+                    <div class="question-description">${formatCode(question.answerLevels.beginer?.answer)}</div>
+                    <ul class="mt-3">
+                        ${(question.answerLevels.beginer?.tests || []).map(test => `
+                            <li class="test-block">
+                                <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                <div class="test-options">
+                                    <ul>
+                                        ${(test.options || []).map(option => `
+                                            <li>${option}</li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                                <div class="correct-answer">
+                                    Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                </div>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                
+                <div class="answer-level intermediate">
+                    <h5 class="question-title">${question.answerLevels.intermediate?.name || 'Intermediate Level'}</h5>
+                    <div class="question-description">${formatCode(question.answerLevels.intermediate?.answer)}</div>
+                    <ul class="mt-3">
+                        ${(question.answerLevels.intermediate?.tests || []).map(test => `
+                            <li class="test-block">
+                                <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                <div class="test-options">
+                                    <ul>
+                                        ${(test.options || []).map(option => `
+                                            <li>${option}</li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                                <div class="correct-answer">
+                                    Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                </div>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                
+                <div class="answer-level advanced">
+                    <h5 class="question-title">${question.answerLevels.advanced?.name || 'Advanced Level'}</h5>
+                    <div class="question-description">${formatCode(question.answerLevels.advanced?.answer)}</div>
+                    <ul class="mt-3">
+                        ${(question.answerLevels.advanced?.tests || []).map(test => `
+                            <li class="test-block">
+                                <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                <div class="test-options">
+                                    <ul>
+                                        ${(test.options || []).map(option => `
+                                            <li>${option}</li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                                <div class="correct-answer">
+                                    Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                </div>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
     }
 }); 

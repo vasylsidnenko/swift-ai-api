@@ -45,7 +45,7 @@ AVAILABLE_MODELS = {
 
 # Default model for each provider
 DEFAULT_MODELS = {
-    ModelType.OPENAI: "gpt-4o",
+    ModelType.OPENAI: "gpt-4o-mini",
     ModelType.GOOGLEAI: "gemini-pro",
     ModelType.DEEPSEEKAI: "deepseek-chat"
 }
