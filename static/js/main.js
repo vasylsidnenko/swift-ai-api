@@ -157,10 +157,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
 
-            // Отримуємо API ключ
+            // Get API key
             const apiKey = document.getElementById('apiKey').value.trim();
             
-            // Формуємо заголовки
+            // Create headers
             const headers = {
                 'Content-Type': 'application/json'
             };
@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 const formattedResult = formatResult(result);
                 resultDiv.innerHTML = formattedResult;
-                // Підсвічуємо синтаксис після додавання контенту
+                // Highlight syntax after adding content
                 Prism.highlightAll();
             }
         } catch (error) {
@@ -260,9 +260,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatCode(text) {
         if (!text) return '';
         
-        // Знаходимо блоки коду в форматі ```swift ... ```
+        // Find code blocks in the format ```swift ... ```
         return text.replace(/```(?:swift)?\n?([\s\S]*?)```/g, (match, code) => {
-            // Видаляємо зайві пробіли та переноси рядків
+            // Remove extra spaces and line breaks
             const cleanCode = code.trim();
             return `<pre class="line-numbers language-swift"><code>${cleanCode}</code></pre>`;
         });

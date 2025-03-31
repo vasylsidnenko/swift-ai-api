@@ -103,7 +103,7 @@ class QuestionValidation(BaseModel):
     
     @classmethod
     def create_dummy_validation(cls) -> 'QuestionValidation':
-        """Створює фіктивну валідацію, яка завжди проходить"""
+        """Creates a dummy validation that always passes all checks"""
         try:
             return cls(
                 is_text_clear=True,
@@ -124,7 +124,7 @@ class QuestionValidation(BaseModel):
             )
         except Exception as e:
             logger.error(f"Error creating dummy validation: {str(e)}")
-            # Створюємо валідацію з усіма полями True
+            # Create validation with all fields set to True
             return cls.model_construct(**{field: True for field in cls.model_fields})
 
 class OpenAIAgent:
@@ -171,7 +171,7 @@ class OpenAIAgent:
                 )
                 question = response.choices[0].message.parsed
 
-                # Виконуємо валідацію тільки якщо validation=True
+                # Perform validation only if validation=True
                 if validation:
                     validation_prompt = f"Validate this question description following the criteria:\n{question.model_dump()}"
                     if existing_questions:
@@ -185,7 +185,7 @@ class OpenAIAgent:
                     )
                     validation = response.choices[0].message.parsed
                 else:
-                    # Якщо validation=False, створюємо фіктивну валідацію, яка завжди проходить
+                    # If validation=False, create a dummy validation that always passes
                     validation = QuestionValidation.create_dummy_validation()
                     print("Created dummy validation using helper method")
                 json_output = json.dumps(question.model_dump(), indent=4)
@@ -249,7 +249,7 @@ class OpenAIAgent:
         for i in range(number):
             print(f"\nQuestion {i + 1}:")
 
-            # Використовуємо один метод з параметром validation
+            # Use a single method with the validation parameter
             result, attempts_made = self.generate_and_validate_question(
                 model = model,
                 platform = platform,
@@ -272,7 +272,7 @@ class OpenAIAgent:
 
             question, validation = result
 
-            # Якщо validation=False, то вважаємо, що валідація пройшла успішно
+            # If validation=False, consider the validation successful
             if not validation or all(validation.model_dump().values()):
                 stats['successful_questions'] += 1
                 

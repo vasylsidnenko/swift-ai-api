@@ -9,6 +9,7 @@ This project provides an API and web interface for generating programming questi
 - Returns structured JSON responses with detailed explanations and tests
 - Supports keyword-based question generation
 - Web interface with collapsible AI settings
+- Optional validation for generated questions to ensure quality
 
 ## Architecture
 
@@ -69,7 +70,8 @@ POST /generate_question
     "keywords": ["ARC", "Retain Cycle"],
     "ai": "openai",
     "model": "gpt-4o",
-    "number": 1
+    "number": 1,
+    "validation": true
 }
 ```
 #### Headers:
@@ -158,6 +160,20 @@ Each AI model can be tested independently:
   ```sh
   python models/deepseek_model.py
   ```
+
+## Performance Optimization
+
+### Question Validation
+
+The application provides an option to enable or disable validation of generated questions:
+
+- **Validation Enabled (Default)**: When enabled, the system performs a two-step process: first generating the question, then validating it against quality criteria. This ensures high-quality questions but takes longer to process.
+
+- **Validation Disabled**: When disabled, the system skips the validation step, significantly reducing processing time. This is useful for rapid prototyping or when you need quick results.
+
+You can control validation through:
+- The checkbox in the web interface under AI Configuration
+- The `validation` parameter in API requests (boolean, default: true)
 
 ## Error Handling
 
