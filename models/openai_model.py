@@ -100,6 +100,32 @@ class QuestionValidation(BaseModel):
     is_snippet_have_code:bool = Field(
          description="Snippet in CodeTestModel must have test code."
     )
+    
+    @classmethod
+    def create_dummy_validation(cls) -> 'QuestionValidation':
+        """Створює фіктивну валідацію, яка завжди проходить"""
+        try:
+            return cls(
+                is_text_clear=True,
+                is_question_correspond=True,
+                is_question_not_trivial=True,
+                are_answer_levels_exist=True,
+                are_answer_levels_valid=True,
+                are_answer_levels_must_be_different=True,
+                are_test_exist=True,
+                are_tags_exist=True,
+                are_test_options_exist=True,
+                is_question_text_different_from_existing_questions=True,
+                are_test_options_have_numbering=True,
+                is_answer_for_options_test_contain_number=True,
+                are_code_blocks_marked=True,
+                is_snippet_have_question=True,
+                is_snippet_have_code=True
+            )
+        except Exception as e:
+            logger.error(f"Error creating dummy validation: {str(e)}")
+            # Створюємо валідацію з усіма полями True
+            return cls.model_construct(**{field: True for field in cls.model_fields})
 
 class OpenAIAgent:
     def __init__(self, api_key: Optional[str] = None):
@@ -120,7 +146,8 @@ class OpenAIAgent:
         tech: Optional[str] = None,
         tags: List[str] = [],
         max_retries: int = 3,
-        existing_questions: List[str] = []
+        existing_questions: List[str] = [],
+        validation: bool = True
     ) -> Tuple[Optional[Tuple[QuestionModel, QuestionValidation]], int]:
         attempts = 0
 
@@ -144,17 +171,23 @@ class OpenAIAgent:
                 )
                 question = response.choices[0].message.parsed
 
-                validation_prompt = f"Validate this question description following the criteria:\n{question.model_dump()}"
-                if existing_questions:
-                    validation_prompt += f"\n\nCompare with previous questions:\n{json.dumps(existing_questions, indent=2)}"
+                # Виконуємо валідацію тільки якщо validation=True
+                if validation:
+                    validation_prompt = f"Validate this question description following the criteria:\n{question.model_dump()}"
+                    if existing_questions:
+                        validation_prompt += f"\n\nCompare with previous questions:\n{json.dumps(existing_questions, indent=2)}"
 
-                response = self.client.beta.chat.completions.parse(
-                    model = "gpt-4o-mini",
-                    messages = [{"role": "user", "content": validation_prompt}],
-                    response_format = QuestionValidation,
-                    temperature = 0.0
-                )
-                validation = response.choices[0].message.parsed
+                    response = self.client.beta.chat.completions.parse(
+                        model = "gpt-4o-mini",
+                        messages = [{"role": "user", "content": validation_prompt}],
+                        response_format = QuestionValidation,
+                        temperature = 0.0
+                    )
+                    validation = response.choices[0].message.parsed
+                else:
+                    # Якщо validation=False, створюємо фіктивну валідацію, яка завжди проходить
+                    validation = QuestionValidation.create_dummy_validation()
+                    print("Created dummy validation using helper method")
                 json_output = json.dumps(question.model_dump(), indent=4)
 
                 print(f"\nAttempt {attempt + 1}:")
@@ -199,7 +232,8 @@ class OpenAIAgent:
         tech: Optional[str] = None,
         tags: List[str] = [],
         max_retries: int = 3,
-        number: int = 1
+        number: int = 1,
+        validation: bool = True
     ) -> List[AIQuestionModel]:
         logger.info(f"Dataset withI: {model},  Platform: {platform},   Topic: {topic},   Tech: {tech},   Tags: {tags}")
 
@@ -215,6 +249,7 @@ class OpenAIAgent:
         for i in range(number):
             print(f"\nQuestion {i + 1}:")
 
+            # Використовуємо один метод з параметром validation
             result, attempts_made = self.generate_and_validate_question(
                 model = model,
                 platform = platform,
@@ -222,8 +257,12 @@ class OpenAIAgent:
                 tech = tech,
                 tags = tags,
                 max_retries = max_retries,
-                existing_questions = questions_text
+                existing_questions = questions_text,
+                validation = validation
             )
+            
+            if not validation:
+                print(f"Generated question without validation")
 
             stats['total_attempts'] += attempts_made
 
@@ -233,7 +272,8 @@ class OpenAIAgent:
 
             question, validation = result
 
-            if all(validation.model_dump().values()):
+            # Якщо validation=False, то вважаємо, що валідація пройшла успішно
+            if not validation or all(validation.model_dump().values()):
                 stats['successful_questions'] += 1
                 
                 question_dict = question.model_dump()
@@ -259,6 +299,7 @@ class OpenAIAgent:
         number: int = 1,
         tech: Optional[str] = None,
         keywords: Optional[List[str]] = [],
+        validation: bool = True,
     ) -> List[Dict[str, Any]]:
         """Generates structured question with answers"""
         try:
@@ -270,11 +311,13 @@ class OpenAIAgent:
                 tech=tech,
                 tags=keywords,
                 max_retries=1,
-                number=number
+                number=number,
+                validation=validation
             )
             # Convert models to dictionaries
             logger.info(f"Successfully generated {len(questions)} questions")
             return [q.model_dump() for q in questions]
+            
         except Exception as e:
             error_str = str(e)
             logger.error(f"Error generating question: {error_str}", exc_info=True)
@@ -301,8 +344,9 @@ def main():
         topic="Swift Concurrency",
         platform="Apple",
         tech="Swift",
-        keywords=["Actor", "Thread", "Queue"],
+        keywords=["Actor", "Atomic", "access"],
         number=1,
+        validation=False
     )
     
     print(f"Generated {len(questions)} questions")

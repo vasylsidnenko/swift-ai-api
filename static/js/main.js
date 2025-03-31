@@ -142,7 +142,8 @@ document.addEventListener('DOMContentLoaded', function() {
             keywords: document.getElementById('keywords').value.split(',').map(k => k.trim()).filter(k => k),
             ai: document.getElementById('ai').value,
             model: document.getElementById('model').value,
-            number: parseInt(document.getElementById('number').value, 10)
+            number: parseInt(document.getElementById('number').value, 10),
+            validation: document.getElementById('validation').checked
         };
 
         try {

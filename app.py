@@ -27,7 +27,7 @@ def get_api_key_from_header():
         raise ValueError("Missing or invalid Authorization header. Use Bearer token.")
     return auth_header[7:]  # Remove 'Bearer ' prefix
 
-def generate_question(ai, model, topic, platform, api_key, tech=None, keywords=None, number=1):
+def generate_question(ai, model, topic, platform, api_key, tech=None, keywords=None, number=1, validation=True):
     logger.info(f"Generating question with parameters: ai={ai}, model={model}, topic={topic}, platform={platform}, keywords={keywords}")
     logger.info(f"API key length: {len(api_key) if api_key else 0}")
     
@@ -50,7 +50,8 @@ def generate_question(ai, model, topic, platform, api_key, tech=None, keywords=N
             api_key=api_key,
             tech=tech,
             keywords=keywords,
-            number=number
+            number=number,
+            validation=validation
         )
         
         # Process the request through MCP, passing the context directly
@@ -98,6 +99,7 @@ def api_generate_question():
         ai = data.get("ai", "openai").lower()
         model = data.get("model")
         number = data.get("number", 1)
+        validation = data.get("validation", True)
 
         # Get API key from header or environment
         api_key = None
@@ -154,7 +156,7 @@ def api_generate_question():
         logger.info("Calling generate_question")
         try:
             logger.info("Calling generate_question function")
-            result = generate_question(ai, model, topic, platform, api_key, tech, keywords, number)
+            result = generate_question(ai, model, topic, platform, api_key, tech, keywords, number, validation)
             logger.info(f"Generated result: {json.dumps(result, indent=2)}")
             
             # Check if result contains error

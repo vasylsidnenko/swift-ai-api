@@ -104,7 +104,8 @@ class AIResource(MCPResource):
                 platform=context.get('platform'),
                 tech=context.get('tech'),
                 keywords=context.get('keywords'),
-                number=context.get('number', 1)
+                number=context.get('number', 1),
+                validation=context.get('validation', True)
             )
         except Exception as e:
             logger.error(f"Error in OpenAI handler: {str(e)}", exc_info=True)
@@ -130,6 +131,7 @@ class MCPContext:
     tech: Optional[str] = None
     keywords: Optional[List[str]] = None
     number: int = 1
+    validation: bool = True
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -140,7 +142,8 @@ class MCPContext:
             "platform": self.platform,
             "tech": self.tech,
             "keywords": self.keywords,
-            "number": self.number
+            "number": self.number,
+            "validation": self.validation
         }
 
 class MCPServer:
