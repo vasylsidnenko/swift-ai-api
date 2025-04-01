@@ -66,6 +66,105 @@ body {
     margin: 10px 0;
 }
 
+/* Validation info styling */
+.validation-info {
+    margin: 15px 0;
+    padding: 12px 15px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.validation-passed {
+    background-color: #f0e6ff; /* Світло-фіолетовий колір */
+    border-left: 4px solid #9370DB; /* Medium Purple */
+    color: #4B0082; /* Indigo */
+}
+
+.validation-failed {
+    background-color: #ffe6ff; /* Світло-рожево-фіолетовий */
+    border-left: 4px solid #FF69B4; /* Hot Pink */
+    color: #8B008B; /* Dark Magenta */
+}
+
+.validation-skipped {
+    background-color: #e6e6ff; /* Дуже світло-фіолетовий */
+    border-left: 4px solid #8A2BE2; /* Blue Violet */
+    color: #483D8B; /* Dark Slate Blue */
+}
+
+.validation-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.validation-status {
+    display: inline-block;
+}
+
+.validation-score {
+    display: inline-block;
+}
+
+.validation-comments {
+    font-style: italic;
+    line-height: 1.4;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 5px;
+    background-color: rgba(255, 255, 255, 0.5); /* Напівпрозорий білий */
+}
+
+/* Processing time info styling */
+.processing-time-info {
+    display: flex;
+    justify-content: space-between;
+    background-color: #e9ecef;
+    padding: 8px 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+    color: #495057;
+}
+
+/* Evaluation criteria styling */
+.criteria-container {
+    margin: 10px 0;
+}
+
+.criteria-toggle {
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    padding: 5px 10px;
+}
+
+.criteria-toggle i {
+    margin-right: 5px;
+}
+
+.criteria-content {
+    margin-bottom: 15px;
+}
+
+.criteria-card {
+    background-color: #f8f0ff;
+    border-left: 3px solid #9370DB;
+    padding: 12px;
+    font-size: 0.9rem;
+}
+
+.criteria-card h6 {
+    color: #6610f2;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.criteria-card p {
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+
 .main-card {
     border: 1px solid #dee2e6;
 }

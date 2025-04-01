@@ -10,6 +10,8 @@ This project provides an API and web interface for generating programming questi
 - Supports keyword-based question generation
 - Web interface with collapsible AI settings
 - Optional validation for generated questions to ensure quality
+- Evaluation criteria for each difficulty level
+- Processing time measurement for question generation and validation
 
 ## Architecture
 
@@ -120,21 +122,30 @@ GET /api/models/{provider}
                     "options": ["1. weak", "2. strong", "3. unowned", "4. reference"],
                     "answer": "1"
                 }
-            ]
+            ],
+            "evaluation_criteria": "At the Beginner level, the student should understand basic ARC concepts, be able to identify what ARC stands for, and recognize fundamental memory management terms."
         },
         "intermediate": {
             "name": "Intermediate",
             "answer": "More detailed explanation about ARC and memory management in Swift...",
-            "tests": [/* Similar structure as above */]
+            "tests": [/* Similar structure as above */],
+            "evaluation_criteria": "At the Intermediate level, the student should understand how reference counting works, be able to identify potential memory issues, and demonstrate knowledge of weak and strong references."
         },
         "advanced": {
             "name": "Advanced",
             "answer": "Advanced concepts of ARC including retain cycles, weak vs unowned references...",
-            "tests": [/* Similar structure as above */]
+            "tests": [/* Similar structure as above */],
+            "evaluation_criteria": "At the Advanced level, the student should demonstrate a deep understanding of memory management patterns, be able to identify and resolve complex retain cycles, and understand the performance implications of different reference types."
         }
     },
     "provider": "openai",
-    "model": "gpt-4o"
+    "model": "gpt-4o",
+    "validation": {
+        "quality_score": 9,
+        "validation_comments": "The question is well-structured with clear differentiation between difficulty levels.",
+        "passed": true
+    },
+    "processing_time": 15.42
 }
 ```
 
@@ -174,6 +185,25 @@ The application provides an option to enable or disable validation of generated 
 You can control validation through:
 - The checkbox in the web interface under AI Configuration
 - The `validation` parameter in API requests (boolean, default: true)
+
+### Processing Time Measurement
+
+The system now measures and reports processing time for question generation and validation:
+
+- **Total Processing Time**: The total time taken to generate and validate a question
+- **Average Processing Time**: For multiple questions, the average time per question
+
+Processing time information is displayed in the web interface and included in API responses, helping users understand the performance implications of different configurations.
+
+### Evaluation Criteria
+
+Each difficulty level (Beginner, Intermediate, Advanced) now includes evaluation criteria that specify:
+
+1. What knowledge the student should have at this level
+2. What skills they should demonstrate
+3. What concepts they should understand
+
+These criteria help educators and learners understand the expectations for each level and provide a framework for assessment. The criteria are displayed in collapsible sections in the web interface, allowing users to view them when needed without cluttering the display.
 
 ## Error Handling
 

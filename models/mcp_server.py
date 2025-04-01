@@ -98,7 +98,12 @@ class AIResource(MCPResource):
         try:
             from models.openai_model import OpenAIAgent
             agent = OpenAIAgent(api_key=context.get('api_key'))
-            return agent.generate_structured_question(
+            
+            # Measure total time for the entire operation
+            import time
+            start_time = time.time()
+            
+            result = agent.generate_structured_question(
                 model=context.get('model_name'),
                 topic=context.get('topic'),
                 platform=context.get('platform'),
@@ -107,6 +112,16 @@ class AIResource(MCPResource):
                 number=context.get('number', 1),
                 validation=context.get('validation', True)
             )
+            
+            # Calculate total time including API calls and processing
+            total_time = time.time() - start_time
+            logger.info(f"Total request time: {total_time:.2f} seconds")
+            
+            # Add total request time to each question
+            for question in result:
+                question["total_request_time"] = round(total_time, 2)
+            
+            return result
         except Exception as e:
             logger.error(f"Error in OpenAI handler: {str(e)}", exc_info=True)
             # Re-raise the exception to be caught by the process_request method

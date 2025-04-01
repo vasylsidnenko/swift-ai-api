@@ -328,6 +328,45 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Invalid question format:', question);
             return '';
         }
+        
+        // Format validation info if available
+        let validationHtml = '';
+        if (question.validation) {
+            // Check if validation was skipped (quality_score = 0)
+            if (question.validation.quality_score === 0) {
+                validationHtml = `
+                    <div class="validation-info validation-skipped">
+                        <div class="validation-header">
+                            <span class="validation-status">Validation Skipped</span>
+                        </div>
+                        <div class="validation-comments">${question.validation.validation_comments || 'Validation was not performed.'}</div>
+                    </div>
+                `;
+            } else {
+                const validationClass = question.validation.passed ? 'validation-passed' : 'validation-failed';
+                const score = question.validation.quality_score || 0;
+                validationHtml = `
+                    <div class="validation-info ${validationClass}">
+                        <div class="validation-header">
+                            <span class="validation-status">${question.validation.passed ? 'Validation Passed' : 'Validation Failed'}</span>
+                            <span class="validation-score">Quality Score: ${score}/10</span>
+                        </div>
+                        <div class="validation-comments">${question.validation.validation_comments || 'No validation comments'}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Format processing time if available
+        let processingTimeHtml = '';
+        if (question.processing_time || question.total_request_time) {
+            processingTimeHtml = `
+                <div class="processing-time-info">
+                    ${question.processing_time ? `<span>Question Processing Time: ${question.processing_time}s</span>` : ''}
+                    ${question.total_request_time ? `<span>Total Request Time: ${question.total_request_time}s</span>` : ''}
+                </div>
+            `;
+        }
 
         return `
             <div class="question-block">
@@ -335,9 +374,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="question-tags">
                     ${(question.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
                 </div>
+                ${validationHtml}
+                ${processingTimeHtml}
                 
                 <div class="answer-level beginner">
                     <h5 class="question-title">${question.answerLevels.beginer?.name || 'Beginner Level'}</h5>
+                    ${question.answerLevels.beginer?.evaluation_criteria ? `
+                        <div class="criteria-container">
+                            <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#beginnerCriteria" aria-expanded="false">
+                                <i class="bi bi-info-circle"></i> Show Evaluation Criteria
+                            </button>
+                            <div class="collapse criteria-content" id="beginnerCriteria">
+                                <div class="card card-body criteria-card">
+                                    <h6>Evaluation Criteria:</h6>
+                                    <p>${question.answerLevels.beginer.evaluation_criteria}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
                     <div class="question-description">${formatCode(question.answerLevels.beginer?.answer)}</div>
                     <ul class="mt-3">
                         ${(question.answerLevels.beginer?.tests || []).map(test => `
@@ -360,6 +414,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 <div class="answer-level intermediate">
                     <h5 class="question-title">${question.answerLevels.intermediate?.name || 'Intermediate Level'}</h5>
+                    ${question.answerLevels.intermediate?.evaluation_criteria ? `
+                        <div class="criteria-container">
+                            <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#intermediateCriteria" aria-expanded="false">
+                                <i class="bi bi-info-circle"></i> Show Evaluation Criteria
+                            </button>
+                            <div class="collapse criteria-content" id="intermediateCriteria">
+                                <div class="card card-body criteria-card">
+                                    <h6>Evaluation Criteria:</h6>
+                                    <p>${question.answerLevels.intermediate.evaluation_criteria}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
                     <div class="question-description">${formatCode(question.answerLevels.intermediate?.answer)}</div>
                     <ul class="mt-3">
                         ${(question.answerLevels.intermediate?.tests || []).map(test => `
@@ -382,6 +449,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 <div class="answer-level advanced">
                     <h5 class="question-title">${question.answerLevels.advanced?.name || 'Advanced Level'}</h5>
+                    ${question.answerLevels.advanced?.evaluation_criteria ? `
+                        <div class="criteria-container">
+                            <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#advancedCriteria" aria-expanded="false">
+                                <i class="bi bi-info-circle"></i> Show Evaluation Criteria
+                            </button>
+                            <div class="collapse criteria-content" id="advancedCriteria">
+                                <div class="card card-body criteria-card">
+                                    <h6>Evaluation Criteria:</h6>
+                                    <p>${question.answerLevels.advanced.evaluation_criteria}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
                     <div class="question-description">${formatCode(question.answerLevels.advanced?.answer)}</div>
                     <ul class="mt-3">
                         ${(question.answerLevels.advanced?.tests || []).map(test => `
