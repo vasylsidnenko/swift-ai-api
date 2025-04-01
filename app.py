@@ -57,7 +57,7 @@ def generate_question(ai, model, topic, platform, api_key, tech=None, keywords=N
         # Process the request through MCP, passing the context directly
         logger.info(f"Sending request to MCP server with context: {context}")
         response = mcp_server.process_request(context)
-        logger.info(f"Received response from MCP server: {response}")
+        logger.info("Received response from MCP server")
         
         # Check if the response was successful
         if not response.get("success", False):
