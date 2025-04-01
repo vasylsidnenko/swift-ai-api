@@ -173,27 +173,52 @@ class OpenAIAgent:
                 # Start timing the entire process
                 start_time = time.time()
                 
-                generation_prompt = f"Generate a programming question related to the topic {topic} on the {platform} platform, "
+                # Create a more structured and detailed generation prompt
+                generation_prompt = f"""
+# Programming Question Generation Task
 
-                if tech:
-                    generation_prompt += f"with technology stack {tech}, "
+## Topic Information
+- Main Topic: {topic}
+- Platform: {platform}
+{f'- Technology Stack: {tech}' if tech else ''}
+- Related Tags: {tags}
 
-                generation_prompt += f"linked with tags: {tags}, if they are exist. Add tags and keywords that make sense in the question context."
-                
-                # Add instructions for evaluation criteria
-                generation_prompt += f"""
-                
-                For each difficulty level (Beginner, Intermediate, Advanced), include evaluation_criteria field that describes:
-                1. What knowledge the student should have at this level
-                2. What skills they should demonstrate
-                3. What concepts they should understand
-                
-                For example, for a Beginner level, the criteria might be: 'At the Beginner level, the student should understand basic syntax, be able to read simple code examples, and recognize fundamental concepts. They should demonstrate the ability to identify correct syntax and understand basic programming patterns.'"""
+## Instructions
+Create a high-quality programming question that tests understanding of {topic} on the {platform} platform. The question should:
+
+1. Be clear, specific, and challenging (not just asking for definitions)
+2. Include code examples where appropriate with proper syntax highlighting
+3. Be relevant to real-world programming scenarios
+4. Include all required tags plus additional relevant keywords
+5. Have three distinct difficulty levels with appropriate complexity progression
+
+## Required Structure
+For each difficulty level (Beginner, Intermediate, Advanced):
+
+1. Provide a detailed answer appropriate for that level
+2. Include exactly 3 test questions with multiple-choice options (at least 4 options per test)
+3. Ensure code snippets are properly formatted with language highlighting
+4. Include comprehensive evaluation criteria that describe:
+   - Knowledge requirements for this level
+   - Skills the student should demonstrate
+   - Concepts they should understand at this level
+
+## Examples of Good Evaluation Criteria
+
+### Beginner Level Example:
+'At the Beginner level, the student should understand basic syntax and fundamental concepts of {topic}. They should demonstrate the ability to read simple code examples, identify correct syntax, and understand basic programming patterns related to {topic} on {platform}.'
+
+### Intermediate Level Example:
+'At the Intermediate level, the student should understand more complex implementations and common design patterns related to {topic}. They should demonstrate the ability to analyze code, identify potential issues, and understand the practical applications of {topic} concepts in {platform} development.'
+
+### Advanced Level Example:
+'At the Advanced level, the student should demonstrate deep understanding of {topic} internals and optimization techniques. They should be able to evaluate complex implementations, understand performance implications, and apply advanced patterns related to {topic} in sophisticated {platform} applications.'
+"""
 
                 response = self.client.beta.chat.completions.parse(
                     model = model,
                     messages = [
-                        {"role": "system", "content": "You are a programming teacher. Ensure the creation of a question and answers based on the selected topic. Include detailed evaluation criteria for each difficulty level to help assess student knowledge and skills."},
+                        {"role": "system", "content": "You are an expert programming educator specializing in creating high-quality educational content. Your task is to generate challenging, well-structured programming questions with multiple difficulty levels. Each question should include detailed answers, appropriate test questions, and clear evaluation criteria that help assess student knowledge and skills. Ensure all code examples are properly formatted and technically accurate."},
                         {"role": "user", "content": generation_prompt}],
                     response_format = QuestionModel,
                     temperature = 0.7
@@ -480,10 +505,10 @@ def main():
     agent = OpenAIAgent()
     questions = agent.generate_structured_question(
         model="gpt-4o-mini",
-        topic="Swift Concurrency",
+        topic="Concurrency",
         platform="Apple",
-        tech="Swift",
-        keywords=["Actor", "Atomic", "access"],
+        tech="Objective-C",
+        keywords=["Atomic", "gcd", "runloop"],
         number=1,
         validation=True
     )
