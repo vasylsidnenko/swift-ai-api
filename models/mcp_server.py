@@ -110,7 +110,8 @@ class AIResource(MCPResource):
                 tech=context.get('tech'),
                 keywords=context.get('keywords'),
                 number=context.get('number', 1),
-                validation=context.get('validation', True)
+                validation=context.get('validation', True),
+                validation_model=context.get('validation_model', 'gpt-3.5-turbo')
             )
             
             # Calculate total time including API calls and processing

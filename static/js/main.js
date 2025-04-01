@@ -438,24 +438,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Format validation info if available
         let validationHtml = '';
         if (question.validation) {
-            // Create a unique ID for this validation collapse section
-            const validationId = `validation-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-            
-            // Check if validation was skipped (quality_score = 0)
+            // Skip validation block completely if validation was skipped (quality_score = 0)
             if (question.validation.quality_score === 0) {
-                validationHtml = `
-                    <div class="validation-container">
-                        <button class="btn btn-sm btn-outline-secondary validation-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#${validationId}" aria-expanded="false">
-                            <i class="bi bi-info-circle"></i> Validation Skipped
-                        </button>
-                        <div class="collapse validation-content" id="${validationId}">
-                            <div class="card card-body validation-card validation-skipped">
-                                <div class="validation-comments">${question.validation.validation_comments || 'Validation was not performed.'}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                // Do not show any validation block when validation was skipped
+                validationHtml = '';
             } else {
+                // Create a unique ID for this validation collapse section
+                const validationId = `validation-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
                 const validationClass = question.validation.passed ? 'validation-passed' : 'validation-failed';
                 const score = question.validation.quality_score || 0;
                 const statusIcon = question.validation.passed ? 'check-circle' : 'exclamation-triangle';

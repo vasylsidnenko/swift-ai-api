@@ -14,6 +14,40 @@ logger = logging.getLogger(__name__)
 from pydantic import BaseModel, Field
 from typing import Optional, List, Tuple, Dict, Any
 
+
+#MARK: test model
+class TestSchema(BaseModel):
+    answer: str
+
+def check_model(client: OpenAI, question_model: str) -> bool:
+  try:
+      response = client.beta.chat.completions.create(
+        model=question_model,  
+        messages=[
+            {"role": "user", "content": "Say hello in JSON with field 'answer'"}
+        ],
+        response_format="json",  
+        tools=[{"type": "function", "function": {
+            "name": "TestSchema",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "answer": {"type": "string"}
+                },
+                "required": ["answer"]
+            }
+        }}],
+        tool_choice="auto"
+      )
+
+      parsed = TestSchema.model_validate_json(response.choices[0].message.content)
+      print(parsed)
+      return True
+
+  except Exception as e:
+      return False
+
+
 # MARK: models:
 class TopicModel(BaseModel):
     name: str = Field(description="Name of the programming topic")
@@ -56,6 +90,119 @@ class AIQuestionModel(QuestionModel):
     model: str
 
 # MARK: validation
+# MARK: model validation
+class TestSchema(BaseModel):
+    answer: str
+
+class ModelCapabilities(BaseModel):
+    supports_json: bool = Field(description="Whether the model supports JSON output format")
+    supports_json_schema: bool = Field(description="Whether the model supports JSON Schema for structured output")
+    supports_tools: bool = Field(description="Whether the model supports function/tool calling")
+    supports_vision: bool = Field(description="Whether the model supports vision/image inputs")
+    error_message: Optional[str] = Field(description="Error message if model is not available", default=None)
+
+def check_model(client: OpenAI, question_model: str) -> ModelCapabilities:
+    """
+    Check if the model is available and what capabilities it supports.
+    
+    Args:
+        client: OpenAI client instance
+        question_model: Model name to check
+        
+    Returns:
+        ModelCapabilities object with information about model capabilities
+    """
+    result = ModelCapabilities(
+        supports_json=False,
+        supports_json_schema=False,
+        supports_tools=False,
+        supports_vision=False
+    )
+    
+    # First check if model is available at all with a simple request
+    try:
+        # Simple test to check if model is available
+        client.chat.completions.create(
+            model=question_model,
+            messages=[{"role": "user", "content": "Hello"}],
+            max_tokens=5
+        )
+        
+        # Now check if model supports JSON output
+        try:
+            response = client.chat.completions.create(
+                model=question_model,
+                messages=[{"role": "user", "content": "Respond with JSON: {\"status\": \"ok\"}"}],
+                response_format={"type": "json_object"},
+                max_tokens=20
+            )
+            result.supports_json = True
+            
+            # Check if model supports JSON Schema
+            try:
+                # Define a simple test schema
+                class TestJsonSchema(BaseModel):
+                    status: str
+                
+                # Try to use parse with JSON Schema
+                response = client.beta.chat.completions.parse(
+                    model=question_model,
+                    messages=[{"role": "user", "content": "Respond with JSON: {\"status\": \"ok\"}"}],
+                    response_format=TestJsonSchema,
+                    max_tokens=20
+                )
+                result.supports_json_schema = True
+            except Exception as e:
+                # If this fails, model doesn't support JSON Schema
+                logger.info(f"Model {question_model} doesn't support JSON Schema: {str(e)}")
+                result.supports_json_schema = False
+        except Exception as e:
+            # If this fails, model doesn't support JSON output format
+            logger.info(f"Model {question_model} doesn't support JSON output: {str(e)}")
+            result.supports_json = False
+            result.supports_json_schema = False
+        
+        # Check if model supports function/tool calling
+        try:
+            response = client.chat.completions.create(
+                model=question_model,
+                messages=[{"role": "user", "content": "Say hello in JSON with field 'answer'"}],
+                tools=[{"type": "function", "function": {
+                    "name": "TestSchema",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "answer": {"type": "string"}
+                        },
+                        "required": ["answer"]
+                    }
+                }}],
+                tool_choice="auto",
+                max_tokens=50
+            )
+            
+            # Check if the response contains a tool call
+            if hasattr(response.choices[0].message, 'tool_calls') and response.choices[0].message.tool_calls:
+                result.supports_tools = True
+        except Exception as e:
+            # If this fails, model doesn't support function/tool calling
+            logger.info(f"Model {question_model} doesn't support tools: {str(e)}")
+            result.supports_tools = False
+            
+        # Check if model supports vision/image inputs
+        # This is a heuristic based on model name since we can't easily test this
+        if any(vision_model in question_model.lower() for vision_model in ["vision", "gpt-4-v", "gpt-4o", "claude-3"]):
+            result.supports_vision = True
+            
+        return result
+        
+    except Exception as e:
+        # Model is not available at all
+        error_msg = str(e)
+        logger.error(f"Model {question_model} is not available: {error_msg}")
+        result.error_message = error_msg
+        return result
+
 class QuestionValidation(BaseModel):
     # Basic validation fields
     is_text_clear: bool = Field(
@@ -152,6 +299,18 @@ class OpenAIAgent:
             raise ValueError("API key is required")
         self.client = OpenAI(api_key=self.api_key)
 
+    def check_model_capabilities(self, model: str) -> ModelCapabilities:
+        """
+        Check if the model is available and what capabilities it supports.
+        
+        Args:
+            model: Model name to check
+            
+        Returns:
+            ModelCapabilities object with information about model capabilities
+        """
+        return check_model(self.client, model)
+        
     def generate_and_validate_question(
         self,
         model: str,
@@ -161,7 +320,8 @@ class OpenAIAgent:
         tags: List[str] = [],
         max_retries: int = 3,
         existing_questions: List[str] = [],
-        validation: bool = True
+        validation: bool = True,
+        validation_model: str = "gpt-4o-mini"
     ) -> Tuple[Optional[Tuple[QuestionModel, QuestionValidation, float]], int]:
         attempts = 0
         
@@ -244,6 +404,33 @@ For each difficulty level (Beginner, Intermediate, Advanced):
                     {"role": "user", "content": generation_prompt}
                 ])
                 
+                # Check model capabilities before attempting to use it
+                capabilities = self.check_model_capabilities(model)
+                if capabilities.error_message:
+                    raise ValueError(f"Model {model} is not available: {capabilities.error_message}")
+                    
+                if not capabilities.supports_json:
+                    raise ValueError(f"Model {model} does not support JSON output format which is required for structured output")
+                
+                # Перевіряємо підтримку JSON Schema
+                if not capabilities.supports_json_schema:
+                    # Якщо модель не підтримує JSON Schema, використовуємо модель за замовчуванням
+                    default_model = "gpt-4o-mini"
+                    logger.warning(f"Model {model} does not support JSON Schema. Switching to default model: {default_model}")
+                    
+                    # Перевіряємо доступність моделі за замовчуванням
+                    default_capabilities = self.check_model_capabilities(default_model)
+                    if default_capabilities.error_message:
+                        raise ValueError(f"Default model {default_model} is not available: {default_capabilities.error_message}")
+                    
+                    if not default_capabilities.supports_json_schema:
+                        raise ValueError(f"Default model {default_model} does not support JSON Schema which is required for structured output with parse method")
+                    
+                    # Використовуємо модель за замовчуванням
+                    model = default_model
+                
+                # Використовуємо parse метод з JSON Schema
+                logger.info(f"Using parse method with JSON Schema for model {model}")
                 response = self.client.beta.chat.completions.parse(
                     model = model,
                     messages = [
@@ -252,11 +439,12 @@ For each difficulty level (Beginner, Intermediate, Advanced):
                     response_format = QuestionModel,
                     temperature = 0.7
                 )
-                
                 # Get completion tokens from response
                 completion_tokens = response.usage.completion_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'completion_tokens') else 0
                 total_tokens = response.usage.total_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'total_tokens') else prompt_tokens
                 question = response.choices[0].message.parsed
+                
+                # Token usage is already handled in the conditional blocks above
 
                 # Perform validation only if validation=True
                 if validation:
@@ -322,16 +510,59 @@ Ensure the new question is sufficiently different from the existing ones in both
 - Missing or irrelevant tags
 """
 
-                    response = self.client.beta.chat.completions.parse(
-                        model = "gpt-4o-mini",
-                        messages = [
-                            {"role": "system", "content": "You are a quality assurance expert for programming educational content. Provide thorough validation of questions based on specific criteria."},
-                            {"role": "user", "content": validation_prompt}
-                        ],
-                        response_format = QuestionValidation,
-                        temperature = 0.0
-                    )
-                    validation = response.choices[0].message.parsed
+                    # Check validation model capabilities before attempting to use it
+                    validation_capabilities = self.check_model_capabilities(validation_model)
+                    if validation_capabilities.error_message:
+                        logger.warning(f"Validation model {validation_model} is not available: {validation_capabilities.error_message}. Falling back to gpt-4o-mini.")
+                        validation_model = "gpt-4o-mini"
+                        validation_capabilities = self.check_model_capabilities(validation_model)
+                    elif not validation_capabilities.supports_json:
+                        logger.warning(f"Validation model {validation_model} does not support JSON output format. Falling back to gpt-4o-mini.")
+                        validation_model = "gpt-4o-mini"
+                        validation_capabilities = self.check_model_capabilities(validation_model)
+                    
+                    # Перевіряємо підтримку JSON Schema для валідаційної моделі
+                    if not validation_capabilities.supports_json_schema:
+                        # Якщо модель не підтримує JSON Schema, використовуємо модель за замовчуванням
+                        default_validation_model = "gpt-4o-mini"
+                        logger.warning(f"Validation model {validation_model} does not support JSON Schema. Switching to default model: {default_validation_model}")
+                        
+                        # Перевіряємо доступність моделі за замовчуванням
+                        default_capabilities = self.check_model_capabilities(default_validation_model)
+                        if default_capabilities.error_message:
+                            logger.warning(f"Default validation model {default_validation_model} is not available: {default_capabilities.error_message}. Using dummy validation.")
+                            validation = QuestionValidation.create_dummy_validation()
+                            validation.validation_comments = f"Default validation model {default_validation_model} is not available. Using dummy validation."
+                            return validation
+                        
+                        if not default_capabilities.supports_json_schema:
+                            logger.warning(f"Default validation model {default_validation_model} does not support JSON Schema. Using dummy validation.")
+                            validation = QuestionValidation.create_dummy_validation()
+                            validation.validation_comments = f"Default validation model {default_validation_model} does not support JSON Schema. Using dummy validation."
+                            return validation
+                        
+                        # Використовуємо модель за замовчуванням
+                        validation_model = default_validation_model
+                    
+                    # Використовуємо parse метод з JSON Schema
+                    logger.info(f"Using parse method with JSON Schema for validation model {validation_model}")
+                    try:
+                        response = self.client.beta.chat.completions.parse(
+                            model = validation_model,
+                            messages = [
+                                {"role": "system", "content": "You are a quality assurance expert for programming educational content. Provide thorough validation of questions based on specific criteria."},
+                                {"role": "user", "content": validation_prompt}
+                            ],
+                            response_format = QuestionValidation,
+                            temperature = 0.0
+                        )
+                        validation = response.choices[0].message.parsed
+                    except Exception as e:
+                        logger.error(f"Error during validation: {str(e)}")
+                        logger.info("Using dummy validation instead")
+                        validation = QuestionValidation.create_dummy_validation()
+                        validation.validation_comments = f"Error during validation: {str(e)}. Using dummy validation."
+                    # Validation is already assigned in the conditional blocks above
                 else:
                     # If validation=False, create a dummy validation that always passes
                     # but with a special comment indicating validation was skipped
@@ -425,7 +656,8 @@ Ensure the new question is sufficiently different from the existing ones in both
         tags: List[str] = [],
         max_retries: int = 3,
         number: int = 1,
-        validation: bool = True
+        validation: bool = True,
+        validation_model: str = "gpt-4o-mini"
     ) -> Tuple[List[AIQuestionModel], List[Dict[str, Any]], List[float], List[Dict[str, int]]]:
         logger.info(f"Dataset withI: {model},  Platform: {platform},   Topic: {topic},   Tech: {tech},   Tags: {tags}")
 
@@ -453,7 +685,8 @@ Ensure the new question is sufficiently different from the existing ones in both
                 tags = tags,
                 max_retries = max_retries,
                 existing_questions = questions_text,
-                validation = validation
+                validation = validation,
+                validation_model = validation_model
             )
             
             if not validation:
@@ -510,6 +743,7 @@ Ensure the new question is sufficiently different from the existing ones in both
         tech: Optional[str] = None,
         keywords: Optional[List[str]] = [],
         validation: bool = True,
+        validation_model: str = "gpt-4o-mini",
     ) -> List[Dict[str, Any]]:
         """Generates structured question with answers"""
         try:
@@ -522,7 +756,8 @@ Ensure the new question is sufficiently different from the existing ones in both
                 tags=keywords,
                 max_retries=1,
                 number=number,
-                validation=validation
+                validation=validation,
+                validation_model=validation_model
             )
             # Convert models to dictionaries and add validation and timing info
             result = []
@@ -571,15 +806,97 @@ def main():
     print(f"Python version={sys.version}")
 
     agent = OpenAIAgent()
-    questions = agent.generate_structured_question(
-        model="gpt-4o-mini",
-        topic="Concurrency",
-        platform="Apple",
-        tech="Objective-C",
-        keywords=["Atomic", "gcd", "runloop"],
-        number=1,
-        validation=True
-    )
+    
+    # Визначаємо моделі для генерації та валідації
+    generation_model = "gpt-4o-mini"
+    validation_model = "gpt-3.5-turbo"
+    
+    print(f"\n=== Перевірка моделей перед запуском ===")
+    print(f"Модель для генерації: {generation_model}")
+    print(f"Модель для валідації: {validation_model}")
+    
+    # Перевіряємо модель для генерації
+    gen_capabilities = agent.check_model_capabilities(generation_model)
+    if gen_capabilities.error_message:
+        print(f"Помилка: Модель для генерації {generation_model} недоступна: {gen_capabilities.error_message}")
+        print("Запит не буде виконано.")
+        return
+    
+    if not gen_capabilities.supports_json:
+        print(f"Помилка: Модель для генерації {generation_model} не підтримує JSON формат.")
+        print("Запит не буде виконано.")
+        return
+        
+    # Перевіряємо підтримку JSON Schema
+    if not gen_capabilities.supports_json_schema:
+        print(f"Попередження: Модель для генерації {generation_model} не підтримує JSON Schema.")
+        print(f"Буде використано модель за замовчуванням: gpt-4o-mini.")
+        generation_model = "gpt-4o-mini"
+        # Перевіряємо запасну модель
+        gen_capabilities = agent.check_model_capabilities(generation_model)
+        if gen_capabilities.error_message:
+            print(f"Помилка: Модель за замовчуванням {generation_model} недоступна: {gen_capabilities.error_message}")
+            print("Запит не буде виконано.")
+            return
+    
+    print(f"Модель для генерації {generation_model}:")
+    print(f"  Доступна: Так")
+    print(f"  Підтримує JSON: {gen_capabilities.supports_json}")
+    print(f"  Підтримує JSON Schema: {gen_capabilities.supports_json_schema}")
+    print(f"  Підтримує Tools: {gen_capabilities.supports_tools}")
+    print(f"  Підтримує Vision: {gen_capabilities.supports_vision}")
+    
+    # Перевіряємо модель для валідації
+    val_capabilities = agent.check_model_capabilities(validation_model)
+    if val_capabilities.error_message:
+        print(f"Попередження: Модель для валідації {validation_model} недоступна: {val_capabilities.error_message}")
+        print(f"Буде використано модель за замовчуванням: gpt-4o-mini")
+        validation_model = "gpt-4o-mini"
+        # Перевіряємо запасну модель
+        val_capabilities = agent.check_model_capabilities(validation_model)
+    
+    if not val_capabilities.supports_json:
+        print(f"Попередження: Модель для валідації {validation_model} не підтримує JSON формат.")
+        print(f"Буде використано модель за замовчуванням: gpt-4o-mini")
+        validation_model = "gpt-4o-mini"
+        # Перевіряємо запасну модель
+        val_capabilities = agent.check_model_capabilities(validation_model)
+        
+    # Перевіряємо підтримку JSON Schema
+    if not val_capabilities.supports_json_schema:
+        print(f"Попередження: Модель для валідації {validation_model} не підтримує JSON Schema.")
+        print(f"Буде використано модель за замовчуванням: gpt-4o-mini")
+        validation_model = "gpt-4o-mini"
+        # Перевіряємо запасну модель
+        val_capabilities = agent.check_model_capabilities(validation_model)
+    
+    print(f"Модель для валідації {validation_model}:")
+    print(f"  Доступна: {val_capabilities.error_message is None}")
+    print(f"  Підтримує JSON: {val_capabilities.supports_json}")
+    print(f"  Підтримує JSON Schema: {val_capabilities.supports_json_schema}")
+    print(f"  Підтримує Tools: {val_capabilities.supports_tools}")
+    print(f"  Підтримує Vision: {val_capabilities.supports_vision}")
+    
+    # Всі перевірки пройдені, виконуємо запит
+    print("\n=== Генерація питань ===")
+    print(f"Використовуємо модель для генерації: {generation_model}")
+    print(f"Використовуємо модель для валідації: {validation_model}")
+    
+    try:
+        questions = agent.generate_structured_question(
+            model=generation_model,
+            topic="Concurrency",
+            platform="Apple",
+            tech="Objective-C",
+            keywords=["Atomic", "gcd", "runloop"],
+            number=1,
+            validation=True,
+            validation_model=validation_model
+        )
+        
+        print(f"Згенеровано {len(questions)} питань")
+    except Exception as e:
+        print(f"Помилка при генерації питань: {str(e)}")
     
     print(f"Generated {len(questions)} questions")
     
