@@ -118,8 +118,21 @@ class AIResource(MCPResource):
             logger.info(f"Total request time: {total_time:.2f} seconds")
             
             # Add total request time to each question
+            # Make sure we're not just duplicating the processing_time
             for question in result:
-                question["total_request_time"] = round(total_time, 2)
+                # If processing_time exists, calculate the overhead time
+                if "processing_time" in question:
+                    # Total request time includes initialization, network overhead, etc.
+                    question["total_request_time"] = round(total_time, 2)
+                    
+                    # Log the difference to show overhead
+                    processing_time = question["processing_time"]
+                    overhead_time = total_time - processing_time
+                    logger.info(f"Request overhead time: {overhead_time:.2f} seconds ({(overhead_time/total_time)*100:.1f}% of total)")
+                else:
+                    # If no processing_time, just use total time for both
+                    question["processing_time"] = round(total_time, 2)
+                    question["total_request_time"] = round(total_time, 2)
             
             return result
         except Exception as e:

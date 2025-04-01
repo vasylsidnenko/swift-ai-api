@@ -197,11 +197,26 @@ For each difficulty level (Beginner, Intermediate, Advanced):
 
 1. Provide a detailed answer appropriate for that level
 2. Include exactly 3 test questions with multiple-choice options (at least 4 options per test)
-3. Ensure code snippets are properly formatted with language highlighting
+3. Ensure code snippets are properly formatted with language highlighting using the correct format:
+   - For Swift code: ```swift [code here] ```
+   - For Objective-C code: ```objc [code here] ```
+   - For C/C++ code: ```cpp [code here] ```
+   - For Java code: ```java [code here] ```
+   - For Kotlin code: ```kotlin [code here] ```
+   - For any other language: use the appropriate language identifier (e.g., ```python, ```javascript, etc.)
 4. Include comprehensive evaluation criteria that describe:
    - Knowledge requirements for this level
    - Skills the student should demonstrate
    - Concepts they should understand at this level
+
+## Important Formatting Rules
+1. DO NOT include markers like "**Question:**", "**Answer:**", "###Beginner Level", etc. in your response
+2. DO NOT use markdown headings (# or ##) in your answers - the UI already provides appropriate headings
+3. Present code blocks ONLY with the appropriate language tag (```swift, ```objc, etc.)
+4. Format all code properly with correct indentation and syntax
+5. For test questions, use simple numbered options (1, 2, 3, 4) without additional formatting
+6. Make sure all code examples are technically accurate and follow best practices
+7. Keep your text clean and direct without any section headers or unnecessary formatting
 
 ## Examples of Good Evaluation Criteria
 
@@ -218,7 +233,7 @@ For each difficulty level (Beginner, Intermediate, Advanced):
                 response = self.client.beta.chat.completions.parse(
                     model = model,
                     messages = [
-                        {"role": "system", "content": "You are an expert programming educator specializing in creating high-quality educational content. Your task is to generate challenging, well-structured programming questions with multiple difficulty levels. Each question should include detailed answers, appropriate test questions, and clear evaluation criteria that help assess student knowledge and skills. Ensure all code examples are properly formatted and technically accurate."},
+                        {"role": "system", "content": "You are an expert programming educator specializing in creating high-quality educational content. Your task is to generate challenging, well-structured programming questions with multiple difficulty levels. Each question should include detailed answers, appropriate test questions, and clear evaluation criteria that help assess student knowledge and skills. Ensure all code examples are properly formatted and technically accurate. IMPORTANT: Do not use any markdown headings or section titles in your responses. Do not include labels like 'Beginner Level' or 'Advanced Level' - these will be added by the UI. Keep your text clean and direct without any unnecessary formatting or section headers."},
                         {"role": "user", "content": generation_prompt}],
                     response_format = QuestionModel,
                     temperature = 0.7

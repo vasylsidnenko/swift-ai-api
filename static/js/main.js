@@ -117,6 +117,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load providers when page loads
     loadProviders();
+    
+    // Force hide number of questions field if it exists (to handle cached pages)
+    document.addEventListener('DOMContentLoaded', function() {
+        const numberFieldContainer = document.querySelector('label[for="number"]')?.closest('.mb-3');
+        if (numberFieldContainer) {
+            numberFieldContainer.style.display = 'none';
+            console.log('Number of questions field hidden');
+        }
+    });
 
     // Update available models when provider changes
     aiSelect.addEventListener('change', function() {
@@ -142,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
             keywords: document.getElementById('keywords').value.split(',').map(k => k.trim()).filter(k => k),
             ai: document.getElementById('ai').value,
             model: document.getElementById('model').value,
-            number: parseInt(document.getElementById('number').value, 10),
+            number: 1, // Always set to 1
             validation: document.getElementById('validation').checked
         };
 
@@ -260,11 +269,72 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatCode(text) {
         if (!text) return '';
         
-        // Find code blocks in the format ```swift ... ```
-        return text.replace(/```(?:swift)?\n?([\s\S]*?)```/g, (match, code) => {
+        // Process the text to handle code blocks with any language tag
+        return text.replace(/```([a-zA-Z0-9_\-+#]*)\n?([\s\S]*?)```/gi, (match, lang, code) => {
             // Remove extra spaces and line breaks
             const cleanCode = code.trim();
-            return `<pre class="line-numbers language-swift"><code>${cleanCode}</code></pre>`;
+            
+            // Default to plaintext if no language is specified
+            let langClass = 'language-plaintext';
+            
+            if (lang) {
+                // Normalize language name and map to appropriate class
+                const normalizedLang = lang.toLowerCase().trim();
+                
+                // Map of common language identifiers to Prism.js language classes
+                const languageMap = {
+                    // Apple platforms
+                    'swift': 'language-swift',
+                    'objc': 'language-objectivec',
+                    'objectivec': 'language-objectivec',
+                    'objective-c': 'language-objectivec',
+                    'c': 'language-c',
+                    'cpp': 'language-cpp',
+                    'c++': 'language-cpp',
+                    
+                    // Android platforms
+                    'java': 'language-java',
+                    'kotlin': 'language-kotlin',
+                    'groovy': 'language-groovy',
+                    'gradle': 'language-gradle',
+                    'xml': 'language-xml',
+                    
+                    // Web and general
+                    'js': 'language-javascript',
+                    'javascript': 'language-javascript',
+                    'ts': 'language-typescript',
+                    'typescript': 'language-typescript',
+                    'html': 'language-html',
+                    'css': 'language-css',
+                    'sass': 'language-sass',
+                    'scss': 'language-scss',
+                    'json': 'language-json',
+                    'yaml': 'language-yaml',
+                    'yml': 'language-yaml',
+                    'bash': 'language-bash',
+                    'sh': 'language-bash',
+                    'shell': 'language-bash',
+                    'python': 'language-python',
+                    'py': 'language-python',
+                    'ruby': 'language-ruby',
+                    'rb': 'language-ruby',
+                    'go': 'language-go',
+                    'golang': 'language-go',
+                    'rust': 'language-rust',
+                    'php': 'language-php',
+                    'sql': 'language-sql',
+                    'csharp': 'language-csharp',
+                    'cs': 'language-csharp',
+                    'dart': 'language-dart',
+                    'powershell': 'language-powershell',
+                    'ps': 'language-powershell',
+                };
+                
+                // Use the mapped language class if available, otherwise use the normalized language
+                langClass = languageMap[normalizedLang] || `language-${normalizedLang}`;
+            }
+            
+            return `<pre class="line-numbers ${langClass}"><code>${cleanCode}</code></pre>`;
         });
     }
 
@@ -362,15 +432,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (question.processing_time || question.total_request_time) {
             processingTimeHtml = `
                 <div class="processing-time-info">
-                    ${question.processing_time ? `<span>Question Processing Time: ${question.processing_time}s</span>` : ''}
-                    ${question.total_request_time ? `<span>Total Request Time: ${question.total_request_time}s</span>` : ''}
+                    ${question.total_request_time ? `<span title="Total time including generation, validation, initialization and network overhead"><i class="bi bi-hourglass-split"></i> Total request time: ${question.total_request_time}s</span>` : ''}
                 </div>
             `;
         }
 
         return `
             <div class="question-block">
-                <div class="question-title">${question.text || 'No question text'}</div>
+                <div class="question-title">${formatCode(question.text) || 'No question text'}</div>
                 <div class="question-tags">
                     ${(question.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
                 </div>
