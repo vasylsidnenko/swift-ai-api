@@ -8,10 +8,12 @@ This project provides an API and web interface for generating programming questi
 - Generates programming questions with three difficulty levels (Beginner, Intermediate, Advanced)
 - Returns structured JSON responses with detailed explanations and tests
 - Supports keyword-based question generation
-- Web interface with collapsible AI settings
+- Web interface with collapsible AI settings and tabbed difficulty levels
 - Optional validation for generated questions to ensure quality
 - Evaluation criteria for each difficulty level
 - Processing time measurement for question generation and validation
+- Token usage tracking for API requests
+- Collapsible validation information
 
 ## Architecture
 
@@ -145,7 +147,13 @@ GET /api/models/{provider}
         "validation_comments": "The question is well-structured with clear differentiation between difficulty levels.",
         "passed": true
     },
-    "processing_time": 15.42
+    "processing_time": 15.42,
+    "total_request_time": 16.85,
+    "token_usage": {
+        "prompt_tokens": 1250,
+        "completion_tokens": 3450,
+        "total_tokens": 4700
+    }
 }
 ```
 
@@ -186,14 +194,15 @@ You can control validation through:
 - The checkbox in the web interface under AI Configuration
 - The `validation` parameter in API requests (boolean, default: true)
 
-### Processing Time Measurement
+### Processing Time and Token Usage Measurement
 
-The system now measures and reports processing time for question generation and validation:
+The system now measures and reports processing time and token usage for question generation and validation:
 
 - **Total Processing Time**: The total time taken to generate and validate a question
 - **Average Processing Time**: For multiple questions, the average time per question
+- **Token Usage**: The number of tokens used in the request (prompt tokens, completion tokens, and total tokens)
 
-Processing time information is displayed in the web interface and included in API responses, helping users understand the performance implications of different configurations.
+Processing time and token usage information is displayed in the web interface and included in API responses, helping users understand the performance implications and resource usage of different configurations.
 
 ### Evaluation Criteria
 
@@ -204,6 +213,32 @@ Each difficulty level (Beginner, Intermediate, Advanced) now includes evaluation
 3. What concepts they should understand
 
 These criteria help educators and learners understand the expectations for each level and provide a framework for assessment. The criteria are displayed in collapsible sections in the web interface, allowing users to view them when needed without cluttering the display.
+
+### User Interface Improvements
+
+#### Tabbed Difficulty Levels
+The web interface now displays question difficulty levels (Beginner, Intermediate, Advanced) as tabs for easier navigation. This design:
+- Allows users to quickly switch between difficulty levels without scrolling
+- Provides a cleaner, more organized view of the content
+- Makes it easier to compare answers across different levels
+
+#### Collapsible Validation Information
+Validation information is now displayed in a collapsible section that:
+- Shows a summary of validation status and quality score by default
+- Can be expanded to view detailed validation comments
+- Uses color-coding to indicate validation status (passed, failed, or skipped)
+
+#### Token Usage Display
+The interface now displays token usage information for each question, showing:
+- Total number of tokens used
+- Breakdown of prompt tokens and completion tokens
+- Helps users understand API resource consumption
+
+#### Code Formatting Improvements
+The code formatting system has been enhanced to:
+- Better handle various code block formats
+- Support inline code snippets with language prefixes (e.g., "swift let counter = 0")
+- Provide proper syntax highlighting for multiple programming languages
 
 ## Error Handling
 
