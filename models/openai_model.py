@@ -6,6 +6,7 @@ import os
 import logging
 from openai import OpenAI
 import sys
+import tiktoken
 # from google.colab import userdata
 
 logger = logging.getLogger(__name__)
@@ -230,14 +231,31 @@ For each difficulty level (Beginner, Intermediate, Advanced):
 'At the Advanced level, the student should demonstrate deep understanding of {topic} internals and optimization techniques. They should be able to evaluate complex implementations, understand performance implications, and apply advanced patterns related to {topic} in sophisticated {platform} applications.'
 """
 
+                # Count tokens in the prompt
+                prompt_tokens = self.count_tokens(model, [
+                    {"role": "system", "content": "You are an expert programming educator specializing in creating high-quality educational content. Your task is to generate challenging, well-structured programming questions with multiple difficulty levels. Each question should include detailed answers, appropriate test questions, and clear evaluation criteria that help assess student knowledge and skills. Ensure all code examples are properly formatted and technically accurate. IMPORTANT: Do not use any markdown headings or section titles in your responses. Do not include labels like 'Beginner Level' or 'Advanced Level' - these will be added by the UI. Keep your text clean and direct without any unnecessary formatting or section headers."},
+                    {"role": "user", "content": generation_prompt}
+                ])
+                
+                # Count tokens in the prompt
+                system_message = "You are an expert programming educator specializing in creating high-quality educational content. Your task is to generate challenging, well-structured programming questions with multiple difficulty levels. Each question should include detailed answers, appropriate test questions, and clear evaluation criteria that help assess student knowledge and skills. Ensure all code examples are properly formatted and technically accurate. IMPORTANT: Do not use any markdown headings or section titles in your responses. Do not include labels like 'Beginner Level' or 'Advanced Level' - these will be added by the UI. Keep your text clean and direct without any unnecessary formatting or section headers."
+                prompt_tokens = self.count_tokens(model, [
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": generation_prompt}
+                ])
+                
                 response = self.client.beta.chat.completions.parse(
                     model = model,
                     messages = [
-                        {"role": "system", "content": "You are an expert programming educator specializing in creating high-quality educational content. Your task is to generate challenging, well-structured programming questions with multiple difficulty levels. Each question should include detailed answers, appropriate test questions, and clear evaluation criteria that help assess student knowledge and skills. Ensure all code examples are properly formatted and technically accurate. IMPORTANT: Do not use any markdown headings or section titles in your responses. Do not include labels like 'Beginner Level' or 'Advanced Level' - these will be added by the UI. Keep your text clean and direct without any unnecessary formatting or section headers."},
+                        {"role": "system", "content": system_message},
                         {"role": "user", "content": generation_prompt}],
                     response_format = QuestionModel,
                     temperature = 0.7
                 )
+                
+                # Get completion tokens from response
+                completion_tokens = response.usage.completion_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'completion_tokens') else 0
+                total_tokens = response.usage.total_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'total_tokens') else prompt_tokens
                 question = response.choices[0].message.parsed
 
                 # Perform validation only if validation=True
@@ -339,8 +357,11 @@ Ensure the new question is sufficiently different from the existing ones in both
                     # Calculate total processing time
                     total_time = time.time() - start_time
                     print(f"Total processing time: {total_time:.2f} seconds")
+                    print(f"Token usage: {prompt_tokens} prompt tokens, {completion_tokens} completion tokens, {total_tokens} total tokens")
                     
-                    return (question, validation, total_time), attempts
+                    # Return token information along with other data
+                    token_usage = {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens, "total_tokens": total_tokens}
+                    return (question, validation, total_time, token_usage), attempts
                 else:
                     print(f"Validation failed with quality score: {validation.quality_score}/10")
                     
@@ -375,6 +396,26 @@ Ensure the new question is sufficiently different from the existing ones in both
                     return None, attempts
                 sleep(1)
 
+    def count_tokens(self, model: str, messages: List[Dict[str, str]]) -> int:
+        """Count the number of tokens in the messages"""
+        try:
+            encoding = tiktoken.encoding_for_model(model)
+        except KeyError:
+            # Default to cl100k_base encoding if model not found
+            encoding = tiktoken.get_encoding("cl100k_base")
+        
+        num_tokens = 0
+        for message in messages:
+            # Add tokens for message role and content
+            num_tokens += 4  # Every message follows <im_start>{role/name}\n{content}<im_end>\n
+            for key, value in message.items():
+                num_tokens += len(encoding.encode(value))
+                if key == "name":  # If there's a name, the role is omitted
+                    num_tokens -= 1  # Role is omitted
+        
+        num_tokens += 2  # Every reply is primed with <im_start>assistant
+        return num_tokens
+    
     def generate_questions_dataset(
         self,
         model: str,
@@ -385,12 +426,13 @@ Ensure the new question is sufficiently different from the existing ones in both
         max_retries: int = 3,
         number: int = 1,
         validation: bool = True
-    ) -> Tuple[List[AIQuestionModel], List[Dict[str, Any]], List[float]]:
+    ) -> Tuple[List[AIQuestionModel], List[Dict[str, Any]], List[float], List[Dict[str, int]]]:
         logger.info(f"Dataset withI: {model},  Platform: {platform},   Topic: {topic},   Tech: {tech},   Tags: {tags}")
 
         questions = []
         validations = []
         processing_times = []
+        token_usages = []
         stats = {
             'total_attempts': 0,
             'successful_questions': 0,
@@ -423,7 +465,7 @@ Ensure the new question is sufficiently different from the existing ones in both
                 stats['complete_failures'] += 1
                 continue
 
-            question, validation, processing_time = result
+            question, validation, processing_time, token_usage = result
 
             # If validation=False or validation passed, consider it successful
             validation_results = {k: v for k, v in validation.model_dump().items() 
@@ -433,6 +475,7 @@ Ensure the new question is sufficiently different from the existing ones in both
                 stats['successful_questions'] += 1
                 stats['total_processing_time'] += processing_time
                 processing_times.append(processing_time)
+                token_usages.append(token_usage)
                 
                 question_dict = question.model_dump()
                 question_dict["provider"] = "OpenAI"
@@ -451,7 +494,13 @@ Ensure the new question is sufficiently different from the existing ones in both
         if stats['successful_questions'] > 0:
             print(f"Average processing time per question: {stats['total_processing_time'] / stats['successful_questions']:.2f} seconds")
         
-        return questions, validations, processing_times
+        # Calculate and print total token usage
+        total_prompt_tokens = sum(usage.get('prompt_tokens', 0) for usage in token_usages)
+        total_completion_tokens = sum(usage.get('completion_tokens', 0) for usage in token_usages)
+        total_tokens = sum(usage.get('total_tokens', 0) for usage in token_usages)
+        print(f"Total token usage: {total_prompt_tokens} prompt tokens, {total_completion_tokens} completion tokens, {total_tokens} total tokens")
+        
+        return questions, validations, processing_times, token_usages
 
     def generate_structured_question(self, 
         model: str,
@@ -465,7 +514,7 @@ Ensure the new question is sufficiently different from the existing ones in both
         """Generates structured question with answers"""
         try:
             logger.info(f"Generating questions with model={model}, topic={topic}, platform={platform}, number={number}")
-            questions, validations, processing_times = self.generate_questions_dataset(
+            questions, validations, processing_times, token_usages = self.generate_questions_dataset(
                 model=model,
                 platform=platform,
                 topic=topic,
@@ -491,6 +540,10 @@ Ensure the new question is sufficiently different from the existing ones in both
                 # Add processing time
                 if i < len(processing_times):
                     question_dict["processing_time"] = round(processing_times[i], 2)
+                
+                # Add token usage information
+                if i < len(token_usages):
+                    question_dict["token_usage"] = token_usages[i]
                     
                 result.append(question_dict)
                 

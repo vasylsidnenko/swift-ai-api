@@ -269,19 +269,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatCode(text) {
         if (!text) return '';
         
-        // Process the text to handle code blocks with any language tag
-        return text.replace(/```([a-zA-Z0-9_\-+#]*)\n?([\s\S]*?)```/gi, (match, lang, code) => {
-            // Remove extra spaces and line breaks
+        // Обробка тексту для форматування блоків коду
+        let formattedText = text;
+        
+        // Спочатку обробляємо блоки коду з потрійними зворотними апострофами
+        formattedText = formattedText.replace(/```([a-zA-Z0-9_\-+#]*)\n?([\s\S]*?)```/gi, (match, lang, code) => {
+            // Видаляємо зайві пробіли та переноси рядків
             const cleanCode = code.trim();
             
-            // Default to plaintext if no language is specified
+            // За замовчуванням використовуємо plaintext, якщо мова не вказана
             let langClass = 'language-plaintext';
             
             if (lang) {
-                // Normalize language name and map to appropriate class
+                // Нормалізуємо назву мови та відображаємо на відповідний клас
                 const normalizedLang = lang.toLowerCase().trim();
                 
-                // Map of common language identifiers to Prism.js language classes
+                // Карта ідентифікаторів мов для Prism.js
                 const languageMap = {
                     // Apple platforms
                     'swift': 'language-swift',
@@ -330,12 +333,45 @@ document.addEventListener('DOMContentLoaded', function() {
                     'ps': 'language-powershell',
                 };
                 
-                // Use the mapped language class if available, otherwise use the normalized language
+                // Використовуємо відображений клас мови, якщо доступний, інакше використовуємо нормалізовану мову
                 langClass = languageMap[normalizedLang] || `language-${normalizedLang}`;
             }
             
             return `<pre class="line-numbers ${langClass}"><code>${cleanCode}</code></pre>`;
         });
+        
+        // Додаткова обробка для випадків, коли код не обгорнутий в потрійні зворотні апострофи,
+        // але містить однорядкові блоки коду з назвою мови (наприклад, "swift let counter = 0")
+        const codePatterns = [
+            // Шаблон для Swift
+            { pattern: /\b(swift)\s+([^\n]+)/gi, lang: 'swift' },
+            // Шаблон для Objective-C
+            { pattern: /\b(objc|objective-c|objectivec)\s+([^\n]+)/gi, lang: 'objectivec' },
+            // Шаблон для Java
+            { pattern: /\b(java)\s+([^\n]+)/gi, lang: 'java' },
+            // Шаблон для Kotlin
+            { pattern: /\b(kotlin)\s+([^\n]+)/gi, lang: 'kotlin' },
+            // Додайте інші мови за потреби
+        ];
+        
+        // Застосовуємо шаблони для виявлення та форматування однорядкових блоків коду
+        codePatterns.forEach(({ pattern, lang }) => {
+            formattedText = formattedText.replace(pattern, (match, langName, code) => {
+                const languageMap = {
+                    'swift': 'language-swift',
+                    'objc': 'language-objectivec',
+                    'objective-c': 'language-objectivec',
+                    'objectivec': 'language-objectivec',
+                    'java': 'language-java',
+                    'kotlin': 'language-kotlin'
+                };
+                
+                const langClass = languageMap[langName.toLowerCase()] || `language-${langName.toLowerCase()}`;
+                return `<pre class="line-numbers ${langClass}"><code>${code.trim()}</code></pre>`;
+            });
+        });
+        
+        return formattedText;
     }
 
     function formatResult(result) {
@@ -402,33 +438,49 @@ document.addEventListener('DOMContentLoaded', function() {
         // Format validation info if available
         let validationHtml = '';
         if (question.validation) {
+            // Create a unique ID for this validation collapse section
+            const validationId = `validation-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+            
             // Check if validation was skipped (quality_score = 0)
             if (question.validation.quality_score === 0) {
                 validationHtml = `
-                    <div class="validation-info validation-skipped">
-                        <div class="validation-header">
-                            <span class="validation-status">Validation Skipped</span>
+                    <div class="validation-container">
+                        <button class="btn btn-sm btn-outline-secondary validation-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#${validationId}" aria-expanded="false">
+                            <i class="bi bi-info-circle"></i> Validation Skipped
+                        </button>
+                        <div class="collapse validation-content" id="${validationId}">
+                            <div class="card card-body validation-card validation-skipped">
+                                <div class="validation-comments">${question.validation.validation_comments || 'Validation was not performed.'}</div>
+                            </div>
                         </div>
-                        <div class="validation-comments">${question.validation.validation_comments || 'Validation was not performed.'}</div>
                     </div>
                 `;
             } else {
                 const validationClass = question.validation.passed ? 'validation-passed' : 'validation-failed';
                 const score = question.validation.quality_score || 0;
+                const statusIcon = question.validation.passed ? 'check-circle' : 'exclamation-triangle';
+                const statusText = question.validation.passed ? 'Validation Passed' : 'Validation Failed';
+                
                 validationHtml = `
-                    <div class="validation-info ${validationClass}">
-                        <div class="validation-header">
-                            <span class="validation-status">${question.validation.passed ? 'Validation Passed' : 'Validation Failed'}</span>
-                            <span class="validation-score">Quality Score: ${score}/10</span>
+                    <div class="validation-container">
+                        <button class="btn btn-sm btn-outline-secondary validation-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#${validationId}" aria-expanded="false">
+                            <i class="bi bi-${statusIcon}"></i> ${statusText} - Quality Score: ${score}/10
+                        </button>
+                        <div class="collapse validation-content" id="${validationId}">
+                            <div class="card card-body validation-card ${validationClass}">
+                                <div class="validation-comments">${question.validation.validation_comments || 'No validation comments'}</div>
+                            </div>
                         </div>
-                        <div class="validation-comments">${question.validation.validation_comments || 'No validation comments'}</div>
                     </div>
                 `;
             }
         }
         
-        // Format processing time if available
+        // Format processing time and token usage if available
         let processingTimeHtml = '';
+        let tokenUsageHtml = '';
+        
+        // Add processing time info
         if (question.processing_time || question.total_request_time) {
             processingTimeHtml = `
                 <div class="processing-time-info">
@@ -436,7 +488,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
         }
+        
+        // Add token usage info if available
+        if (question.token_usage) {
+            const tokenUsage = question.token_usage;
+            const promptTokens = tokenUsage.prompt_tokens || 0;
+            const completionTokens = tokenUsage.completion_tokens || 0;
+            const totalTokens = tokenUsage.total_tokens || 0;
+            
+            tokenUsageHtml = `
+                <div class="token-usage-info">
+                    <span title="Number of tokens used in this request">
+                        <i class="bi bi-cpu"></i> Tokens: ${totalTokens} total 
+                        <span class="token-details">(${promptTokens} prompt, ${completionTokens} completion)</span>
+                    </span>
+                </div>
+            `;
+        }
 
+        // Create tabs for different difficulty levels
         return `
             <div class="question-block">
                 <div class="question-title">${formatCode(question.text) || 'No question text'}</div>
@@ -445,110 +515,144 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 ${validationHtml}
                 ${processingTimeHtml}
+                ${tokenUsageHtml}
                 
-                <div class="answer-level beginner">
-                    <h5 class="question-title">${question.answerLevels.beginer?.name || 'Beginner Level'}</h5>
-                    ${question.answerLevels.beginer?.evaluation_criteria ? `
-                        <div class="criteria-container">
-                            <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#beginnerCriteria" aria-expanded="false">
-                                <i class="bi bi-info-circle"></i> Show Evaluation Criteria
+                <!-- Difficulty Level Tabs -->
+                <div class="difficulty-tabs">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="beginner-tab" data-bs-toggle="tab" data-bs-target="#beginner-content" 
+                                type="button" role="tab" aria-controls="beginner-content" aria-selected="true">
+                                ${question.answerLevels.beginer?.name || 'Beginner'}
                             </button>
-                            <div class="collapse criteria-content" id="beginnerCriteria">
-                                <div class="card card-body criteria-card">
-                                    <h6>Evaluation Criteria:</h6>
-                                    <p>${question.answerLevels.beginer.evaluation_criteria}</p>
-                                </div>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="intermediate-tab" data-bs-toggle="tab" data-bs-target="#intermediate-content" 
+                                type="button" role="tab" aria-controls="intermediate-content" aria-selected="false">
+                                ${question.answerLevels.intermediate?.name || 'Intermediate'}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced-content" 
+                                type="button" role="tab" aria-controls="advanced-content" aria-selected="false">
+                                ${question.answerLevels.advanced?.name || 'Advanced'}
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <!-- Tab Content -->
+                    <div class="tab-content">
+                        <!-- Beginner Level -->
+                        <div class="tab-pane fade show active" id="beginner-content" role="tabpanel" aria-labelledby="beginner-tab">
+                            <div class="answer-level beginner">
+                                ${question.answerLevels.beginer?.evaluation_criteria ? `
+                                    <div class="criteria-container">
+                                        <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#beginnerCriteria" aria-expanded="false">
+                                            <i class="bi bi-info-circle"></i> Show Evaluation Criteria
+                                        </button>
+                                        <div class="collapse criteria-content" id="beginnerCriteria">
+                                            <div class="card card-body criteria-card">
+                                                <h6>Evaluation Criteria:</h6>
+                                                <p>${question.answerLevels.beginer.evaluation_criteria}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                <div class="question-description">${formatCode(question.answerLevels.beginer?.answer)}</div>
+                                <ul class="mt-3">
+                                    ${(question.answerLevels.beginer?.tests || []).map(test => `
+                                        <li class="test-block">
+                                            <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                            <div class="test-options">
+                                                <ul>
+                                                    ${(test.options || []).map(option => `
+                                                        <li>${option}</li>
+                                                    `).join('')}
+                                                </ul>
+                                            </div>
+                                            <div class="correct-answer">
+                                                Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                            </div>
+                                        </li>
+                                    `).join('')}
+                                </ul>
                             </div>
                         </div>
-                    ` : ''}
-                    <div class="question-description">${formatCode(question.answerLevels.beginer?.answer)}</div>
-                    <ul class="mt-3">
-                        ${(question.answerLevels.beginer?.tests || []).map(test => `
-                            <li class="test-block">
-                                <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                <div class="test-options">
-                                    <ul>
-                                        ${(test.options || []).map(option => `
-                                            <li>${option}</li>
-                                        `).join('')}
-                                    </ul>
-                                </div>
-                                <div class="correct-answer">
-                                    Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
-                                </div>
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-                
-                <div class="answer-level intermediate">
-                    <h5 class="question-title">${question.answerLevels.intermediate?.name || 'Intermediate Level'}</h5>
-                    ${question.answerLevels.intermediate?.evaluation_criteria ? `
-                        <div class="criteria-container">
-                            <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#intermediateCriteria" aria-expanded="false">
-                                <i class="bi bi-info-circle"></i> Show Evaluation Criteria
-                            </button>
-                            <div class="collapse criteria-content" id="intermediateCriteria">
-                                <div class="card card-body criteria-card">
-                                    <h6>Evaluation Criteria:</h6>
-                                    <p>${question.answerLevels.intermediate.evaluation_criteria}</p>
-                                </div>
+                        
+                        <!-- Intermediate Level -->
+                        <div class="tab-pane fade" id="intermediate-content" role="tabpanel" aria-labelledby="intermediate-tab">
+                            <div class="answer-level intermediate">
+                                ${question.answerLevels.intermediate?.evaluation_criteria ? `
+                                    <div class="criteria-container">
+                                        <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#intermediateCriteria" aria-expanded="false">
+                                            <i class="bi bi-info-circle"></i> Show Evaluation Criteria
+                                        </button>
+                                        <div class="collapse criteria-content" id="intermediateCriteria">
+                                            <div class="card card-body criteria-card">
+                                                <h6>Evaluation Criteria:</h6>
+                                                <p>${question.answerLevels.intermediate.evaluation_criteria}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                <div class="question-description">${formatCode(question.answerLevels.intermediate?.answer)}</div>
+                                <ul class="mt-3">
+                                    ${(question.answerLevels.intermediate?.tests || []).map(test => `
+                                        <li class="test-block">
+                                            <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                            <div class="test-options">
+                                                <ul>
+                                                    ${(test.options || []).map(option => `
+                                                        <li>${option}</li>
+                                                    `).join('')}
+                                                </ul>
+                                            </div>
+                                            <div class="correct-answer">
+                                                Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                            </div>
+                                        </li>
+                                    `).join('')}
+                                </ul>
                             </div>
                         </div>
-                    ` : ''}
-                    <div class="question-description">${formatCode(question.answerLevels.intermediate?.answer)}</div>
-                    <ul class="mt-3">
-                        ${(question.answerLevels.intermediate?.tests || []).map(test => `
-                            <li class="test-block">
-                                <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                <div class="test-options">
-                                    <ul>
-                                        ${(test.options || []).map(option => `
-                                            <li>${option}</li>
-                                        `).join('')}
-                                    </ul>
-                                </div>
-                                <div class="correct-answer">
-                                    Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
-                                </div>
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-                
-                <div class="answer-level advanced">
-                    <h5 class="question-title">${question.answerLevels.advanced?.name || 'Advanced Level'}</h5>
-                    ${question.answerLevels.advanced?.evaluation_criteria ? `
-                        <div class="criteria-container">
-                            <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#advancedCriteria" aria-expanded="false">
-                                <i class="bi bi-info-circle"></i> Show Evaluation Criteria
-                            </button>
-                            <div class="collapse criteria-content" id="advancedCriteria">
-                                <div class="card card-body criteria-card">
-                                    <h6>Evaluation Criteria:</h6>
-                                    <p>${question.answerLevels.advanced.evaluation_criteria}</p>
-                                </div>
+                        
+                        <!-- Advanced Level -->
+                        <div class="tab-pane fade" id="advanced-content" role="tabpanel" aria-labelledby="advanced-tab">
+                            <div class="answer-level advanced">
+                                ${question.answerLevels.advanced?.evaluation_criteria ? `
+                                    <div class="criteria-container">
+                                        <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#advancedCriteria" aria-expanded="false">
+                                            <i class="bi bi-info-circle"></i> Show Evaluation Criteria
+                                        </button>
+                                        <div class="collapse criteria-content" id="advancedCriteria">
+                                            <div class="card card-body criteria-card">
+                                                <h6>Evaluation Criteria:</h6>
+                                                <p>${question.answerLevels.advanced.evaluation_criteria}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                <div class="question-description">${formatCode(question.answerLevels.advanced?.answer)}</div>
+                                <ul class="mt-3">
+                                    ${(question.answerLevels.advanced?.tests || []).map(test => `
+                                        <li class="test-block">
+                                            <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                            <div class="test-options">
+                                                <ul>
+                                                    ${(test.options || []).map(option => `
+                                                        <li>${option}</li>
+                                                    `).join('')}
+                                                </ul>
+                                            </div>
+                                            <div class="correct-answer">
+                                                Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                            </div>
+                                        </li>
+                                    `).join('')}
+                                </ul>
                             </div>
                         </div>
-                    ` : ''}
-                    <div class="question-description">${formatCode(question.answerLevels.advanced?.answer)}</div>
-                    <ul class="mt-3">
-                        ${(question.answerLevels.advanced?.tests || []).map(test => `
-                            <li class="test-block">
-                                <div class="code-snippet">${formatCode(test.snippet)}</div>
-                                <div class="test-options">
-                                    <ul>
-                                        ${(test.options || []).map(option => `
-                                            <li>${option}</li>
-                                        `).join('')}
-                                    </ul>
-                                </div>
-                                <div class="correct-answer">
-                                    Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
-                                </div>
-                            </li>
-                        `).join('')}
-                    </ul>
+                    </div>
                 </div>
             </div>
         `;

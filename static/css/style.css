@@ -67,57 +67,59 @@ body {
 }
 
 /* Validation info styling */
-.validation-info {
+.validation-container {
     margin: 15px 0;
-    padding: 12px 15px;
-    border-radius: 6px;
+}
+
+.validation-toggle {
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    padding: 5px 10px;
+    width: 100%;
+    text-align: left;
+    border-color: #ced4da;
+    background-color: #f8f9fa;
+}
+
+.validation-toggle i {
+    margin-right: 5px;
+}
+
+.validation-content {
+    margin-bottom: 15px;
+}
+
+.validation-card {
+    padding: 12px;
     font-size: 0.9rem;
 }
 
-.validation-passed {
+.validation-card.validation-passed {
     background-color: #f0e6ff; /* Світло-фіолетовий колір */
     border-left: 4px solid #9370DB; /* Medium Purple */
     color: #4B0082; /* Indigo */
 }
 
-.validation-failed {
+.validation-card.validation-failed {
     background-color: #ffe6ff; /* Світло-рожево-фіолетовий */
     border-left: 4px solid #FF69B4; /* Hot Pink */
     color: #8B008B; /* Dark Magenta */
 }
 
-.validation-skipped {
+.validation-card.validation-skipped {
     background-color: #e6e6ff; /* Дуже світло-фіолетовий */
     border-left: 4px solid #8A2BE2; /* Blue Violet */
     color: #483D8B; /* Dark Slate Blue */
 }
 
-.validation-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-weight: 600;
-}
-
-.validation-status {
-    display: inline-block;
-}
-
-.validation-score {
-    display: inline-block;
-}
-
 .validation-comments {
     font-style: italic;
     line-height: 1.4;
-    padding: 10px;
-    border-radius: 5px;
     margin-top: 5px;
-    background-color: rgba(255, 255, 255, 0.5); /* Напівпрозорий білий */
 }
 
-/* Processing time info styling */
-.processing-time-info {
+/* Processing time and token usage info styling */
+.processing-time-info, .token-usage-info {
     display: flex;
     justify-content: space-between;
     background-color: #e9ecef;
@@ -126,6 +128,30 @@ body {
     margin-bottom: 15px;
     font-size: 0.85rem;
     color: #495057;
+}
+
+.token-usage-info {
+    margin-top: -5px;
+    background-color: #e6f3ff;
+}
+
+.token-details {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-left: 5px;
+}
+
+/* Display processing time and token usage side by side on larger screens */
+@media (min-width: 768px) {
+    .processing-time-info, .token-usage-info {
+        display: inline-block;
+        margin-right: 15px;
+        width: auto;
+    }
+    
+    .token-usage-info {
+        margin-top: 0;
+    }
 }
 
 /* Evaluation criteria styling */
@@ -163,6 +189,63 @@ body {
 .criteria-card p {
     margin-bottom: 0;
     line-height: 1.5;
+}
+
+/* Difficulty level tabs styling */
+.difficulty-tabs {
+    margin-top: 20px;
+}
+
+.difficulty-tabs .nav-tabs {
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 15px;
+}
+
+.difficulty-tabs .nav-link {
+    font-weight: 500;
+    color: #495057;
+    border: 1px solid transparent;
+    border-top-left-radius: 0.25rem;
+    border-top-right-radius: 0.25rem;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+}
+
+.difficulty-tabs .nav-link:hover {
+    border-color: #e9ecef #e9ecef #dee2e6;
+}
+
+.difficulty-tabs .nav-link.active {
+    color: #495057;
+    background-color: #fff;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+/* Beginner tab styling */
+.difficulty-tabs .nav-item:nth-child(1) .nav-link.active {
+    color: #28a745;
+    border-top: 3px solid #28a745;
+}
+
+/* Intermediate tab styling */
+.difficulty-tabs .nav-item:nth-child(2) .nav-link.active {
+    color: #fd7e14;
+    border-top: 3px solid #fd7e14;
+}
+
+/* Advanced tab styling */
+.difficulty-tabs .nav-item:nth-child(3) .nav-link.active {
+    color: #dc3545;
+    border-top: 3px solid #dc3545;
+}
+
+/* Tab content styling */
+.difficulty-tabs .tab-content {
+    padding: 15px 0;
+}
+
+.difficulty-tabs .tab-pane {
+    transition: all 0.3s ease;
 }
 
 .main-card {

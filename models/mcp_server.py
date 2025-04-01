@@ -133,6 +133,14 @@ class AIResource(MCPResource):
                     # If no processing_time, just use total time for both
                     question["processing_time"] = round(total_time, 2)
                     question["total_request_time"] = round(total_time, 2)
+                
+                # Log token usage if available
+                if "token_usage" in question:
+                    token_usage = question["token_usage"]
+                    prompt_tokens = token_usage.get("prompt_tokens", 0)
+                    completion_tokens = token_usage.get("completion_tokens", 0)
+                    total_tokens = token_usage.get("total_tokens", 0)
+                    logger.info(f"Token usage: {prompt_tokens} prompt tokens, {completion_tokens} completion tokens, {total_tokens} total tokens")
             
             return result
         except Exception as e:
