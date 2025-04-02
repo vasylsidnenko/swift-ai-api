@@ -3,6 +3,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultDiv = document.getElementById('result');
     const aiSelect = document.getElementById('ai');
     const modelSelect = document.getElementById('model');
+    const validationAiSelect = document.getElementById('validationAi');
+    const validationModelSelect = document.getElementById('validationModel');
+    const validationCheckbox = document.getElementById('validation');
+    const useCustomValidationCheckbox = document.getElementById('useCustomValidation');
+    const validationAiConfig = document.getElementById('validationAiConfig');
+    const validationConfigSection = document.getElementById('validationConfigSection');
     const aiSettingsToggle = document.querySelector('[data-bs-toggle="collapse"]');
     
     // Change icon when expanding/collapsing AI settings block
@@ -126,11 +132,27 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Number of questions field hidden');
         }
     });
+    
+    // Toggle validation config section based on validation checkbox
+    validationCheckbox.addEventListener('change', function() {
+        validationConfigSection.style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // Toggle custom validation config based on checkbox
+    useCustomValidationCheckbox.addEventListener('change', function() {
+        validationAiConfig.style.display = this.checked ? 'block' : 'none';
+    });
 
     // Update available models when provider changes
     aiSelect.addEventListener('change', function() {
         const provider = this.value;
         loadModels(provider);
+    });
+    
+    // Update available validation models when validation provider changes
+    validationAiSelect.addEventListener('change', function() {
+        const provider = this.value;
+        loadValidationModels(provider);
     });
     
     // Handle API key input changes
@@ -140,43 +162,130 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('apiKeyCredit').style.display = 'none';
         }
     });
+    
+    // Handle validation API key input changes
+    document.getElementById('validationApiKey').addEventListener('input', function() {
+        // If user enters a custom key, hide the credit message
+        if (this.value && this.value !== '********') {
+            document.getElementById('validationApiKeyCredit').style.display = 'none';
+        }
+    });
+    
+    // Load validation models for a specific provider
+    async function loadValidationModels(provider) {
+        try {
+            // Load models
+            const modelsResponse = await fetch(`/api/models/${provider}`);
+            const data = await modelsResponse.json();
+            
+            // Clear models select
+            validationModelSelect.innerHTML = '';
+            
+            // Add received models
+            data.models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                // Set default model
+                if (model === data.default) {
+                    option.selected = true;
+                }
+                validationModelSelect.appendChild(option);
+            });
+            
+            // Check if API key exists in environment
+            try {
+                const keyResponse = await fetch(`/api/check-env-key/${provider}`);
+                const keyData = await keyResponse.json();
+                
+                // If key exists in environment, show credit message and mark input
+                if (keyData.exists) {
+                    const apiKeyInput = document.getElementById('validationApiKey');
+                    apiKeyInput.value = '********'; // Show masked value to indicate key is present
+                    apiKeyInput.placeholder = 'Environment API key is being used';
+                    apiKeyInput.classList.add('has-env-key');
+                    
+                    // Show credit message
+                    const apiKeyCredit = document.getElementById('validationApiKeyCredit');
+                    apiKeyCredit.textContent = `Using environment API key - credit ${keyData.credit}`;
+                    apiKeyCredit.style.display = 'block';
+                } else {
+                    // Reset input if no environment key
+                    const apiKeyInput = document.getElementById('validationApiKey');
+                    apiKeyInput.value = '';
+                    apiKeyInput.placeholder = '';
+                    apiKeyInput.classList.remove('has-env-key');
+                    
+                    // Hide credit message
+                    document.getElementById('validationApiKeyCredit').style.display = 'none';
+                }
+            } catch (keyError) {
+                console.error(`Error checking environment key for ${provider}:`, keyError);
+            }
+        } catch (error) {
+            console.error(`Error loading validation models for ${provider}:`, error);
+        }
+    }
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        // Показуємо індикатор завантаження одразу після натискання кнопки
+        resultDiv.innerHTML = `
+            <div class="loading-container">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="loading-text mt-3">Generating questions...</div>
+            </div>
+        `;
+        
+        // Create basic data object
         const data = {
             topic: document.getElementById('topic').value,
             platform: document.getElementById('platform').value,
             tech: document.getElementById('tech').value,
             keywords: document.getElementById('keywords').value.split(',').map(k => k.trim()).filter(k => k),
-            ai: document.getElementById('ai').value,
-            model: document.getElementById('model').value,
-            number: 1, // Always set to 1
             validation: document.getElementById('validation').checked
         };
+        
+        // Add AI config
+        data.ai_config = {
+            ai: document.getElementById('ai').value,
+            model: document.getElementById('model').value
+        };
+        
+        // Get API key for main generation
+        const apiKey = document.getElementById('apiKey').value.trim();
+        if (apiKey && apiKey !== '********') {
+            data.ai_config.api_key = apiKey;
+        }
+        
+        // Add validation AI config if custom validation is enabled
+        if (data.validation && document.getElementById('useCustomValidation').checked) {
+            data.validation_ai_config = {
+                ai: document.getElementById('validationAi').value,
+                model: document.getElementById('validationModel').value
+            };
+            
+            // Get API key for validation
+            const validationApiKey = document.getElementById('validationApiKey').value.trim();
+            if (validationApiKey && validationApiKey !== '********') {
+                data.validation_ai_config.api_key = validationApiKey;
+            }
+        }
 
         try {
-            // Show loading indicator
-            resultDiv.innerHTML = `
-                <div class="loading-container">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <div class="loading-text mt-3">Generating questions...</div>
-                </div>
-            `;
 
-            // Get API key
-            const apiKey = document.getElementById('apiKey').value.trim();
-            
             // Create headers
             const headers = {
                 'Content-Type': 'application/json'
             };
             
             // Add Authorization header if API key exists and is not the placeholder
-            if (apiKey && apiKey !== '********') {
-                headers['Authorization'] = `Bearer ${apiKey}`;
+            const mainApiKey = document.getElementById('apiKey').value.trim();
+            if (mainApiKey && mainApiKey !== '********') {
+                headers['Authorization'] = `Bearer ${mainApiKey}`;
             }
 
             const response = await fetch('/generate_question', {
@@ -272,6 +381,26 @@ document.addEventListener('DOMContentLoaded', function() {
         // Обробка тексту для форматування блоків коду
         let formattedText = text;
         
+        // Перевіряємо, чи є відкриваючі потрійні апострофи без закриваючих
+        const openingBackticksCount = (formattedText.match(/```([a-zA-Z0-9_\-+#]*)/g) || []).length;
+        const closingBackticksCount = (formattedText.match(/```\s*$/gm) || []).length;
+        
+        console.log(`Opening backticks: ${openingBackticksCount}, Closing backticks: ${closingBackticksCount}`);
+        
+        // Якщо є відкриваючі потрійні апострофи без закриваючих, додаємо закриваючі
+        if (openingBackticksCount > closingBackticksCount) {
+            // Знаходимо всі відкриваючі потрійні апострофи
+            const codeBlocks = formattedText.match(/```([a-zA-Z0-9_\-+#]*)\n?([\s\S]*?)(?=(```|$))/gi) || [];
+            
+            // Додаємо закриваючі потрійні апострофи до кожного блоку, якщо їх немає
+            codeBlocks.forEach(block => {
+                if (!block.endsWith('```')) {
+                    const newBlock = block + '\n```';
+                    formattedText = formattedText.replace(block, newBlock);
+                }
+            });
+        }
+        
         // Спочатку обробляємо блоки коду з потрійними зворотними апострофами
         formattedText = formattedText.replace(/```([a-zA-Z0-9_\-+#]*)\n?([\s\S]*?)```/gi, (match, lang, code) => {
             // Видаляємо зайві пробіли та переноси рядків
@@ -294,6 +423,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     'c': 'language-c',
                     'cpp': 'language-cpp',
                     'c++': 'language-cpp',
+                    'metal': 'language-cpp', // Metal використовує синтаксис C++
+                    'opengl': 'language-glsl', // OpenGL використовує GLSL
                     
                     // Android platforms
                     'java': 'language-java',
@@ -380,9 +511,21 @@ document.addEventListener('DOMContentLoaded', function() {
             return '<div class="alert alert-danger">Invalid result format</div>';
         }
 
+        console.log('Full result structure:', JSON.stringify(result, null, 2));
+        
         // If there's only one question, display it normally
         if (result.length === 1) {
-            return formatSingleQuestion(result[0]);
+            console.log('Processing single question:', result[0]);
+            console.log('Validation data in result:', result[0].validation_result);
+            
+            const html = formatSingleQuestion(result[0]);
+            // Ініціалізація Prism.js після вставки контенту
+            setTimeout(() => {
+                if (window.Prism) {
+                    Prism.highlightAll();
+                }
+            }, 100);
+            return html;
         }
 
         // For multiple questions, use tabs
@@ -426,38 +569,178 @@ document.addEventListener('DOMContentLoaded', function() {
         tabsHtml += `</ul>`;
         tabContentHtml += `</div>`;
 
+        // Ініціалізація Prism.js після вставки контенту
+        setTimeout(() => {
+            if (window.Prism) {
+                Prism.highlightAll();
+            }
+        }, 100);
+
         return tabsHtml + tabContentHtml;
     }
 
     function formatSingleQuestion(question) {
-        if (!question || !question.answerLevels) {
-            console.error('Invalid question format:', question);
-            return '';
-        }
+        console.log('Formatting question:', question);
         
-        // Format validation info if available
+        // Додати блок валідації на початку відповіді
         let validationHtml = '';
-        if (question.validation) {
-            // Skip validation block completely if validation was skipped (quality_score = 0)
-            if (question.validation.quality_score === 0) {
-                // Do not show any validation block when validation was skipped
-                validationHtml = '';
-            } else {
-                // Create a unique ID for this validation collapse section
+        
+        // Перевіряємо наявність даних валідації
+        if (question.validation_result) {
+            console.log('Found validation_result at top level:', question.validation_result);
+            
+            // Створюємо блок валідації одразу
+            const validationData = question.validation_result;
+            const validation = validationData.validation || {};
+            
+            if (validation) {
                 const validationId = `validation-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-                const validationClass = question.validation.passed ? 'validation-passed' : 'validation-failed';
-                const score = question.validation.quality_score || 0;
-                const statusIcon = question.validation.passed ? 'check-circle' : 'exclamation-triangle';
-                const statusText = question.validation.passed ? 'Validation Passed' : 'Validation Failed';
+                const validationResult = validationData.result || '';
+                const isPassed = (validationResult === 'PASS' || validation.passed);
+                const validationClass = isPassed ? 'validation-passed' : 'validation-failed';
+                const score = validation.quality_score || 0;
+                const statusIcon = isPassed ? 'check-circle' : 'exclamation-triangle';
+                const statusText = isPassed ? 'Validation Passed' : 'Validation Failed';
                 
                 validationHtml = `
                     <div class="validation-container">
                         <button class="btn btn-sm btn-outline-secondary validation-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#${validationId}" aria-expanded="false">
                             <i class="bi bi-${statusIcon}"></i> ${statusText} - Quality Score: ${score}/10
+                            <i class="bi bi-chevron-down ms-2"></i>
                         </button>
-                        <div class="collapse validation-content" id="${validationId}">
-                            <div class="card card-body validation-card ${validationClass}">
-                                <div class="validation-comments">${question.validation.validation_comments || 'No validation comments'}</div>
+                        <div class="collapse" id="${validationId}">
+                            <div class="card card-body validation-details ${validationClass}">
+                                <h5>Validation Results</h5>
+                                <ul class="validation-list">
+                                    ${validation.is_text_clear !== true ? `<li class="failed">Question text is clear and specific</li>` : ''}
+                                    ${validation.is_question_correspond !== true ? `<li class="failed">Question corresponds to topic and tags</li>` : ''}
+                                    ${validation.is_question_not_trivial !== true ? `<li class="failed">Question is challenging enough</li>` : ''}
+                                    ${validation.do_answer_levels_exist !== true ? `<li class="failed">All three difficulty levels exist</li>` : ''}
+                                    ${validation.are_answer_levels_valid !== true ? `<li class="failed">Answer levels are valid</li>` : ''}
+                                    ${validation.has_evaluation_criteria !== true ? `<li class="failed">Each level has evaluation criteria</li>` : ''}
+                                    ${validation.are_answer_levels_different !== true ? `<li class="failed">Answer levels are sufficiently different</li>` : ''}
+                                    ${validation.do_tests_exist !== true ? `<li class="failed">Each level has tests</li>` : ''}
+                                    ${validation.do_tags_exist !== true ? `<li class="failed">Question has appropriate tags</li>` : ''}
+                                    ${validation.do_test_options_exist !== true ? `<li class="failed">All tests have more than 2 options</li>` : ''}
+                                    ${validation.is_question_text_different_from_existing_questions !== true ? `<li class="failed">Question text is original</li>` : ''}
+                                    ${validation.are_test_options_numbered !== true ? `<li class="failed">Test options are properly numbered</li>` : ''}
+                                    ${validation.does_answer_contain_option_number !== true ? `<li class="failed">Test answers correspond to valid options</li>` : ''}
+                                    ${validation.are_code_blocks_marked_if_they_exist !== true ? `<li class="failed">Code blocks are properly formatted</li>` : ''}
+                                    ${validation.does_snippet_have_question !== true ? `<li class="failed">Each test snippet has a question</li>` : ''}
+                                    ${validation.does_snippet_have_code !== true ? `<li class="failed">Each test snippet has code</li>` : ''}
+                                    ${isPassed ? `<li class="passed">All validation checks passed!</li>` : ''}
+                                </ul>
+                                
+                                <div class="validation-comments">
+                                    <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#validationComments-${validationId}" aria-expanded="false">
+                                        <i class="bi bi-chat-left-text"></i> Validation Comments
+                                        <i class="bi bi-chevron-down ms-2"></i>
+                                    </button>
+                                    <div class="collapse" id="validationComments-${validationId}">
+                                        <div class="card card-body validation-comments-content">
+                                            ${formatCode(validationData.comments || 'No comments provided')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Check if the question is in the new format (with question field)
+        if (question.question) {
+            // If we have a nested question object, use that
+            const nestedResult = formatSingleQuestion(question.question);
+            // Додаємо блок валідації на початку відповіді
+            return validationHtml + nestedResult;
+        }
+        
+        if (!question || !question.answerLevels) {
+            console.error('Invalid question format:', question);
+            return '<div class="alert alert-danger">Invalid question format. Please check the console for details.</div>';
+        }
+        
+        // Цей блок вже оброблено на початку функції
+        // Додаткова обробка для зворотної сумісності
+        let additionalValidationHtml = '';
+        
+        // Check for validation in both old and new formats
+        const validationData = question.validation_result || question.validation;
+        
+        console.log('Question object:', question);
+        console.log('Looking for validation data in:', question.validation_result, question.validation);
+        
+        // Завжди показувати блок валідації, якщо є дані валідації
+        if (validationData) {
+            console.log('Validation data found:', validationData);
+            
+            // Get the actual validation object (may be nested)
+            const validation = validationData.validation || validationData;
+            
+            // Debug validation data
+            console.log('Validation object:', validation);
+            console.log('Validation result:', validationData.result);
+            console.log('Validation data structure:', JSON.stringify(validationData, null, 2));
+            
+            // Перевіряємо наявність необхідних полів
+            const hasValidationFields = validation && (typeof validation === 'object');
+            console.log('Has validation fields:', hasValidationFields);
+            
+            // Цей код більше не використовується, оскільки блок валідації вже створено на початку функції
+            // Цей блок вже не потрібен, оскільки валідація обробляється на початку функції
+            if (false) {
+                // Цей код ніколи не виконається, але залишаємо для зворотної сумісності
+                const validationId = `validation-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                const validationResult = validationData.result || '';
+                const isPassed = (validationResult === 'PASS' || validation.passed);
+                const validationClass = isPassed ? 'validation-passed' : 'validation-failed';
+                const score = validation.quality_score || 0;
+                const statusIcon = isPassed ? 'check-circle' : 'exclamation-triangle';
+                const statusText = isPassed ? 'Validation Passed' : 'Validation Failed';
+                
+                // Цей код ніколи не виконається
+                additionalValidationHtml = `
+                    <div class="validation-container">
+                        <button class="btn btn-sm btn-outline-secondary validation-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#${validationId}" aria-expanded="false">
+                            <i class="bi bi-${statusIcon}"></i> ${statusText} - Quality Score: ${score}/10
+                            <i class="bi bi-chevron-down ms-2"></i>
+                        </button>
+                        <div class="collapse" id="${validationId}">
+                            <div class="card card-body validation-details ${validationClass}">
+                                <h5>Validation Results</h5>
+                                <ul class="validation-list">
+                                    ${validation.is_text_clear !== true ? `<li class="failed">Question text is clear and specific</li>` : ''}
+                                    ${validation.is_question_correspond !== true ? `<li class="failed">Question corresponds to topic and tags</li>` : ''}
+                                    ${validation.is_question_not_trivial !== true ? `<li class="failed">Question is challenging enough</li>` : ''}
+                                    ${validation.do_answer_levels_exist !== true ? `<li class="failed">All three difficulty levels exist</li>` : ''}
+                                    ${validation.are_answer_levels_valid !== true ? `<li class="failed">Answer levels are valid</li>` : ''}
+                                    ${validation.has_evaluation_criteria !== true ? `<li class="failed">Each level has evaluation criteria</li>` : ''}
+                                    ${validation.are_answer_levels_different !== true ? `<li class="failed">Answer levels are sufficiently different</li>` : ''}
+                                    ${validation.do_tests_exist !== true ? `<li class="failed">Each level has tests</li>` : ''}
+                                    ${validation.do_tags_exist !== true ? `<li class="failed">Question has appropriate tags</li>` : ''}
+                                    ${validation.do_test_options_exist !== true ? `<li class="failed">All tests have more than 2 options</li>` : ''}
+                                    ${validation.is_question_text_different_from_existing_questions !== true ? `<li class="failed">Question text is original</li>` : ''}
+                                    ${validation.are_test_options_numbered !== true ? `<li class="failed">Test options are properly numbered</li>` : ''}
+                                    ${validation.does_answer_contain_option_number !== true ? `<li class="failed">Test answers correspond to valid options</li>` : ''}
+                                    ${validation.are_code_blocks_marked_if_they_exist !== true ? `<li class="failed">Code blocks are properly formatted</li>` : ''}
+                                    ${validation.does_snippet_have_question !== true ? `<li class="failed">Each test snippet has a question</li>` : ''}
+                                    ${validation.does_snippet_have_code !== true ? `<li class="failed">Each test snippet has code</li>` : ''}
+                                    ${isPassed ? `<li class="passed">All validation checks passed!</li>` : ''}
+                                </ul>
+                                
+                                                <div class="validation-comments">
+                                    <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#validationComments-${validationId}" aria-expanded="false">
+                                        <i class="bi bi-chat-left-text"></i> Validation Comments
+                                        <i class="bi bi-chevron-down ms-2"></i>
+                                    </button>
+                                    <div class="collapse" id="validationComments-${validationId}">
+                                        <div class="card card-body validation-comments-content">
+                                            ${formatCode(validationData.comments || 'No comments provided')}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -496,13 +779,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Create tabs for different difficulty levels
+        console.log('Final validation HTML:', validationHtml);
+        
         return `
             <div class="question-block">
                 <div class="question-title">${formatCode(question.text) || 'No question text'}</div>
                 <div class="question-tags">
                     ${(question.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
                 </div>
-                ${validationHtml}
                 ${processingTimeHtml}
                 ${tokenUsageHtml}
                 
@@ -645,5 +929,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
         `;
+        
+        // Ініціалізація Prism.js для підсвічування коду
+        setTimeout(() => {
+            if (window.Prism) {
+                console.log('Initializing Prism.js for syntax highlighting');
+                try {
+                    Prism.highlightAll();
+                    console.log('Prism.js initialization completed');
+                } catch (error) {
+                    console.error('Error initializing Prism.js:', error);
+                }
+            } else {
+                console.warn('Prism.js not available');
+            }
+        }, 100);
+        
+        // Повторна ініціалізація Prism.js через 500 мс для випадків, коли контент завантажується з затримкою
+        setTimeout(() => {
+            if (window.Prism) {
+                try {
+                    Prism.highlightAll();
+                    console.log('Prism.js re-initialization completed');
+                } catch (error) {
+                    console.error('Error re-initializing Prism.js:', error);
+                }
+            }
+        }, 500);
     }
 }); 

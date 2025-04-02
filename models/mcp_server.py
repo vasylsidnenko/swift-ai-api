@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from dataclasses import dataclass
 from enum import Enum
 import logging
@@ -96,29 +96,52 @@ class AIResource(MCPResource):
         logger = logging.getLogger(__name__)
         
         try:
-            from models.openai_model import OpenAIAgent
-            agent = OpenAIAgent(api_key=context.get('api_key'))
+            # Get AI configuration
+            ai_config = context.get('ai_config', {})
+            
+            # Extract configuration values
+            api_key = ai_config.get('api_key')
+            model_name = ai_config.get('model_name')
+            model_type = ai_config.get('model_type')
+            
+            from models.openai_agent import OpenAIAgent
+            agent = OpenAIAgent(api_key=api_key)
             
             # Measure total time for the entire operation
             import time
             start_time = time.time()
             
-            result = agent.generate_structured_question(
-                model=context.get('model_name'),
-                topic=context.get('topic'),
+            # Generate question(s)
+            question_result = agent.generate_question(
+                model=model_name,
                 platform=context.get('platform'),
+                topic=context.get('topic'),
                 tech=context.get('tech'),
-                keywords=context.get('keywords'),
-                number=context.get('number', 1),
-                validation=context.get('validation', True),
-                validation_model=context.get('validation_model', 'gpt-3.5-turbo')
+                tags=context.get('keywords', [])
             )
+            
+            # Convert AIQuestionModel to dictionary
+            if hasattr(question_result, 'model_dump'):
+                # For Pydantic v2
+                result_dict = question_result.model_dump()
+            elif hasattr(question_result, 'dict'):
+                # For Pydantic v1
+                result_dict = question_result.dict()
+            else:
+                # Fallback to manual conversion
+                result_dict = {}
+                for key, value in question_result.__dict__.items():
+                    if not key.startswith('_'):
+                        result_dict[key] = value
+            
+            # Put the dictionary in a list
+            result = [result_dict]
             
             # Calculate total time including API calls and processing
             total_time = time.time() - start_time
             logger.info(f"Total request time: {total_time:.2f} seconds")
             
-            # Add total request time to each question
+            # Add total request time to the question dictionary
             # Make sure we're not just duplicating the processing_time
             for question in result:
                 # If processing_time exists, calculate the overhead time
@@ -142,6 +165,70 @@ class AIResource(MCPResource):
                     completion_tokens = token_usage.get("completion_tokens", 0)
                     total_tokens = token_usage.get("total_tokens", 0)
                     logger.info(f"Token usage: {prompt_tokens} prompt tokens, {completion_tokens} completion tokens, {total_tokens} total tokens")
+                
+                # Add AI config information to the result
+                question["ai_config"] = {
+                    "model_type": str(model_type),
+                    "model_name": model_name,
+                    # Don't include API key in the response for security
+                }
+            
+            # Check if validation is enabled and validation_ai_config is provided
+            validation = context.get('validation', True)
+            validation_ai_config = context.get('validation_ai_config')
+            
+            if validation and result:
+                logger.info("Performing validation")
+                
+                # Determine validation parameters
+                validation_agent = agent
+                validation_model_name = model_name
+                validation_model_type = model_type
+                
+                # If validation_ai_config is provided, use its values
+                if validation_ai_config:
+                    logger.info("Using custom validation AI config")
+                    validation_api_key = validation_ai_config.get('api_key')
+                    validation_model_name = validation_ai_config.get('model_name')
+                    validation_model_type = validation_ai_config.get('model_type')
+                    
+                    # Create a validation agent if API key is different
+                    if validation_api_key != api_key:
+                        validation_agent = OpenAIAgent(api_key=validation_api_key)
+                
+                # Perform validation for each generated question
+                for i, question_data in enumerate(result):
+                    from models.ai_models import QuestionModel
+                    
+                    try:
+                        # Convert dict to QuestionModel
+                        question = QuestionModel.model_validate(question_data.get('question', {}))
+                        
+                        # Validate the question
+                        validation_start_time = time.time()
+                        validation_result = validation_agent.validate_question(
+                            model=validation_model_name,
+                            question=question
+                        )
+                        
+                        # Calculate validation time
+                        validation_time = time.time() - validation_start_time
+                        logger.info(f"Validation time for question {i+1}: {validation_time:.2f} seconds")
+                        
+                        # Add validation result to the question data
+                        result[i]['validation_result'] = validation_result.model_dump()
+                        result[i]['validation_result']['total_time'] = round(validation_time, 2)
+                        
+                        # Add validation config information
+                        result[i]['validation_result']['ai_config'] = {
+                            "model_type": str(validation_model_type),
+                            "model_name": validation_model_name,
+                            # Don't include API key in the response for security
+                        }
+                        
+                    except Exception as validation_error:
+                        logger.error(f"Error validating question {i+1}: {str(validation_error)}")
+                        result[i]['validation_error'] = str(validation_error)
             
             return result
         except Exception as e:
@@ -158,30 +245,44 @@ class AIResource(MCPResource):
         raise NotImplementedError("DeepSeek handler not implemented yet")
 
 @dataclass
-class MCPContext:
-    """MCP context for request processing"""
+class AIConfig:
+    """Configuration for AI provider"""
     model_type: ModelType
     model_name: str
     api_key: str
-    topic: str
-    platform: str
-    tech: Optional[str] = None
-    keywords: Optional[List[str]] = None
-    number: int = 1
-    validation: bool = True
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             "model_type": self.model_type,
             "model_name": self.model_name,
-            "api_key": self.api_key,
+            "api_key": self.api_key
+        }
+
+@dataclass
+class MCPContext:
+    """MCP context for question generation with optional validation"""
+    ai_config: AIConfig
+    topic: str
+    platform: str
+    tech: Optional[str] = None
+    keywords: Optional[List[str]] = None
+    validation: bool = True
+    validation_ai_config: Optional[AIConfig] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        result = {
+            "ai_config": self.ai_config.to_dict(),
             "topic": self.topic,
             "platform": self.platform,
             "tech": self.tech,
             "keywords": self.keywords,
-            "number": self.number,
             "validation": self.validation
         }
+        
+        if self.validation_ai_config:
+            result["validation_ai_config"] = self.validation_ai_config.to_dict()
+            
+        return result
 
 class MCPServer:
     """Model Context Protocol (MCP) server implementation"""
@@ -191,15 +292,28 @@ class MCPServer:
         }
 
     def process_request(self, context: MCPContext) -> Dict[str, Any]:
-        """Process request using MCP protocol, context passed as argument"""
+        """Process request using MCP protocol, context passed as argument
+        
+        Args:
+            context: Context for the request with all necessary parameters
+            
+        Returns:
+            Dictionary with response data
+        """
         if not context:
             return MCPResponse(False, error="Context not provided").to_dict()
 
-        resource = self._resources.get(context.model_type)
+        if not context.ai_config or not context.ai_config.model_type:
+            return MCPResponse(False, error="AI configuration not provided or missing model type").to_dict()
+            
+        resource = self._resources.get(context.ai_config.model_type)
         if not resource:
-            return MCPResponse(False, error=f"Unsupported model type: {context.model_type}").to_dict()
-
-        return resource.execute(context.to_dict())
+            return MCPResponse(False, error=f"Unsupported model type: {context.ai_config.model_type}").to_dict()
+        
+        # Convert context to dict
+        context_dict = context.to_dict()
+        
+        return resource.execute(context_dict)
         
     def get_available_providers(self) -> List[str]:
         """Get list of available AI providers"""

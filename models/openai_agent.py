@@ -282,7 +282,7 @@ class OpenAIAgent:
                 is_question_text_different_from_existing_questions=False,
                 are_test_options_numbered=False,
                 does_answer_contain_option_number=False,
-                are_code_blocks_marked=False,
+                are_code_blocks_marked_if_they_exist=False,
                 does_snippet_have_question=False,
                 does_snippet_have_code=False,
                 quality_score=1
@@ -447,7 +447,7 @@ class OpenAIAgent:
                                                    for test in question.answerLevels.intermediate.tests) and 
                                               all(test.answer.isdigit() and 1 <= int(test.answer) <= len(test.options) 
                                                    for test in question.answerLevels.advanced.tests),
-                are_code_blocks_marked="```" in question.text or 
+                are_code_blocks_marked_if_they_exist="```" in question.text or 
                                      "```" in question.answerLevels.beginer.answer or 
                                      "```" in question.answerLevels.intermediate.answer or 
                                      "```" in question.answerLevels.advanced.answer,
@@ -511,7 +511,7 @@ class OpenAIAgent:
             comments += "- Number all test options properly.\n"
         if not validation.does_answer_contain_option_number:
             comments += "- Ensure each test answer corresponds to a valid option number.\n"
-        if not validation.are_code_blocks_marked:
+        if not validation.are_code_blocks_marked_if_they_exist:
             comments += "- Format all code blocks with appropriate syntax highlighting.\n"
         
         # If no specific improvements needed, add a generic comment

@@ -14,6 +14,8 @@ This project provides an API and web interface for generating programming questi
 - Processing time measurement for question generation and validation
 - Token usage tracking for API requests
 - Collapsible validation information
+- Improved validation results display with focus on failed checks
+- Enhanced code syntax highlighting with support for Metal and OpenGL
 
 ## Architecture
 
@@ -32,6 +34,109 @@ This architecture allows for:
 1. **Provider Agnosticism**: The application can work with any AI provider by implementing the appropriate handler
 2. **Unified Interface**: All AI providers are accessed through the same interface
 3. **Easy Extensibility**: New AI providers can be added without changing the core application logic
+
+### MCP Architecture Schema
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        HTTP API (app.py)                            │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                  /generate_question                         │    |
+│  │                                                             │    │
+│  │  Input parameters:                                          │    │
+│  │  - topic: str                   # Question topic            │    │
+│  │  - platform: str                # Platform (Apple)          │    │
+│  │  - tech: Optional[str]          # Technology                │    │
+│  │  - keywords: List[str]          # Keywords                  │    │
+│  │  - validation: bool             # Validation flag           │    │
+│  │  - ai_config: Dict              # AI configuration          │    │
+│  │    - ai: str                    # AI provider               │    │
+│  │    - model: str                 # Model name                │    │
+│  │    - api_key: str               # API key                   │    │
+│  │  - validation_ai_config: Dict   # Validation configuration  │    │
+│  │    - ai: str                    # AI provider               │    │
+│  │    - model: str                 # Model name                │    │
+│  │    - api_key: str               # API key                   │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     MCP Server (mcp_server.py)                      │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                      AIConfig                               │    │
+│  │                                                             │    │
+│  │  - model_type: ModelType       # Model type (enum)          │    │
+│  │  - model_name: str             # Model name                 │    │
+│  │  - api_key: str                # API key                    │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                      MCPContext                             │    │
+│  │                                                             │    │
+│  │  - ai_config: AIConfig         # AI configuration           │    │ 
+│  │  - topic: str                  # Question topic             │    │
+│  │  - platform: str               # Platform                   │    │
+│  │  - tech: Optional[str]         # Technology                 │    │
+│  │  - keywords: List[str]         # Keywords                   │    │
+│  │  - validation: bool            # Validation flag            │    │
+│  │  - validation_ai_config: Optional[AIConfig] # Validation    │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                      AIResource                             │    │
+│  │                                                             │    │
+│  │  - _handle_openai()            # OpenAI handler             │    │
+│  │  - _handle_googleai()          # Google AI handler          │    │
+│  │  - _handle_deepseek()          # DeepSeek handler           │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                   OpenAI Agent (openai_agent.py)                    │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │           generate_structured_question()                    │    │
+│  │                                                             │    │
+│  │  - Generates structured question based on parameters        │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │               validate_question()                           │    │
+│  │                                                             │    │
+│  │  - Validates the generated question                         │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      Models (ai_models.py)                          │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                    QuestionModel                            │    │
+│  │                                                             │    │
+│  │  - Question model with all required fields                  │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                  AIValidationModel                          │    │
+│  │                                                             │    │
+│  │  - Question validation result model                         │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Process Flow
+
+1. **Client sends a request to `/generate_question`** with required parameters (topic, platform, etc.) and AI configuration
+2. **API endpoint processes the request** and creates AIConfig objects for generation and validation
+3. **The generate_question function creates an MCP context** with all parameters
+4. **MCP server processes the request** by selecting the appropriate AI handler
+5. **AI handler generates the question** and performs validation if requested
+6. **Result is returned to the client** with the generated question and validation results
 
 ## Installation
 
@@ -72,10 +177,17 @@ POST /generate_question
     "platform": "Apple",
     "tech": "Swift",
     "keywords": ["ARC", "Retain Cycle"],
-    "ai": "openai",
-    "model": "gpt-4o",
-    "number": 1,
-    "validation": true
+    "validation": true,
+    "ai_config": {
+        "ai": "openai",
+        "model": "gpt-4o-mini",
+        "api_key": "your_api_key_here"
+    },
+    "validation_ai_config": {
+        "ai": "openai",
+        "model": "gpt-3.5-turbo",
+        "api_key": "your_api_key_here"
+    }
 }
 ```
 #### Headers:
@@ -227,6 +339,14 @@ Validation information is now displayed in a collapsible section that:
 - Shows a summary of validation status and quality score by default
 - Can be expanded to view detailed validation comments
 - Uses color-coding to indicate validation status (passed, failed, or skipped)
+- Displays only failed validation checks for cleaner interface
+- Presents validation comments in a collapsible card similar to evaluation criteria
+
+#### Enhanced Code Syntax Highlighting
+The system now provides improved code syntax highlighting with:
+- Support for additional languages including Metal and OpenGL
+- Automatic closing of code blocks if missing closing backticks
+- Multiple initialization attempts to ensure proper highlighting even with delayed content loading
 
 #### Token Usage Display
 The interface now displays token usage information for each question, showing:

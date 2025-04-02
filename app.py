@@ -1,7 +1,7 @@
 import json
 from flask import Flask, request, jsonify, render_template
-from models.mcp_server import MCPServer, MCPContext, ModelType
-from models.openai_model import OpenAIAgent
+from models.mcp_server import MCPServer, MCPContext, AIConfig, ModelType
+from models.openai_agent import OpenAIAgent
 from dotenv import load_dotenv
 import os
 import logging
@@ -27,31 +27,20 @@ def get_api_key_from_header():
         raise ValueError("Missing or invalid Authorization header. Use Bearer token.")
     return auth_header[7:]  # Remove 'Bearer ' prefix
 
-def generate_question(ai, model, topic, platform, api_key, tech=None, keywords=None, number=1, validation=True):
-    logger.info(f"Generating question with parameters: ai={ai}, model={model}, topic={topic}, platform={platform}, keywords={keywords}")
-    logger.info(f"API key length: {len(api_key) if api_key else 0}")
+def generate_question(topic, platform, ai_config, tech=None, keywords=None, validation=True, validation_ai_config=None):
+    logger.info(f"Generating question with parameters: topic={topic}, platform={platform}, keywords={keywords}")
+    logger.info(f"AI config: {ai_config.model_type}, {ai_config.model_name}")
     
     try:
-        # Convert AI provider to ModelType
-        try:
-            model_type = ModelType(ai)
-            logger.info(f"Converted AI provider to ModelType: {model_type}")
-        except ValueError:
-            error_msg = f"Unsupported AI model '{ai}'. Please use 'openai', 'google', or 'deepseek'."
-            logger.error(error_msg)
-            return {"error": error_msg}
-
-        # Set up the context
+        # Set up the context for generation
         context = MCPContext(
-            model_type=model_type,
-            model_name=model,
+            ai_config=ai_config,
             topic=topic,
             platform=platform,
-            api_key=api_key,
             tech=tech,
             keywords=keywords,
-            number=number,
-            validation=validation
+            validation=validation,
+            validation_ai_config=validation_ai_config
         )
         
         # Process the request through MCP, passing the context directly
@@ -96,11 +85,12 @@ def api_generate_question():
         platform = data.get("platform", "Apple")
         tech = data.get("tech")
         keywords = data.get("keywords", [])
+        validation = data.get("validation", True)
+        
+        # Get AI configuration
         ai = data.get("ai", "openai").lower()
         model = data.get("model")
-        number = data.get("number", 1)
-        validation = data.get("validation", True)
-
+        
         # Get API key from header or environment
         api_key = None
         try:
@@ -116,8 +106,7 @@ def api_generate_question():
             if env_key:
                 api_key = os.environ.get(env_key)
 
-        logger.info(f"Parsed parameters: topic={topic}, platform={platform}, ai={ai}, model={model}, keywords={keywords}")
-
+        # Basic validation
         if not topic:
             logger.error("Topic is required")
             return jsonify({"error": "Topic is required."})
@@ -130,7 +119,7 @@ def api_generate_question():
 
         DEFAULT_MODELS = {
             "google": "gemini-pro",
-            "openai": "gpt-4o",
+            "openai": "gpt-4o-mini",
             "deepseek": "deepseek-chat"
         }
 
@@ -152,11 +141,77 @@ def api_generate_question():
             error_msg = "API key is required. Either set it in environment variables or provide via Authorization header."
             logger.error(error_msg)
             return jsonify({"error": error_msg})
+            
+        # Create AI config
+        try:
+            model_type = ModelType(ai)
+            logger.info(f"Converted AI provider to ModelType: {model_type}")
+            
+            # Check if custom ai_config is provided
+            ai_config_data = data.get("ai_config")
+            if ai_config_data:
+                logger.info(f"Custom AI config provided: {json.dumps(ai_config_data, indent=2)}")
+                custom_ai = ai_config_data.get("ai", ai)
+                custom_model = ai_config_data.get("model")
+                custom_api_key = ai_config_data.get("api_key")
+                
+                if custom_ai and custom_ai != ai:
+                    try:
+                        model_type = ModelType(custom_ai)
+                    except ValueError:
+                        error_msg = f"Unsupported AI model '{custom_ai}' in ai_config."
+                        logger.error(error_msg)
+                        return jsonify({"error": error_msg})
+                
+                if custom_model:
+                    model = custom_model
+                
+                if custom_api_key:
+                    api_key = custom_api_key
+            
+            ai_config = AIConfig(
+                model_type=model_type,
+                model_name=model,
+                api_key=api_key
+            )
+        except ValueError as e:
+            error_msg = f"Error creating AI config: {str(e)}"
+            logger.error(error_msg)
+            return jsonify({"error": error_msg})
+            
+        # Create validation AI config if provided
+        validation_ai_config = None
+        validation_data = data.get("validation_ai_config")
+        if validation_data:
+            logger.info(f"Validation AI config provided: {json.dumps(validation_data, indent=2)}")
+            try:
+                validation_ai = validation_data.get("ai", ai)
+                validation_model = validation_data.get("model", model)
+                validation_api_key = validation_data.get("api_key", api_key)
+                
+                validation_model_type = model_type
+                if validation_ai and validation_ai != ai:
+                    try:
+                        validation_model_type = ModelType(validation_ai)
+                    except ValueError:
+                        error_msg = f"Unsupported AI model '{validation_ai}' in validation_ai_config."
+                        logger.error(error_msg)
+                        return jsonify({"error": error_msg})
+                
+                validation_ai_config = AIConfig(
+                    model_type=validation_model_type,
+                    model_name=validation_model,
+                    api_key=validation_api_key
+                )
+            except ValueError as e:
+                error_msg = f"Error creating validation AI config: {str(e)}"
+                logger.error(error_msg)
+                return jsonify({"error": error_msg})
 
         logger.info("Calling generate_question")
         try:
             logger.info("Calling generate_question function")
-            result = generate_question(ai, model, topic, platform, api_key, tech, keywords, number, validation)
+            result = generate_question(topic, platform, ai_config, tech, keywords, validation, validation_ai_config)
             logger.info(f"Generated result: {json.dumps(result, indent=2)}")
             
             # Check if result contains error
@@ -284,6 +339,8 @@ def api_check_env_key(provider):
     except Exception as e:
         logger.error(f"Error in api_check_env_key: {str(e)}", exc_info=True)
         return jsonify({"exists": False, "error": str(e)}), 500
+
+
 
 if __name__ == "__main__":
     logger.info("Starting Flask application")

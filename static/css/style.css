@@ -118,6 +118,57 @@ rjkb
     margin-top: 5px;
 }
 
+.validation-comments pre,
+.validation-comments-content pre {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    background-color: #f5f5f5;
+    padding: 10px;
+    overflow-x: auto;
+    max-width: 100%;
+    white-space: pre-wrap;
+}
+
+.validation-comments pre code,
+.validation-comments-content pre code {
+    font-family: monospace;
+    font-size: 0.9em;
+    display: block;
+    width: 100%;
+}
+
+.validation-details {
+    padding: 15px;
+}
+
+.validation-list {
+    margin-bottom: 15px;
+    padding-left: 20px;
+}
+
+.validation-list li {
+    margin-bottom: 5px;
+    position: relative;
+    padding-left: 25px;
+}
+
+.validation-list li.passed:before {
+    content: '✓';
+    color: #28a745;
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+}
+
+.validation-list li.failed:before {
+    content: '✗';
+    color: #dc3545;
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+}
+
 /* Processing time and token usage info styling */
 .processing-time-info, .token-usage-info {
     display: flex;
