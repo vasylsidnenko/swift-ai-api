@@ -1,5 +1,5 @@
-Пиши коментарі у коді англійськомю мовою.
-Запускай сервер на 10000 порту та прибирай попередній запущений там автоматично, кожного разу.
-Показуй логи сервера.
-Показуй вікно запущеного сервера.
-Описуй всі зміни у README.md.
+Write comments in the code in English.
+Run the server on port 10000 and automatically terminate any previously running server on that port.
+Show server logs.
+Display the running server window.
+Document all changes in README.md.
