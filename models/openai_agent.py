@@ -304,6 +304,9 @@ class OpenAIAgent:
                 result="FAIL"
             )
         
+        # Check test answers and log them for debugging
+        self._check_answers_correspond_to_options(question)
+        
         # Prepare the validation prompt with the question data
         validation_prompt = f"""
         Please validate the following programming question and provide detailed feedback.
@@ -528,6 +531,62 @@ class OpenAIAgent:
             comments=comments,
             result=result
         )
+    
+    def _check_answers_correspond_to_options(self, question: QuestionModel) -> bool:
+        """
+        Check if all test answers correspond to valid option numbers.
+        Also logs the answers and options for debugging.
+        
+        Args:
+            question: The question model to check
+            
+        Returns:
+            True if all answers correspond to valid options, False otherwise
+        """
+        # Log all tests, their options and answers for debugging
+        logger.info("Checking if test answers correspond to valid options")
+        
+        # Check beginner level tests
+        logger.info("Beginner level tests:")
+        beginner_valid = True
+        for i, test in enumerate(question.answerLevels.beginer.tests):
+            logger.info(f"Test {i+1} answer: '{test.answer}', options count: {len(test.options)}")
+            logger.info(f"Options: {test.options}")
+            
+            # Check if answer is a digit and within range
+            is_valid = test.answer.isdigit() and 1 <= int(test.answer) <= len(test.options)
+            if not is_valid:
+                logger.warning(f"Invalid answer in beginner test {i+1}: '{test.answer}'")
+                beginner_valid = False
+        
+        # Check intermediate level tests
+        logger.info("Intermediate level tests:")
+        intermediate_valid = True
+        for i, test in enumerate(question.answerLevels.intermediate.tests):
+            logger.info(f"Test {i+1} answer: '{test.answer}', options count: {len(test.options)}")
+            logger.info(f"Options: {test.options}")
+            
+            # Check if answer is a digit and within range
+            is_valid = test.answer.isdigit() and 1 <= int(test.answer) <= len(test.options)
+            if not is_valid:
+                logger.warning(f"Invalid answer in intermediate test {i+1}: '{test.answer}'")
+                intermediate_valid = False
+        
+        # Check advanced level tests
+        logger.info("Advanced level tests:")
+        advanced_valid = True
+        for i, test in enumerate(question.answerLevels.advanced.tests):
+            logger.info(f"Test {i+1} answer: '{test.answer}', options count: {len(test.options)}")
+            logger.info(f"Options: {test.options}")
+            
+            # Check if answer is a digit and within range
+            is_valid = test.answer.isdigit() and 1 <= int(test.answer) <= len(test.options)
+            if not is_valid:
+                logger.warning(f"Invalid answer in advanced test {i+1}: '{test.answer}'")
+                advanced_valid = False
+        
+        # Return True only if all levels have valid answers
+        return beginner_valid and intermediate_valid and advanced_valid
     
     def _calculate_quality_score(self, question: QuestionModel) -> int:
         """

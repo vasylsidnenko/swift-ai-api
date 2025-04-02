@@ -3,3 +3,4 @@ Run the server on port 10000 and automatically terminate any previously running 
 Show server logs.
 Display the running server window.
 Document all changes in README.md.
+Use Python3 in command line

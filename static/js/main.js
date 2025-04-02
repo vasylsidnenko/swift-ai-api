@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        // Показуємо індикатор завантаження одразу після натискання кнопки
+        // Show loading indicator immediately after button click
         resultDiv.innerHTML = `
             <div class="loading-container">
                 <div class="spinner-border text-primary" role="status">
@@ -378,21 +378,24 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatCode(text) {
         if (!text) return '';
         
-        // Обробка тексту для форматування блоків коду
+        // Handle text for code block formatting
         let formattedText = text;
         
-        // Перевіряємо, чи є відкриваючі потрійні апострофи без закриваючих
+        // Debug log for code formatting
+        console.log('Formatting code with syntax highlighting');
+        
+        // Check for opening triple backticks without closing
         const openingBackticksCount = (formattedText.match(/```([a-zA-Z0-9_\-+#]*)/g) || []).length;
         const closingBackticksCount = (formattedText.match(/```\s*$/gm) || []).length;
         
         console.log(`Opening backticks: ${openingBackticksCount}, Closing backticks: ${closingBackticksCount}`);
         
-        // Якщо є відкриваючі потрійні апострофи без закриваючих, додаємо закриваючі
+        // If there are opening triple backticks without closing, add closing
         if (openingBackticksCount > closingBackticksCount) {
-            // Знаходимо всі відкриваючі потрійні апострофи
+            // Find all opening triple backticks
             const codeBlocks = formattedText.match(/```([a-zA-Z0-9_\-+#]*)\n?([\s\S]*?)(?=(```|$))/gi) || [];
             
-            // Додаємо закриваючі потрійні апострофи до кожного блоку, якщо їх немає
+            // Add closing triple backticks to each block if they are missing
             codeBlocks.forEach(block => {
                 if (!block.endsWith('```')) {
                     const newBlock = block + '\n```';
@@ -401,19 +404,46 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        // Спочатку обробляємо блоки коду з потрійними зворотними апострофами
+        // Map of common language identifiers to their Prism.js language classes
+        const languageMap = {
+            'objective-c': 'language-objectivec',
+            'objc': 'language-objectivec',
+            'obj-c': 'language-objectivec',
+            'objective c': 'language-objectivec',
+            'objectivec': 'language-objectivec',
+            'swift': 'language-swift',
+            'c': 'language-c',
+            'c++': 'language-cpp',
+            'cpp': 'language-cpp',
+            'java': 'language-java',
+            'kotlin': 'language-kotlin',
+            'js': 'language-javascript',
+            'javascript': 'language-javascript',
+            'python': 'language-python',
+            'py': 'language-python',
+            'bash': 'language-bash',
+            'sh': 'language-bash',
+            'shell': 'language-bash',
+            'json': 'language-json',
+            'xml': 'language-xml',
+            'html': 'language-html',
+            'css': 'language-css'
+        };
+        
+        // First process code blocks with triple backticks
         formattedText = formattedText.replace(/```([a-zA-Z0-9_\-+#]*)\n?([\s\S]*?)```/gi, (match, lang, code) => {
-            // Видаляємо зайві пробіли та переноси рядків
+            // Remove extra spaces and line breaks
             const cleanCode = code.trim();
             
-            // За замовчуванням використовуємо plaintext, якщо мова не вказана
+            // Default to plaintext if language is not specified
             let langClass = 'language-plaintext';
             
             if (lang) {
-                // Нормалізуємо назву мови та відображаємо на відповідний клас
+                // Normalize language name and map to Prism.js class
                 const normalizedLang = lang.toLowerCase().trim();
+                console.log(`Detected code block with language: '${normalizedLang}'`);
                 
-                // Карта ідентифікаторів мов для Prism.js
+                // Map language identifiers for Prism.js
                 const languageMap = {
                     // Apple platforms
                     'swift': 'language-swift',
@@ -423,8 +453,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     'c': 'language-c',
                     'cpp': 'language-cpp',
                     'c++': 'language-cpp',
-                    'metal': 'language-cpp', // Metal використовує синтаксис C++
-                    'opengl': 'language-glsl', // OpenGL використовує GLSL
+                    'metal': 'language-cpp', // Metal uses C++ syntax
+                    'opengl': 'language-glsl', // OpenGL uses GLSL
                     
                     // Android platforms
                     'java': 'language-java',
@@ -464,28 +494,37 @@ document.addEventListener('DOMContentLoaded', function() {
                     'ps': 'language-powershell',
                 };
                 
-                // Використовуємо відображений клас мови, якщо доступний, інакше використовуємо нормалізовану мову
+                // Use displayed language class if available, otherwise use normalized language
                 langClass = languageMap[normalizedLang] || `language-${normalizedLang}`;
+            console.log(`Using language class: ${langClass} for code block`);
             }
             
-            return `<pre class="line-numbers ${langClass}"><code>${cleanCode}</code></pre>`;
+            // Ensure code is properly escaped for HTML and preserves line breaks
+            const escapedCode = cleanCode
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+            
+            return `<pre class="line-numbers ${langClass}"><code>${escapedCode}</code></pre>`;
         });
         
-        // Додаткова обробка для випадків, коли код не обгорнутий в потрійні зворотні апострофи,
-        // але містить однорядкові блоки коду з назвою мови (наприклад, "swift let counter = 0")
+        //  Additional handling for cases where code is not wrapped in triple backticks,
+        // but contains single-line code blocks with language names (e.g., "swift let counter = 0")
         const codePatterns = [
-            // Шаблон для Swift
+            // Template for Swift
             { pattern: /\b(swift)\s+([^\n]+)/gi, lang: 'swift' },
-            // Шаблон для Objective-C
+            // Template for Objective-C
             { pattern: /\b(objc|objective-c|objectivec)\s+([^\n]+)/gi, lang: 'objectivec' },
-            // Шаблон для Java
+            // Template for Java
             { pattern: /\b(java)\s+([^\n]+)/gi, lang: 'java' },
-            // Шаблон для Kotlin
+            // Template for Kotlin
             { pattern: /\b(kotlin)\s+([^\n]+)/gi, lang: 'kotlin' },
-            // Додайте інші мови за потреби
+            // Add other languages as needed
         ];
         
-        // Застосовуємо шаблони для виявлення та форматування однорядкових блоків коду
+        // Apply templates for detecting and formatting single-line code blocks
         codePatterns.forEach(({ pattern, lang }) => {
             formattedText = formattedText.replace(pattern, (match, langName, code) => {
                 const languageMap = {
@@ -498,7 +537,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 
                 const langClass = languageMap[langName.toLowerCase()] || `language-${langName.toLowerCase()}`;
-                return `<pre class="line-numbers ${langClass}"><code>${code.trim()}</code></pre>`;
+                // Ensure code is properly escaped for HTML
+                const escapedCode = code.trim()
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+                
+                return `<pre class="line-numbers ${langClass}"><code>${escapedCode}</code></pre>`;
             });
         });
         
@@ -519,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Validation data in result:', result[0].validation_result);
             
             const html = formatSingleQuestion(result[0]);
-            // Ініціалізація Prism.js після вставки контенту
+            // Initialize Prism.js after content insertion
             setTimeout(() => {
                 if (window.Prism) {
                     Prism.highlightAll();
@@ -569,7 +616,7 @@ document.addEventListener('DOMContentLoaded', function() {
         tabsHtml += `</ul>`;
         tabContentHtml += `</div>`;
 
-        // Ініціалізація Prism.js після вставки контенту
+        // Initialize Prism.js after content insertion
         setTimeout(() => {
             if (window.Prism) {
                 Prism.highlightAll();
@@ -582,14 +629,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatSingleQuestion(question) {
         console.log('Formatting question:', question);
         
-        // Додати блок валідації на початку відповіді
+        // Add validation block at the beginning of the response
         let validationHtml = '';
         
-        // Перевіряємо наявність даних валідації
+        // Check for validation data
         if (question.validation_result) {
             console.log('Found validation_result at top level:', question.validation_result);
             
-            // Створюємо блок валідації одразу
+            // Create validation block
             const validationData = question.validation_result;
             const validation = validationData.validation || {};
             
@@ -612,22 +659,22 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="card card-body validation-details ${validationClass}">
                                 <h5>Validation Results</h5>
                                 <ul class="validation-list">
-                                    ${validation.is_text_clear !== true ? `<li class="failed">Question text is clear and specific</li>` : ''}
-                                    ${validation.is_question_correspond !== true ? `<li class="failed">Question corresponds to topic and tags</li>` : ''}
-                                    ${validation.is_question_not_trivial !== true ? `<li class="failed">Question is challenging enough</li>` : ''}
-                                    ${validation.do_answer_levels_exist !== true ? `<li class="failed">All three difficulty levels exist</li>` : ''}
-                                    ${validation.are_answer_levels_valid !== true ? `<li class="failed">Answer levels are valid</li>` : ''}
-                                    ${validation.has_evaluation_criteria !== true ? `<li class="failed">Each level has evaluation criteria</li>` : ''}
-                                    ${validation.are_answer_levels_different !== true ? `<li class="failed">Answer levels are sufficiently different</li>` : ''}
-                                    ${validation.do_tests_exist !== true ? `<li class="failed">Each level has tests</li>` : ''}
-                                    ${validation.do_tags_exist !== true ? `<li class="failed">Question has appropriate tags</li>` : ''}
-                                    ${validation.do_test_options_exist !== true ? `<li class="failed">All tests have more than 2 options</li>` : ''}
-                                    ${validation.is_question_text_different_from_existing_questions !== true ? `<li class="failed">Question text is original</li>` : ''}
-                                    ${validation.are_test_options_numbered !== true ? `<li class="failed">Test options are properly numbered</li>` : ''}
-                                    ${validation.does_answer_contain_option_number !== true ? `<li class="failed">Test answers correspond to valid options</li>` : ''}
-                                    ${validation.are_code_blocks_marked_if_they_exist !== true ? `<li class="failed">Code blocks are properly formatted</li>` : ''}
-                                    ${validation.does_snippet_have_question !== true ? `<li class="failed">Each test snippet has a question</li>` : ''}
-                                    ${validation.does_snippet_have_code !== true ? `<li class="failed">Each test snippet has code</li>` : ''}
+                                    ${validation.is_text_clear === false ? `<li class="failed">Question text is clear and specific</li>` : ''}
+                                    ${validation.is_question_correspond === false ? `<li class="failed">Question corresponds to topic and tags</li>` : ''}
+                                    ${validation.is_question_not_trivial === false ? `<li class="failed">Question is challenging enough</li>` : ''}
+                                    ${validation.do_answer_levels_exist === false ? `<li class="failed">All three difficulty levels exist</li>` : ''}
+                                    ${validation.are_answer_levels_valid === false ? `<li class="failed">Answer levels are valid</li>` : ''}
+                                    ${validation.has_evaluation_criteria === false ? `<li class="failed">Each level has evaluation criteria</li>` : ''}
+                                    ${validation.are_answer_levels_different === false ? `<li class="failed">Answer levels are sufficiently different</li>` : ''}
+                                    ${validation.do_tests_exist === false ? `<li class="failed">Each level has tests</li>` : ''}
+                                    ${validation.do_tags_exist === false ? `<li class="failed">Question has appropriate tags</li>` : ''}
+                                    ${validation.do_test_options_exist === false ? `<li class="failed">All tests have more than 2 options</li>` : ''}
+                                    ${validation.is_question_text_different_from_existing_questions === false ? `<li class="failed">Question text is original</li>` : ''}
+                                    ${validation.are_test_options_numbered === false ? `<li class="failed">Test options are properly numbered</li>` : ''}
+                                    ${validation.does_answer_contain_option_number === false ? `<li class="failed">Test answers correspond to valid options</li>` : ''}
+                                    ${validation.are_code_blocks_marked_if_they_exist === false ? `<li class="failed">Code blocks are properly formatted</li>` : ''}
+                                    ${validation.does_snippet_have_question === false ? `<li class="failed">Each test snippet has a question</li>` : ''}
+                                    ${validation.does_snippet_have_code === false ? `<li class="failed">Each test snippet has code</li>` : ''}
                                     ${isPassed ? `<li class="passed">All validation checks passed!</li>` : ''}
                                 </ul>
                                 
@@ -653,7 +700,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (question.question) {
             // If we have a nested question object, use that
             const nestedResult = formatSingleQuestion(question.question);
-            // Додаємо блок валідації на початку відповіді
+            // Add validation block at the beginning of the response
             return validationHtml + nestedResult;
         }
         
@@ -662,17 +709,13 @@ document.addEventListener('DOMContentLoaded', function() {
             return '<div class="alert alert-danger">Invalid question format. Please check the console for details.</div>';
         }
         
-        // Цей блок вже оброблено на початку функції
-        // Додаткова обробка для зворотної сумісності
-        let additionalValidationHtml = '';
-        
         // Check for validation in both old and new formats
         const validationData = question.validation_result || question.validation;
         
         console.log('Question object:', question);
         console.log('Looking for validation data in:', question.validation_result, question.validation);
         
-        // Завжди показувати блок валідації, якщо є дані валідації
+        // Always show validation block if validation data is present
         if (validationData) {
             console.log('Validation data found:', validationData);
             
@@ -684,68 +727,9 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Validation result:', validationData.result);
             console.log('Validation data structure:', JSON.stringify(validationData, null, 2));
             
-            // Перевіряємо наявність необхідних полів
+            // Check for presence of required fields
             const hasValidationFields = validation && (typeof validation === 'object');
             console.log('Has validation fields:', hasValidationFields);
-            
-            // Цей код більше не використовується, оскільки блок валідації вже створено на початку функції
-            // Цей блок вже не потрібен, оскільки валідація обробляється на початку функції
-            if (false) {
-                // Цей код ніколи не виконається, але залишаємо для зворотної сумісності
-                const validationId = `validation-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-                const validationResult = validationData.result || '';
-                const isPassed = (validationResult === 'PASS' || validation.passed);
-                const validationClass = isPassed ? 'validation-passed' : 'validation-failed';
-                const score = validation.quality_score || 0;
-                const statusIcon = isPassed ? 'check-circle' : 'exclamation-triangle';
-                const statusText = isPassed ? 'Validation Passed' : 'Validation Failed';
-                
-                // Цей код ніколи не виконається
-                additionalValidationHtml = `
-                    <div class="validation-container">
-                        <button class="btn btn-sm btn-outline-secondary validation-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#${validationId}" aria-expanded="false">
-                            <i class="bi bi-${statusIcon}"></i> ${statusText} - Quality Score: ${score}/10
-                            <i class="bi bi-chevron-down ms-2"></i>
-                        </button>
-                        <div class="collapse" id="${validationId}">
-                            <div class="card card-body validation-details ${validationClass}">
-                                <h5>Validation Results</h5>
-                                <ul class="validation-list">
-                                    ${validation.is_text_clear !== true ? `<li class="failed">Question text is clear and specific</li>` : ''}
-                                    ${validation.is_question_correspond !== true ? `<li class="failed">Question corresponds to topic and tags</li>` : ''}
-                                    ${validation.is_question_not_trivial !== true ? `<li class="failed">Question is challenging enough</li>` : ''}
-                                    ${validation.do_answer_levels_exist !== true ? `<li class="failed">All three difficulty levels exist</li>` : ''}
-                                    ${validation.are_answer_levels_valid !== true ? `<li class="failed">Answer levels are valid</li>` : ''}
-                                    ${validation.has_evaluation_criteria !== true ? `<li class="failed">Each level has evaluation criteria</li>` : ''}
-                                    ${validation.are_answer_levels_different !== true ? `<li class="failed">Answer levels are sufficiently different</li>` : ''}
-                                    ${validation.do_tests_exist !== true ? `<li class="failed">Each level has tests</li>` : ''}
-                                    ${validation.do_tags_exist !== true ? `<li class="failed">Question has appropriate tags</li>` : ''}
-                                    ${validation.do_test_options_exist !== true ? `<li class="failed">All tests have more than 2 options</li>` : ''}
-                                    ${validation.is_question_text_different_from_existing_questions !== true ? `<li class="failed">Question text is original</li>` : ''}
-                                    ${validation.are_test_options_numbered !== true ? `<li class="failed">Test options are properly numbered</li>` : ''}
-                                    ${validation.does_answer_contain_option_number !== true ? `<li class="failed">Test answers correspond to valid options</li>` : ''}
-                                    ${validation.are_code_blocks_marked_if_they_exist !== true ? `<li class="failed">Code blocks are properly formatted</li>` : ''}
-                                    ${validation.does_snippet_have_question !== true ? `<li class="failed">Each test snippet has a question</li>` : ''}
-                                    ${validation.does_snippet_have_code !== true ? `<li class="failed">Each test snippet has code</li>` : ''}
-                                    ${isPassed ? `<li class="passed">All validation checks passed!</li>` : ''}
-                                </ul>
-                                
-                                                <div class="validation-comments">
-                                    <button class="btn btn-sm btn-outline-primary criteria-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#validationComments-${validationId}" aria-expanded="false">
-                                        <i class="bi bi-chat-left-text"></i> Validation Comments
-                                        <i class="bi bi-chevron-down ms-2"></i>
-                                    </button>
-                                    <div class="collapse" id="validationComments-${validationId}">
-                                        <div class="card card-body validation-comments-content">
-                                            ${formatCode(validationData.comments || 'No comments provided')}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
         }
         
         // Format processing time and token usage if available
@@ -783,7 +767,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return `
             <div class="question-block">
-                <div class="question-title">${formatCode(question.text) || 'No question text'}</div>
+                <div class="question-title">${window.formatQuestionText ? window.formatQuestionText(question.text) : (question.text || 'No question text')}</div>
                 <div class="question-tags">
                     ${(question.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
                 </div>
@@ -826,25 +810,25 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="collapse criteria-content" id="beginnerCriteria">
                                             <div class="card card-body criteria-card">
                                                 <h6>Evaluation Criteria:</h6>
-                                                <p>${question.answerLevels.beginer.evaluation_criteria}</p>
+                                                <p>${window.formatQuestionText ? window.formatQuestionText(question.answerLevels.beginer.evaluation_criteria) : question.answerLevels.beginer.evaluation_criteria}</p>
                                             </div>
                                         </div>
                                     </div>
                                 ` : ''}
-                                <div class="question-description">${formatCode(question.answerLevels.beginer?.answer)}</div>
+                                <div class="question-description">${window.formatQuestionText ? window.formatQuestionText(question.answerLevels.beginer?.answer) : (question.answerLevels.beginer?.answer || '')}</div>
                                 <ul class="mt-3">
                                     ${(question.answerLevels.beginer?.tests || []).map(test => `
                                         <li class="test-block">
-                                            <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                            <div class="code-snippet">${window.formatQuestionText ? window.formatQuestionText(test.snippet) : (test.snippet || '')}</div>
                                             <div class="test-options">
                                                 <ul>
                                                     ${(test.options || []).map(option => `
-                                                        <li>${option}</li>
+                                                        <li>${window.formatQuestionText ? window.formatQuestionText(option) : option}</li>
                                                     `).join('')}
                                                 </ul>
                                             </div>
                                             <div class="correct-answer">
-                                                Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                                Correct Answer: <strong>${window.formatQuestionText ? window.formatQuestionText(test.answer) : (test.answer || 'Not specified')}</strong>
                                             </div>
                                         </li>
                                     `).join('')}
@@ -863,25 +847,25 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="collapse criteria-content" id="intermediateCriteria">
                                             <div class="card card-body criteria-card">
                                                 <h6>Evaluation Criteria:</h6>
-                                                <p>${question.answerLevels.intermediate.evaluation_criteria}</p>
+                                                <p>${window.formatQuestionText ? window.formatQuestionText(question.answerLevels.intermediate.evaluation_criteria) : question.answerLevels.intermediate.evaluation_criteria}</p>
                                             </div>
                                         </div>
                                     </div>
                                 ` : ''}
-                                <div class="question-description">${formatCode(question.answerLevels.intermediate?.answer)}</div>
+                                <div class="question-description">${window.formatQuestionText ? window.formatQuestionText(question.answerLevels.intermediate?.answer) : (question.answerLevels.intermediate?.answer || '')}</div>
                                 <ul class="mt-3">
                                     ${(question.answerLevels.intermediate?.tests || []).map(test => `
                                         <li class="test-block">
-                                            <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                            <div class="code-snippet">${window.formatQuestionText ? window.formatQuestionText(test.snippet) : (test.snippet || '')}</div>
                                             <div class="test-options">
                                                 <ul>
                                                     ${(test.options || []).map(option => `
-                                                        <li>${option}</li>
+                                                        <li>${window.formatQuestionText ? window.formatQuestionText(option) : option}</li>
                                                     `).join('')}
                                                 </ul>
                                             </div>
                                             <div class="correct-answer">
-                                                Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                                Correct Answer: <strong>${window.formatQuestionText ? window.formatQuestionText(test.answer) : (test.answer || 'Not specified')}</strong>
                                             </div>
                                         </li>
                                     `).join('')}
@@ -900,25 +884,25 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="collapse criteria-content" id="advancedCriteria">
                                             <div class="card card-body criteria-card">
                                                 <h6>Evaluation Criteria:</h6>
-                                                <p>${question.answerLevels.advanced.evaluation_criteria}</p>
+                                                <p>${window.formatQuestionText ? window.formatQuestionText(question.answerLevels.advanced.evaluation_criteria) : question.answerLevels.advanced.evaluation_criteria}</p>
                                             </div>
                                         </div>
                                     </div>
                                 ` : ''}
-                                <div class="question-description">${formatCode(question.answerLevels.advanced?.answer)}</div>
+                                <div class="question-description">${window.formatQuestionText ? window.formatQuestionText(question.answerLevels.advanced?.answer) : (question.answerLevels.advanced?.answer || '')}</div>
                                 <ul class="mt-3">
                                     ${(question.answerLevels.advanced?.tests || []).map(test => `
                                         <li class="test-block">
-                                            <div class="code-snippet">${formatCode(test.snippet)}</div>
+                                            <div class="code-snippet">${window.formatQuestionText ? window.formatQuestionText(test.snippet) : (test.snippet || '')}</div>
                                             <div class="test-options">
                                                 <ul>
                                                     ${(test.options || []).map(option => `
-                                                        <li>${option}</li>
+                                                        <li>${window.formatQuestionText ? window.formatQuestionText(option) : option}</li>
                                                     `).join('')}
                                                 </ul>
                                             </div>
                                             <div class="correct-answer">
-                                                Correct Answer: <strong>${test.answer || 'Not specified'}</strong>
+                                                Correct Answer: <strong>${window.formatQuestionText ? window.formatQuestionText(test.answer) : (test.answer || 'Not specified')}</strong>
                                             </div>
                                         </li>
                                     `).join('')}
@@ -930,7 +914,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         
-        // Ініціалізація Prism.js для підсвічування коду
+        // Initialize Prism.js for syntax highlighting
         setTimeout(() => {
             if (window.Prism) {
                 console.log('Initializing Prism.js for syntax highlighting');
@@ -945,7 +929,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 100);
         
-        // Повторна ініціалізація Prism.js через 500 мс для випадків, коли контент завантажується з затримкою
+        // Re-initialize Prism.js after 500ms for cases where content is loaded with delay
         setTimeout(() => {
             if (window.Prism) {
                 try {

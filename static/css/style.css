@@ -130,6 +130,12 @@ rjkb
     white-space: pre-wrap;
 }
 
+.validation-comments-content {
+    background-color: #f0e6ff; /* Світло-фіолетовий колір як у criteria-card */
+    border-left: 4px solid #9370DB; /* Medium Purple */
+    color: #4B0082; /* Indigo */
+}
+
 .validation-comments pre code,
 .validation-comments-content pre code {
     font-family: monospace;
