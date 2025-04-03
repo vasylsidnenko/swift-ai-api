@@ -5,6 +5,7 @@ from models.openai_agent import OpenAIAgent
 from dotenv import load_dotenv
 import os
 import logging
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +20,7 @@ mcp_server = MCPServer()
 @app.route("/")
 def index():
     logger.info("Accessing index page")
-    return render_template('index.html')
+    return render_template('index.html', time=time)
 
 def get_api_key_from_header():
     auth_header = request.headers.get('Authorization')

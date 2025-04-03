@@ -112,9 +112,36 @@ document.addEventListener('DOMContentLoaded', function() {
             // We use pre and code tags to ensure proper formatting
             const formattedCode = `<pre class="line-numbers ${langClass}"><code>${escapedCode}</code></pre>`;
             
-            // Замінюємо плейсхолдер на форматований код
+            // Replace placeholder with formatted code
             processedText = processedText.replace(placeholder, formattedCode);
         }
+        
+        // Initialize Prism.js for syntax highlighting
+        setTimeout(() => {
+            if (window.Prism) {
+                console.log('Initializing Prism.js for syntax highlighting');
+                try {
+                    Prism.highlightAll();
+                    console.log('Prism.js initialization completed');
+                } catch (error) {
+                    console.error('Error initializing Prism.js:', error);
+                }
+            } else {
+                console.warn('Prism.js not available');
+            }
+        }, 100);
+        
+        // Re-initialize Prism.js after 500ms for cases where content is loaded with delay
+        setTimeout(() => {
+            if (window.Prism) {
+                try {
+                    Prism.highlightAll();
+                    console.log('Prism.js re-initialization completed');
+                } catch (error) {
+                    console.error('Error re-initializing Prism.js:', error);
+                }
+            }
+        }, 500);
         
         // Replace newlines with <br>, but only for regular text
         // Code blocks are already processed and have proper line breaks

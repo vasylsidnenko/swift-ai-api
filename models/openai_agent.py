@@ -255,14 +255,23 @@ class OpenAIAgent:
             hasattr(question.answerLevels.beginer, 'answer') and 
             hasattr(question.answerLevels.beginer, 'tests') and 
             hasattr(question.answerLevels.beginer, 'evaluation_criteria') and 
+            hasattr(question.answerLevels.beginer.tests, 'snippet') and 
+            hasattr(question.answerLevels.beginer.tests, 'options') and 
+            hasattr(question.answerLevels.beginer.tests, 'answer') and 
             hasattr(question.answerLevels.intermediate, 'name') and 
             hasattr(question.answerLevels.intermediate, 'answer') and 
             hasattr(question.answerLevels.intermediate, 'tests') and 
             hasattr(question.answerLevels.intermediate, 'evaluation_criteria') and 
+            hasattr(question.answerLevels.intermediate.tests, 'snippet') and 
+            hasattr(question.answerLevels.intermediate.tests, 'options') and 
+            hasattr(question.answerLevels.intermediate.tests, 'answer') and 
             hasattr(question.answerLevels.advanced, 'name') and 
             hasattr(question.answerLevels.advanced, 'answer') and 
             hasattr(question.answerLevels.advanced, 'tests') and 
-            hasattr(question.answerLevels.advanced, 'evaluation_criteria')
+            hasattr(question.answerLevels.advanced, 'evaluation_criteria') and
+            hasattr(question.answerLevels.advanced.tests, 'snippet') and 
+            hasattr(question.answerLevels.advanced.tests, 'options') and 
+            hasattr(question.answerLevels.advanced.tests, 'answer') 
         )
         
         if not has_required_fields:
@@ -301,7 +310,12 @@ class OpenAIAgent:
                 agent=agent,
                 validation=validation,
                 comments="The question is missing required fields. Please ensure all necessary fields are present.",
-                result="FAIL"
+                result="FAIL",
+                token_usage={
+                    "total_tokens": tokens_used,
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0
+                }
             )
         
         # Check test answers and log them for debugging
@@ -418,118 +432,74 @@ class OpenAIAgent:
                     except Exception as fallback_error:
                         logger.error(f"Failed to parse JSON response: {str(fallback_error)}")
                         raise ValueError(f"Failed to parse response as QuestionValidation: {str(fallback_error)}")
+                        
+                # Update token count from the response
+                if hasattr(response, 'usage') and hasattr(response.usage, 'total_tokens'):
+                    tokens_used += response.usage.total_tokens
+                else:
+                    # Estimate completion tokens based on the response size
+                    try:
+                        # Try different methods to serialize the validation for token counting
+                        if hasattr(validation, 'dict'):
+                            response_json = json.dumps(validation.dict())
+                        elif hasattr(validation, 'model_dump'):
+                            response_json = json.dumps(validation.model_dump())
+                        else:
+                            # Fallback to a simple string representation
+                            response_json = str(validation)
+                        
+                        completion_tokens = self.count_tokens(model, response_json)
+                        tokens_used += completion_tokens
+                    except Exception as token_error:
+                        logger.warning(f"Could not count tokens in response: {str(token_error)}")
         else:
             # If the model doesn't support JSON Schema, create a basic validation
             logger.warning(f"Model {model} does not support JSON Schema. Using basic validation.")
-            validation = QuestionValidation(
-                is_text_clear=len(question.text.strip()) > 20,
-                is_question_correspond=question.topic.name.lower() in question.text.lower() or any(tag.lower() in question.text.lower() for tag in question.tags),
-                is_question_not_trivial=len(question.text.strip()) > 100,
-                do_answer_levels_exist=True,  # We already checked this programmatically
-                are_answer_levels_valid=question.answerLevels.beginer.name == "Beginner" and 
-                                       question.answerLevels.intermediate.name == "Intermediate" and 
-                                       question.answerLevels.advanced.name == "Advanced",
-                has_evaluation_criteria=True,  # We already checked this programmatically
-                are_answer_levels_different=len(set([question.answerLevels.beginer.answer[:100], 
-                                                  question.answerLevels.intermediate.answer[:100], 
-                                                  question.answerLevels.advanced.answer[:100]])) == 3,
-                do_tests_exist=len(question.answerLevels.beginer.tests) == 3 and 
-                               len(question.answerLevels.intermediate.tests) == 3 and 
-                               len(question.answerLevels.advanced.tests) == 3,
-                do_tags_exist=len(question.tags) > 0,
-                do_test_options_exist=all(len(test.options) > 2 for test in question.answerLevels.beginer.tests) and 
-                                     all(len(test.options) > 2 for test in question.answerLevels.intermediate.tests) and 
-                                     all(len(test.options) > 2 for test in question.answerLevels.advanced.tests),
-                is_question_text_different_from_existing_questions=True,  # Hard to check programmatically
-                are_test_options_numbered=all(test.answer.isdigit() for test in question.answerLevels.beginer.tests) and 
-                                        all(test.answer.isdigit() for test in question.answerLevels.intermediate.tests) and 
-                                        all(test.answer.isdigit() for test in question.answerLevels.advanced.tests),
-                does_answer_contain_option_number=all(test.answer.isdigit() and 1 <= int(test.answer) <= len(test.options) 
-                                                   for test in question.answerLevels.beginer.tests) and 
-                                              all(test.answer.isdigit() and 1 <= int(test.answer) <= len(test.options) 
-                                                   for test in question.answerLevels.intermediate.tests) and 
-                                              all(test.answer.isdigit() and 1 <= int(test.answer) <= len(test.options) 
-                                                   for test in question.answerLevels.advanced.tests),
-                are_code_blocks_marked_if_they_exist="```" in question.text or 
-                                     "```" in question.answerLevels.beginer.answer or 
-                                     "```" in question.answerLevels.intermediate.answer or 
-                                     "```" in question.answerLevels.advanced.answer,
-                does_snippet_have_question=all(len(test.snippet) > 0 for test in question.answerLevels.beginer.tests) and 
-                                         all(len(test.snippet) > 0 for test in question.answerLevels.intermediate.tests) and 
-                                         all(len(test.snippet) > 0 for test in question.answerLevels.advanced.tests),
-                does_snippet_have_code=any("```" in test.snippet for test in question.answerLevels.beginer.tests) or 
-                                     any("```" in test.snippet for test in question.answerLevels.intermediate.tests) or 
-                                     any("```" in test.snippet for test in question.answerLevels.advanced.tests),
-                quality_score=7  # Default score when model doesn't support validation
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": validation_prompt}
+                ],
+                temperature=0.0,
+                max_tokens=2000
             )
-        
-        # Update token count from the response if available
-        if hasattr(response, 'usage') and hasattr(response.usage, 'total_tokens'):
-            tokens_used = response.usage.total_tokens
-        
+            
+            # Update token count from the response
+            if hasattr(response, 'usage') and hasattr(response.usage, 'total_tokens'):
+                tokens_used += response.usage.total_tokens
+            else:
+                # Count tokens in the completion
+                if response.choices and response.choices[0].message.content:
+                    completion_tokens = self.count_tokens(model, response.choices[0].message.content)
+                    tokens_used += completion_tokens
+                
         # Calculate time taken
         end_time = time.time()
-        time_taken = int((end_time - start_time) * 1000)  # Convert to milliseconds
+        time_taken = end_time - start_time
         
-        # Create agent model
+        # Create agent model with token usage and timing information
         agent = AgentModel(
             provider="openai",
             model=model,
-            time=time_taken,
+            time=int(time_taken * 1000),  # Convert to milliseconds
             tokens=tokens_used
         )
         
-        # Generate comments based on validation results
-        comments = "Based on the validation results, here are my comments and suggestions:\n\n"
-        comments += "Strengths:\n"
+        # Calculate quality score
+        quality_score = self._calculate_quality_score(question)
         
-        # Add strength points
-        if validation.is_text_clear:
-            comments += "- The question text is clear and specific.\n"
-        if validation.is_question_correspond:
-            comments += "- The question corresponds well to the topic and tags.\n"
-        if validation.is_question_not_trivial:
-            comments += "- The question is sufficiently challenging and not trivial.\n"
-        if validation.are_answer_levels_different:
-            comments += "- The answer levels are well-differentiated and match their difficulty levels.\n"
-        if validation.has_evaluation_criteria:
-            comments += "- Each answer level has good evaluation criteria.\n"
-        
-        comments += "\nAreas for improvement:\n"
-        
-        # Add improvement suggestions
-        if not validation.is_text_clear:
-            comments += "- Make the question text clearer and more specific.\n"
-        if not validation.is_question_correspond:
-            comments += "- Ensure the question corresponds better to the topic and tags.\n"
-        if not validation.is_question_not_trivial:
-            comments += "- Make the question more challenging and less trivial.\n"
-        if not validation.has_evaluation_criteria:
-            comments += "- Add evaluation criteria for each answer level.\n"
-        if not validation.do_tests_exist:
-            comments += "- Ensure each answer level has exactly 3 tests.\n"
-        if not validation.do_test_options_exist:
-            comments += "- Make sure all tests have more than 2 options.\n"
-        if not validation.are_test_options_numbered:
-            comments += "- Number all test options properly.\n"
-        if not validation.does_answer_contain_option_number:
-            comments += "- Ensure each test answer corresponds to a valid option number.\n"
-        if not validation.are_code_blocks_marked_if_they_exist:
-            comments += "- Format all code blocks with appropriate syntax highlighting.\n"
-        
-        # If no specific improvements needed, add a generic comment
-        if validation.quality_score >= 8 and comments.strip().endswith("Areas for improvement:"):
-            comments += "- No major issues found. The question is of high quality.\n"
-        
-        # Determine overall result
-        result = "PASS" if validation.quality_score >= 7 else "NEEDS_IMPROVEMENT"
-        
-        # Create and return the AIValidationModel
+        # Create and return the final result
         return AIValidationModel(
             agent=agent,
             validation=validation,
-            comments=comments,
-            result=result
+            comments="Validation completed successfully",
+            result="PASS" if quality_score >= 7 else "FAIL",
+            token_usage={
+                "total_tokens": tokens_used,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": tokens_used - prompt_tokens
+            }
         )
     
     def _check_answers_correspond_to_options(self, question: QuestionModel) -> bool:
@@ -794,8 +764,6 @@ For each difficulty level (Beginner, Intermediate, Advanced):
                             logger.error(f"Failed to parse JSON response: {str(fallback_error)}")
                             raise ValueError(f"Failed to parse response as QuestionModel: {str(fallback_error)}")
                 
-
-                
                 # Update token count from the response
                 if hasattr(response, 'usage') and hasattr(response.usage, 'total_tokens'):
                     tokens_used += response.usage.total_tokens
@@ -837,43 +805,27 @@ For each difficulty level (Beginner, Intermediate, Advanced):
                         completion_tokens = self.count_tokens(model, response.choices[0].message.content)
                         tokens_used += completion_tokens
                 
-                # Parse the response content as JSON
-                try:
-                    content = response.choices[0].message.content
-                    # Try to extract JSON from the response if it's wrapped in ```json or similar
-                    if '```json' in content:
-                        json_start = content.find('```json') + 7
-                        json_end = content.find('```', json_start)
-                        if json_end > json_start:
-                            content = content[json_start:json_end].strip()
-                    elif '```' in content:
-                        json_start = content.find('```') + 3
-                        json_end = content.find('```', json_start)
-                        if json_end > json_start:
-                            content = content[json_start:json_end].strip()
-                    
-                    # Parse the content as a QuestionModel
-                    question_data = json.loads(content)
-                    question = QuestionModel.parse_obj(question_data)
-                except Exception as e:
-                    logger.error(f"Failed to parse response as QuestionModel: {str(e)}")
-                    raise ValueError(f"Failed to generate a valid question: {str(e)}")
+            # Calculate time taken
+            end_time = time.time()
+            time_taken = end_time - start_time
             
-            # Calculate elapsed time
-            elapsed_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
-            
-            # Create agent model
+            # Create agent model with token usage and timing information
             agent = AgentModel(
                 provider="openai",
                 model=model,
-                time=elapsed_time,
+                time=int(time_taken * 1000),  # Convert to milliseconds
                 tokens=tokens_used
             )
             
-            # Return AIQuestionModel with agent and question
+            # Create and return the final result
             return AIQuestionModel(
+                question=question,
                 agent=agent,
-                question=question
+                token_usage={
+                    "total_tokens": tokens_used,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": tokens_used - prompt_tokens
+                }
             )
             
         except Exception as e:

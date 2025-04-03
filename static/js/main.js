@@ -406,28 +406,53 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Map of common language identifiers to their Prism.js language classes
         const languageMap = {
-            'objective-c': 'language-objectivec',
-            'objc': 'language-objectivec',
-            'obj-c': 'language-objectivec',
-            'objective c': 'language-objectivec',
-            'objectivec': 'language-objectivec',
+            // Apple platforms
             'swift': 'language-swift',
+            'objc': 'language-objectivec',
+            'objectivec': 'language-objectivec',
+            'objective-c': 'language-objectivec',
             'c': 'language-c',
-            'c++': 'language-cpp',
             'cpp': 'language-cpp',
+            'c++': 'language-cpp',
+            'metal': 'language-cpp', // Metal uses C++ syntax
+            'opengl': 'language-glsl', // OpenGL uses GLSL
+            
+            // Android platforms
             'java': 'language-java',
             'kotlin': 'language-kotlin',
+            'groovy': 'language-groovy',
+            'gradle': 'language-gradle',
+            'xml': 'language-xml',
+            
+            // Web and general
             'js': 'language-javascript',
             'javascript': 'language-javascript',
-            'python': 'language-python',
-            'py': 'language-python',
+            'ts': 'language-typescript',
+            'typescript': 'language-typescript',
+            'html': 'language-html',
+            'css': 'language-css',
+            'sass': 'language-sass',
+            'scss': 'language-scss',
+            'json': 'language-json',
+            'yaml': 'language-yaml',
+            'yml': 'language-yaml',
             'bash': 'language-bash',
             'sh': 'language-bash',
             'shell': 'language-bash',
-            'json': 'language-json',
-            'xml': 'language-xml',
-            'html': 'language-html',
-            'css': 'language-css'
+            'python': 'language-python',
+            'py': 'language-python',
+            'ruby': 'language-ruby',
+            'rb': 'language-ruby',
+            'go': 'language-go',
+            'golang': 'language-go',
+            'rust': 'language-rust',
+            'php': 'language-php',
+            'sql': 'language-sql',
+            'csharp': 'language-csharp',
+            'cs': 'language-csharp',
+            'dart': 'language-dart',
+            'powershell': 'language-powershell',
+            'ps': 'language-powershell'
         };
         
         // First process code blocks with triple backticks
@@ -443,60 +468,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const normalizedLang = lang.toLowerCase().trim();
                 console.log(`Detected code block with language: '${normalizedLang}'`);
                 
-                // Map language identifiers for Prism.js
-                const languageMap = {
-                    // Apple platforms
-                    'swift': 'language-swift',
-                    'objc': 'language-objectivec',
-                    'objectivec': 'language-objectivec',
-                    'objective-c': 'language-objectivec',
-                    'c': 'language-c',
-                    'cpp': 'language-cpp',
-                    'c++': 'language-cpp',
-                    'metal': 'language-cpp', // Metal uses C++ syntax
-                    'opengl': 'language-glsl', // OpenGL uses GLSL
-                    
-                    // Android platforms
-                    'java': 'language-java',
-                    'kotlin': 'language-kotlin',
-                    'groovy': 'language-groovy',
-                    'gradle': 'language-gradle',
-                    'xml': 'language-xml',
-                    
-                    // Web and general
-                    'js': 'language-javascript',
-                    'javascript': 'language-javascript',
-                    'ts': 'language-typescript',
-                    'typescript': 'language-typescript',
-                    'html': 'language-html',
-                    'css': 'language-css',
-                    'sass': 'language-sass',
-                    'scss': 'language-scss',
-                    'json': 'language-json',
-                    'yaml': 'language-yaml',
-                    'yml': 'language-yaml',
-                    'bash': 'language-bash',
-                    'sh': 'language-bash',
-                    'shell': 'language-bash',
-                    'python': 'language-python',
-                    'py': 'language-python',
-                    'ruby': 'language-ruby',
-                    'rb': 'language-ruby',
-                    'go': 'language-go',
-                    'golang': 'language-go',
-                    'rust': 'language-rust',
-                    'php': 'language-php',
-                    'sql': 'language-sql',
-                    'csharp': 'language-csharp',
-                    'cs': 'language-csharp',
-                    'dart': 'language-dart',
-                    'powershell': 'language-powershell',
-                    'ps': 'language-powershell',
-                };
-                
                 // Use displayed language class if available, otherwise use normalized language
                 langClass = languageMap[normalizedLang] || `language-${normalizedLang}`;
-            console.log(`Using language class: ${langClass} for code block`);
+                console.log(`Using language class: ${langClass} for code block`);
             }
             
             // Ensure code is properly escaped for HTML and preserves line breaks
@@ -527,16 +501,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Apply templates for detecting and formatting single-line code blocks
         codePatterns.forEach(({ pattern, lang }) => {
             formattedText = formattedText.replace(pattern, (match, langName, code) => {
-                const languageMap = {
-                    'swift': 'language-swift',
-                    'objc': 'language-objectivec',
-                    'objective-c': 'language-objectivec',
-                    'objectivec': 'language-objectivec',
-                    'java': 'language-java',
-                    'kotlin': 'language-kotlin'
-                };
+                const normalizedLang = langName.toLowerCase();
+                const langClass = languageMap[normalizedLang] || `language-${normalizedLang}`;
                 
-                const langClass = languageMap[langName.toLowerCase()] || `language-${langName.toLowerCase()}`;
                 // Ensure code is properly escaped for HTML
                 const escapedCode = code.trim()
                     .replace(/&/g, '&amp;')
@@ -649,15 +616,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 const statusIcon = isPassed ? 'check-circle' : 'exclamation-triangle';
                 const statusText = isPassed ? 'Validation Passed' : 'Validation Failed';
                 
+                // Додаємо інформацію про токени та час
+                const tokenUsage = question.token_usage || {};
+                const totalTokens = tokenUsage.total_tokens || 0;
+                const promptTokens = tokenUsage.prompt_tokens || 0;
+                const completionTokens = tokenUsage.completion_tokens || 0;
+                const processingTime = question.agent?.time || 0;
+                const totalRequestTime = question.agent?.time ? (question.agent.time / 1000).toFixed(2) : 0;
+                
                 validationHtml = `
                     <div class="validation-container">
                         <button class="btn btn-sm btn-outline-secondary validation-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#${validationId}" aria-expanded="false">
                             <i class="bi bi-${statusIcon}"></i> ${statusText} - Quality Score: ${score}/10
+                            ${totalTokens > 0 ? `<span class="token-info"><i class="bi bi-cpu"></i> ${totalTokens} tokens</span>` : ''}
+                            ${totalRequestTime > 0 ? `<span class="time-info"><i class="bi bi-hourglass-split"></i> ${totalRequestTime}s</span>` : ''}
                             <i class="bi bi-chevron-down ms-2"></i>
                         </button>
                         <div class="collapse" id="${validationId}">
                             <div class="card card-body validation-details ${validationClass}">
                                 <h5>Validation Results</h5>
+                                ${totalTokens > 0 ? `
+                                    <div class="token-details-section">
+                                        <h6>Token Usage</h6>
+                                        <ul>
+                                            <li>Total Tokens: ${totalTokens}</li>
+                                            <li>Prompt Tokens: ${promptTokens}</li>
+                                            <li>Completion Tokens: ${completionTokens}</li>
+                                        </ul>
+                                    </div>
+                                ` : ''}
+                                ${processingTime > 0 || totalRequestTime > 0 ? `
+                                    <div class="time-details-section">
+                                        <h6>Processing Time</h6>
+                                        <ul>
+                                            ${processingTime > 0 ? `<li>Processing Time: ${processingTime}s</li>` : ''}
+                                            ${totalRequestTime > 0 ? `<li>Total Request Time: ${totalRequestTime}s</li>` : ''}
+                                        </ul>
+                                    </div>
+                                ` : ''}
                                 <ul class="validation-list">
                                     ${validation.is_text_clear === false ? `<li class="failed">Question text is clear and specific</li>` : ''}
                                     ${validation.is_question_correspond === false ? `<li class="failed">Question corresponds to topic and tags</li>` : ''}

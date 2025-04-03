@@ -79,9 +79,20 @@ rjkb
     text-align: left;
     border-color: #ced4da;
     background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
-.validation-toggle i {
+.validation-toggle .token-info,
+.validation-toggle .time-info {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-left: 15px;
+}
+
+.validation-toggle .token-info i,
+.validation-toggle .time-info i {
     margin-right: 5px;
 }
 
@@ -665,4 +676,134 @@ pre[class*="language-"] {
     margin-bottom: 1em;
     border-bottom: 1px solid #e9ecef;
     padding-bottom: 1em;
+}
+
+.language-objectivec {
+    color: #333;
+}
+
+.language-objectivec .token.comment {
+    color: #6a9955;
+}
+
+.language-objectivec .token.string {
+    color: #ce9178;
+}
+
+.language-objectivec .token.keyword {
+    color: #569cd6;
+}
+
+.language-objectivec .token.function {
+    color: #dcdcaa;
+}
+
+.language-objectivec .token.class-name {
+    color: #4ec9b0;
+}
+
+.language-objectivec .token.variable {
+    color: #9cdcfe;
+}
+
+.language-objectivec .token.property {
+    color: #b5cea8;
+}
+
+.language-objectivec .token.number {
+    color: #b5cea8;
+}
+
+.language-objectivec .token.operator {
+    color: #d4d4d4;
+}
+
+.language-objectivec .token.punctuation {
+    color: #d4d4d4;
+}
+
+.language-objectivec .token.selector {
+    color: #ce9178;
+}
+
+.language-objectivec .token.parameter {
+    color: #9cdcfe;
+}
+
+.language-objectivec .token.builtin {
+    color: #ce9178;
+}
+
+.language-objectivec .token.constant {
+    color: #b5cea8;
+}
+
+.language-objectivec .token.symbol {
+    color: #b5cea8;
+}
+
+.language-objectivec .token.boolean {
+    color: #b5cea8;
+}
+
+.language-objectivec .token.tag {
+    color: #b5cea8;
+}
+
+.language-objectivec .token.attr-name {
+    color: #9cdcfe;
+}
+
+.language-objectivec .token.attr-value {
+    color: #ce9178;
+}
+
+.language-objectivec .token.entity {
+    color: #d4d4d4;
+}
+
+.language-objectivec .token.url {
+    color: #d4d4d4;
+}
+
+.language-objectivec .token.language-css .token.string {
+    color: #d4d4d4;
+}
+
+.language-objectivec .style .token.string {
+    color: #d4d4d4;
+}
+
+.token-details-section,
+.time-details-section {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+}
+
+.token-details-section h6,
+.time-details-section h6 {
+    color: #495057;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.token-details-section ul,
+.time-details-section ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.token-details-section li,
+.time-details-section li {
+    margin-bottom: 5px;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.token-details-section li:last-child,
+.time-details-section li:last-child {
+    margin-bottom: 0;
 } 

@@ -144,27 +144,11 @@ class AIResource(MCPResource):
             # Add total request time to the question dictionary
             # Make sure we're not just duplicating the processing_time
             for question in result:
-                # If processing_time exists, calculate the overhead time
-                if "processing_time" in question:
-                    # Total request time includes initialization, network overhead, etc.
-                    question["total_request_time"] = round(total_time, 2)
-                    
-                    # Log the difference to show overhead
-                    processing_time = question["processing_time"]
-                    overhead_time = total_time - processing_time
-                    logger.info(f"Request overhead time: {overhead_time:.2f} seconds ({(overhead_time/total_time)*100:.1f}% of total)")
-                else:
-                    # If no processing_time, just use total time for both
-                    question["processing_time"] = round(total_time, 2)
-                    question["total_request_time"] = round(total_time, 2)
-                
-                # Log token usage if available
-                if "token_usage" in question:
-                    token_usage = question["token_usage"]
-                    prompt_tokens = token_usage.get("prompt_tokens", 0)
-                    completion_tokens = token_usage.get("completion_tokens", 0)
-                    total_tokens = token_usage.get("total_tokens", 0)
-                    logger.info(f"Token usage: {prompt_tokens} prompt tokens, {completion_tokens} completion tokens, {total_tokens} total tokens")
+                # Add token usage and time information
+                if hasattr(question_result, 'token_usage'):
+                    question['token_usage'] = question_result.token_usage
+                if hasattr(question_result, 'agent'):
+                    question['agent'] = question_result.agent.model_dump()
                 
                 # Add AI config information to the result
                 question["ai_config"] = {
