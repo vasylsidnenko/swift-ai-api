@@ -374,6 +374,18 @@ document.addEventListener('DOMContentLoaded', function() {
         return formattedText;
     }
 
+    function hasCodeBlock(text) {
+        // Check if text exists and is a string
+        if (!text || typeof text !== 'string') return false;
+        
+        // Split by ``` markers
+        const parts = text.split('```');
+        
+        // Need at least 3 parts: text before, code block, and text after
+        // Also verify that we have at least one non-empty part between ```
+        return parts.length >= 3 && parts.some((part, i) => i % 2 === 1 && part.trim().length > 0);
+    }
+
     function formatResult(result) {
         if (!Array.isArray(result)) {
             console.error('Result is not an array:', result);
@@ -509,7 +521,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create tabs for different difficulty levels
         return `
             <div class="question-block">
-                <div class="question-title">${formatCode(question.text) || 'No question text'}</div>
+                <div class="question-title">${hasCodeBlock(question.text) ? formatCode(question.text) : question.text || 'No question text'}</div>
                 <div class="question-tags">
                     ${(question.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
                 </div>
