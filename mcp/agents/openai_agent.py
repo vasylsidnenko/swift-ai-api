@@ -1,0 +1,446 @@
+import os
+import sys
+import time
+import logging
+from typing import Optional, Dict, Callable, List
+from openai import OpenAI
+from tokenize import Intnumber
+import json
+import tiktoken
+import time
+
+from ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
+                                AIRequestQuestionModel, AIRequestValidationModel, 
+                                AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation)
+
+logger = logging.getLogger(__name__)
+
+class OpenAIAgent:
+    def __init__(self, api_key: Optional[str] = None):
+        """Initialize OpenAI agent for MCP server integration."""
+        os.environ['PYDANTIC_PRIVATE_ALLOW_UNHANDLED_SCHEMA_TYPES'] = '1'
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            raise ValueError("OpenAI API key is required")
+        self.client = OpenAI(api_key=self.api_key)
+        
+    @property
+    def tools(self) -> Dict[str, Callable]:
+        """Expose agent tools for MCP server."""
+        return {
+            'generate': self.generate,
+            'validate': self.validate
+        }
+
+    def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
+        """
+        Generate programming question (Tool for MCP server).
+        
+        Args:
+            request: AIRequestQuestionModel containing model info and question parameters
+            
+        Returns:
+            AIQuestionModel with generated content
+        """
+        try:
+            start_time = time.time()
+            messages = self._prepare_messages(request.request)
+            prompt_tokens = self.count_tokens(request.model.model, messages)
+            
+            response = self.client.beta.chat.completions.parse(
+                model=request.model.model,
+                messages=messages,
+                response_format=QuestionModel,
+                temperature=0.7
+            )
+            
+            return self._process_generation_response(
+                model=request.model,
+                question=request.request,
+                response=response,
+                prompt_tokens=prompt_tokens,
+                start_time=start_time
+            )
+            
+        except Exception as e:
+            logger.error(f"Generation failed: {str(e)}")
+            raise
+
+    def validate(self, request: AIRequestValidationModel) -> AIValidationModel:
+        """
+        Validate question quality using structured output.
+        Returns AIValidationModel with:
+        - validation: Parsed ValidationModel from OpenAI
+        - comments: Detailed feedback from AI       
+        - result: "PASS" if quality_score >=7, else "FAIL"
+        
+        Args:
+            request: AIRequestValidationModel containing question to validate
+            
+        Raises:
+            ValueError: If response parsing fails
+            RuntimeError: For API or validation errors
+        """
+
+        try:
+            validation_prompt = self._build_validation_prompt(request.request)
+            response = self.client.beta.chat.completions.parse(
+                model=request.model.model,
+                messages=validation_prompt,
+                response_format=QuestionValidation, 
+                temperature=0
+            )   
+        
+            if not (hasattr(response, 'choices') 
+                    and len(response.choices) > 0
+                    and hasattr(response.choices[0].message, 'parsed')):
+                raise ValueError("Invalid validation response format")
+            
+            return self._process_validation_response(response)
+        
+        except Exception as e:
+            logger.error(f"Validation failed: {str(e)}")
+            raise RuntimeError(f"Validation error: {str(e)}")
+
+    # Private helper methods
+    def _prepare_messages(self, question: RequestQuestionModel) -> List[Dict]:
+        """Prepare messages for OpenAI API from question."""
+        generation_prompt = f"""
+# Programming Question Generation Task
+
+## Topic Information
+- Main Topic: {question.topic}
+- Platform: {question.platform}
+{f'- Technology Stack: {question.technology}' if question.technology else ''}
+- Related Tags: {', '.join(question.tags) if question.tags else 'None provided'}
+
+## Instructions
+Create a high-quality programming question that tests understanding of {question.topic} on the {question.platform} platform. The question should:
+
+1. Be clear, specific, and challenging (not just asking for definitions)
+2. Include code examples where appropriate with proper syntax highlighting
+3. Be relevant to real-world programming scenarios
+4. Include all required tags plus additional relevant keywords
+5. Have three distinct difficulty levels with appropriate complexity progression
+
+## Required Structure
+For each difficulty level (Beginner, Intermediate, Advanced):
+
+1. Provide a detailed answer appropriate for that level
+2. Include exactly 3 test questions with multiple-choice options (at least 4 options per test)
+3. Ensure code snippets are properly formatted with language highlighting using the correct format:
+   - For Swift code: ```swift [code here] ```
+   - For Objective-C code: ```objc [code here] ```
+   - For C/C++ code: ```cpp [code here] ```
+   - For Java code: ```java [code here] ```
+   - For Kotlin code: ```kotlin [code here] ```
+   - For any other language: use the appropriate language identifier (e.g., ```python, ```javascript, etc.)
+4. Include comprehensive evaluation criteria that describe:
+   - Knowledge requirements for this level
+   - Skills the student should demonstrate
+   - Concepts they should understand at this level
+
+## Important Formatting Rules
+1. DO NOT include markers like "**Question:**", "**Answer:**", "###Beginner Level", etc. in your response
+2. DO NOT use markdown headings (# or ##) in your answers - the UI already provides appropriate headings
+3. Present code blocks ONLY with the appropriate language tag (```swift, ```objc, etc.)
+4. Format all code properly with correct indentation and syntax
+5. For test questions, use simple numbered options (1, 2, 3, 4) without additional formatting
+6. Make sure all code examples are technically accurate and follow best practices
+7. Keep your text clean and direct without any section headers or unnecessary formatting
+
+## Examples of Good Evaluation Criteria
+
+### Beginner Level Example:
+'At the Beginner level, the student should understand basic syntax and fundamental concepts of {question.topic}. They should demonstrate the ability to read simple code examples, identify correct syntax, and understand basic programming patterns related to {question.topic} on {question.platform}.'
+
+### Intermediate Level Example:
+'At the Intermediate level, the student should understand more complex implementations and common design patterns related to {question.topic}. They should demonstrate the ability to analyze code, identify potential issues, and understand the practical applications of {question.topic} concepts in {question.platform} development.'
+
+### Advanced Level Example:
+'At the Advanced level, the student should demonstrate deep understanding of {question.topic} internals and optimization techniques. They should be able to evaluate complex implementations, understand performance implications, and apply advanced patterns related to {question.topic} in sophisticated {question.platform} applications.'
+"""
+        
+        system_message = "You are an expert programming educator specializing in creating high-quality educational content. Your task is to generate challenging, well-structured programming questions with multiple difficulty levels. Each question should include detailed answers, appropriate test questions, and clear evaluation criteria that help assess student knowledge and skills. Ensure all code examples are properly formatted and technically accurate. IMPORTANT: Do not use any markdown headings or section titles in your responses. Do not include labels like 'Beginner Level' or 'Advanced Level' - these will be added by the UI. Keep your text clean and direct without any unnecessary formatting or section headers."
+        
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": generation_prompt}
+        ]
+        return messages
+
+    def _process_generation_response(self, model: AIModel, question: RequestQuestionModel, response, prompt_tokens: int, start_time: float) -> AIQuestionModel:
+        """Process OpenAI response for question generation."""
+        tokens_used = prompt_tokens
+        
+        if hasattr(response, 'usage') and hasattr(response.usage, 'total_tokens'):
+            tokens_used += response.usage.total_tokens
+        else:
+            if response.choices and response.choices[0].message.content:
+                completion_tokens = self.count_tokens(model, response.choices[0].message.content)
+                tokens_used += completion_tokens
+        
+        time_taken = int((time.time() - start_time) * 1000)  # Convert to milliseconds
+        
+        agent = AgentModel(
+            model=model,
+            statistic=AIStatistic(
+                time=time_taken,
+                tokens=tokens_used
+            )
+        )
+        
+        # Get generated question from response
+        generated_question = response.choices[0].message.parsed
+        
+        return AIQuestionModel(
+            question=generated_question,
+            agent=agent,
+            token_usage={
+                "total_tokens": tokens_used,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": tokens_used - prompt_tokens
+            }
+        )
+
+    def _build_validation_prompt(self, question: QuestionModel) -> List[Dict]:
+        """Build validation prompt for OpenAI API."""
+        validation_prompt = f"""
+        You are a quality assurance expert for programming educational content. Your task is to validate the following question against specific criteria and provide a detailed assessment.
+
+## Question to Validate
+```json
+{question.model_dump()}
+```
+
+## Validation Criteria
+
+### Basic Validation (Boolean Fields)
+For each criterion below, provide a true/false assessment:
+1. Is the question text clear, specific, and not generic? (is_text_clear)
+2. Does the question correspond to the topic and tags? (is_question_correspond)
+3. Is the question challenging and not trivial? (is_question_not_trivial)
+4. Does the question have all three difficulty levels? (do_answer_levels_exist)
+5. Are the answer levels valid (Beginner/Intermediate/Advanced)? (are_answer_levels_valid)
+6. Does each answer level have evaluation criteria? (has_evaluation_criteria)
+7. Are the answer levels different and match their difficulty? (are_answer_levels_different)
+8. Does each answer level contain exactly 3 tests? (do_tests_exist)
+9. Does the question have appropriate tags? (do_tags_exist)
+10. Do all tests have more than 2 options? (do_test_options_exist)
+11. Is the question text original? (is_question_text_different_from_existing_questions)
+12. Are test options properly numbered? (are_test_options_numbered)
+13. Do test answers correspond to valid option numbers? (does_answer_contain_option_number)
+14. Are code blocks properly formatted? (are_code_blocks_marked_if_they_exist)
+15. Do test snippets have questions? (does_snippet_have_question)
+16. Do test snippets have code? (does_snippet_have_code)
+
+### Scoring Criteria (1-10)
+For each aspect below, provide a score from 1 to 10:
+1. Clarity and specificity of the question (clarity_score)
+2. Relevance to topic and tags (relevance_score)
+3. Appropriate difficulty level (difficulty_score)
+4. Structure and organization (structure_score)
+5. Code examples quality (code_quality_score)
+6. Overall quality (quality_score)
+
+### Detailed Feedback
+For each scoring criterion above, provide detailed feedback explaining:
+- What works well
+- What needs improvement
+- Specific suggestions for enhancement
+
+### General Assessment
+- General comments about the question (comments)
+- List of specific recommendations for improvement (recommendations)
+- Pass/Fail status based on quality score (passed = quality_score >= 7)
+
+## Response Format
+Your response should include:
+1. Boolean values for all basic validation criteria
+2. Numerical scores (1-10) for each aspect
+3. Detailed feedback for each aspect
+4. Overall quality score
+5. General comments
+6. List of specific recommendations
+7. Pass/Fail status
+"""
+        
+        system_message = "You are a quality assurance expert for programming educational content. Provide thorough validation of questions based on specific criteria."
+        
+        return [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": validation_prompt}
+        ]
+
+    def _process_validation_response(self, response) -> AIValidationModel:
+        """Process structured validation response from OpenAI."""
+        try:
+            validation = response.choices[0].message.parsed
+            
+            # Verify all required fields are present
+            required_fields = [
+                # Boolean fields
+                'is_text_clear', 'is_question_correspond', 'is_question_not_trivial',
+                'do_answer_levels_exist', 'are_answer_levels_valid', 'has_evaluation_criteria',
+                'are_answer_levels_different', 'do_tests_exist', 'do_tags_exist',
+                'do_test_options_exist', 'is_question_text_different_from_existing_questions',
+                'are_test_options_numbered', 'does_answer_contain_option_number',
+                'are_code_blocks_marked_if_they_exist', 'does_snippet_have_question',
+                'does_snippet_have_code',
+                # Score fields
+                'quality_score', 'clarity_score', 'relevance_score', 
+                'difficulty_score', 'structure_score', 'code_quality_score',
+                # Feedback fields
+                'clarity_feedback', 'relevance_feedback', 'difficulty_feedback',
+                'structure_feedback', 'code_quality_feedback', 'comments',
+                'recommendations', 'passed'
+            ]
+            
+            missing_fields = [field for field in required_fields if not hasattr(validation, field)]
+            if missing_fields:
+                raise ValueError(f"Missing required validation fields: {', '.join(missing_fields)}")
+            
+            # Verify boolean fields
+            boolean_fields = [
+                'is_text_clear', 'is_question_correspond', 'is_question_not_trivial',
+                'do_answer_levels_exist', 'are_answer_levels_valid', 'has_evaluation_criteria',
+                'are_answer_levels_different', 'do_tests_exist', 'do_tags_exist',
+                'do_test_options_exist', 'is_question_text_different_from_existing_questions',
+                'are_test_options_numbered', 'does_answer_contain_option_number',
+                'are_code_blocks_marked_if_they_exist', 'does_snippet_have_question',
+                'does_snippet_have_code'
+            ]
+            
+            for field in boolean_fields:
+                value = getattr(validation, field)
+                if not isinstance(value, bool):
+                    raise ValueError(f"Invalid type for {field}: {value}. Must be boolean")
+            
+            # Verify scores are within valid range
+            score_fields = [
+                'quality_score', 'clarity_score', 'relevance_score',
+                'difficulty_score', 'structure_score', 'code_quality_score'
+            ]
+            
+            for field in score_fields:
+                score = getattr(validation, field)
+                if not (1 <= score <= 10):
+                    raise ValueError(f"Invalid {field}: {score}. Must be between 1 and 10")
+            
+            # Verify feedback fields are strings
+            feedback_fields = [
+                'clarity_feedback', 'relevance_feedback', 'difficulty_feedback',
+                'structure_feedback', 'code_quality_feedback', 'comments'
+            ]
+            
+            for field in feedback_fields:
+                value = getattr(validation, field)
+                if not isinstance(value, str):
+                    raise ValueError(f"Invalid type for {field}: {value}. Must be string")
+            
+            # Verify recommendations is a list
+            if not isinstance(validation.recommendations, list):
+                raise ValueError("recommendations must be a list")
+            
+            # Verify passed is boolean and matches quality_score
+            if not isinstance(validation.passed, bool):
+                raise ValueError("passed must be boolean")
+            if validation.passed != (validation.quality_score >= 7):
+                raise ValueError("passed status does not match quality_score")
+            
+            return AIValidationModel(
+                agent=AgentModel(
+                    model=AIModel(
+                        provider="openai",
+                        model=response.model
+                    ),
+                    statistic=AIStatistic(
+                        time=0,
+                        tokens=response.usage.total_tokens if hasattr(response, 'usage') else 0
+                    )
+                ),
+                validation=validation
+            )
+        
+        except Exception as e:
+            logger.error(f"Failed to process validation: {str(e)}")
+            raise ValueError(f"Validation processing error: {str(e)}")
+
+
+    def count_tokens(self, model: str, content) -> int:
+        """Count tokens in text/messages."""
+        try:
+            encoding = tiktoken.encoding_for_model(model)
+        except KeyError:
+            encoding = tiktoken.get_encoding("cl100k_base")
+        
+        if isinstance(content, str):
+            return len(encoding.encode(content))
+        elif isinstance(content, list) and all(isinstance(m, dict) and 'role' in m and 'content' in m for m in content):
+            num_tokens = 0
+            for message in content:
+                num_tokens += 4  # Tokens for <im_start> and <im_end>
+                
+                for key, value in message.items():
+                    num_tokens += len(encoding.encode(str(value)))
+                    if key == "name":  # If there is a name, the role is skipped
+                        num_tokens -= 1
+            
+            num_tokens += 2  # Each response starts with <im_start>assistant
+            return num_tokens
+        elif isinstance(content, dict):
+            return self.count_tokens(model, json.dumps(content))
+        else:
+            return self.count_tokens(model, str(content))
+
+
+def main():
+    print(f"Python version={sys.version}")
+
+    agent = OpenAIAgent()
+
+    # Generate question
+    # generate_request = AIRequestQuestionModel(
+    #     model=AIModel(
+    #         provider="openai",
+    #         model="gpt-4o-mini"
+    #     ),
+    #     request=RequestQuestionModel(   
+    #         platform="Apple",
+    #         topic="Concurrency",    
+    #         technology="Objective-C",
+    #         tags=["Atomic", "gcd", "runloop"]
+    #     )
+    # )   
+    
+    # # Generate question
+    # question = agent.generate(
+    #     request=generate_request
+    # )
+
+    # print(f"Generated question: {json.dumps(question.model_dump(), indent=2)}")
+    
+    with open('mcp/agents/generate_test_result.json', 'r') as file:
+        generated = json.load(file)
+        
+    # Extract question from the generated structure
+    question_data = generated['question']
+    question_model = QuestionModel.model_validate(question_data)
+
+    # Validate question
+    validate_request = AIRequestValidationModel(
+        model=AIModel(
+            provider="openai",
+            model="gpt-4o-mini"
+        ),
+        request=question_model
+    )
+    
+    validation = agent.validate(
+        request=validate_request
+    )
+    
+    print(f"Validation result: {json.dumps(validation.model_dump(), indent=2)}")
+    
+if __name__ == "__main__":
+    main()

@@ -1,13 +1,13 @@
-# Базовий образ Python
+# Base image
 FROM python:3.9
 
-# Встановлення залежностей
+# Install dependencies
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копіюємо код API
+# Copy API code
 COPY . .
 
-# Запускаємо API
+# Run API
 CMD ["gunicorn", "-b", "0.0.0.0:10000", "app:app"]
