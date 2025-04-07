@@ -12,10 +12,21 @@ import time
 from ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
                                 AIRequestQuestionModel, AIRequestValidationModel, 
                                 AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation)
+from base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 
-class OpenAIAgent:
+class OpenAIAgent(BaseAgent):
+    @staticmethod
+    def provider() -> str:
+        """Returns the provider name for this agent."""
+        return "openai"
+        
+    @staticmethod
+    def supported_models() -> List[str]:
+        """Returns list of supported models."""
+        return ["gpt-4o", "gpt-4o-mini"]
+        
     def __init__(self, api_key: Optional[str] = None):
         """Initialize OpenAI agent for MCP server integration."""
         os.environ['PYDANTIC_PRIVATE_ALLOW_UNHANDLED_SCHEMA_TYPES'] = '1'
@@ -42,6 +53,10 @@ class OpenAIAgent:
         Returns:
             AIQuestionModel with generated content
         """
+
+        if not self._is_support_model(request.model):
+            raise Exception("Unsupported model")
+
         try:
             start_time = time.time()
             messages = self._prepare_messages(request.request)
@@ -82,6 +97,9 @@ class OpenAIAgent:
             RuntimeError: For API or validation errors
         """
 
+        if not self._is_support_model(request.model):
+            raise Exception("Unsupported model")
+
         try:
             validation_prompt = self._build_validation_prompt(request.request)
             response = self.client.beta.chat.completions.parse(
@@ -101,6 +119,18 @@ class OpenAIAgent:
         except Exception as e:
             logger.error(f"Validation failed: {str(e)}")
             raise RuntimeError(f"Validation error: {str(e)}")
+        
+    def _is_support_model(self, model: AIModel) -> bool:
+        if model.provider.lower() != self.provider():
+            logger.error(f"Provider unknonw: {model.provider}")
+            return False
+        
+        if model.model.lower() not in [m.lower() for m in self.supported_models()]:
+            logger.error(f"Model unknonw: {model.model}")
+            return False
+        
+        return True
+
 
     # Private helper methods
     def _prepare_messages(self, question: RequestQuestionModel) -> List[Dict]:
@@ -419,28 +449,35 @@ def main():
     # )
 
     # print(f"Generated question: {json.dumps(question.model_dump(), indent=2)}")
-    
-    with open('mcp/agents/generate_test_result.json', 'r') as file:
-        generated = json.load(file)
-        
-    # Extract question from the generated structure
-    question_data = generated['question']
-    question_model = QuestionModel.model_validate(question_data)
 
-    # Validate question
-    validate_request = AIRequestValidationModel(
-        model=AIModel(
-            provider="openai",
-            model="gpt-4o-mini"
-        ),
-        request=question_model
-    )
+
+    print(agent._is_support_model(model=AIModel(
+            provider="oPenai",
+            model="gpt-4o-minI"
+        )))
     
-    validation = agent.validate(
-        request=validate_request
-    )
     
-    print(f"Validation result: {json.dumps(validation.model_dump(), indent=2)}")
+    # with open('mcp/agents/tests_data/generate_test_result.json', 'r') as file:
+    #     generated = json.load(file)
+        
+    # # Extract question from the generated structure
+    # question_data = generated['question']
+    # question_model = QuestionModel.model_validate(question_data)
+
+    # # Validate question
+    # validate_request = AIRequestValidationModel(
+    #     model=AIModel(
+    #         provider="openai",
+    #         model="gpt-4o-mini"
+    #     ),
+    #     request=question_model
+    # )
+    
+    # validation = agent.validate(
+    #     request=validate_request
+    # )
+    
+    # print(f"Validation result: {json.dumps(validation.model_dump(), indent=2)}")
     
 if __name__ == "__main__":
     main()

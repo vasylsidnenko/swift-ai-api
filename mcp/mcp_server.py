@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from enum import Enum
 import logging
 from abc import ABC, abstractmethod
+import os
+from mcp.agents.ai_models import (AIModel, AIRequestQuestionModel, AIRequestValidationModel, 
+                                QuestionModel, RequestQuestionModel)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,194 +42,168 @@ class ModelType(str, Enum):
     GOOGLEAI = "google"
     DEEPSEEKAI = "deepseek"
     
+def get_available_models() -> Dict[ModelType, List[str]]:
+    """Get available models from all agents"""
+    models = {}
+    try:
+        from mcp.agents.openai_agent import OpenAIAgent
+        models[ModelType.OPENAI] = OpenAIAgent.supported_models()
+    except ImportError:
+        pass
+        
+    # Add other agents here when implemented
+    # try:
+    #     from mcp.agents.google_agent import GoogleAgent
+    #     models[ModelType.GOOGLEAI] = GoogleAgent.supported_models()
+    # except ImportError:
+    #     pass
+        
+    return models
+
+def get_default_models() -> Dict[ModelType, str]:
+    """Get default model for each provider"""
+    models = {}
+    available_models = get_available_models()
+    
+    for provider, model_list in available_models.items():
+        if model_list:
+            models[provider] = model_list[0]  # Use first model as default
+            
+    return models
+
 # Available models for each provider
-AVAILABLE_MODELS = {
-    ModelType.OPENAI: ["gpt-4o", "gpt-4o-mini"],
-    ModelType.GOOGLEAI: ["gemini-pro"],
-    ModelType.DEEPSEEKAI: ["deepseek-chat"]
-}
+AVAILABLE_MODELS = get_available_models()
 
 # Default model for each provider
-DEFAULT_MODELS = {
-    ModelType.OPENAI: "gpt-4o-mini",
-    ModelType.GOOGLEAI: "gemini-pro",
-    ModelType.DEEPSEEKAI: "deepseek-chat"
-}
+DEFAULT_MODELS = get_default_models()
 
 class AIResource(MCPResource):
     """MCP resource for AI model interactions"""
     def __init__(self, model_type: ModelType):
         self.model_type = model_type
-
-    def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        handlers = {
-            ModelType.OPENAI: self._handle_openai,
-            ModelType.GOOGLEAI: self._handle_googleai,
-            ModelType.DEEPSEEKAI: self._handle_deepseek
-        }
-
-        handler = handlers.get(self.model_type)
-        if not handler:
-            return MCPResponse(False, error=f"Unsupported model type: {self.model_type}").to_dict()
-        try:
-            result = handler(context)
-            # Check if empty result
-            if isinstance(result, list) and len(result) == 0:
-                # This might indicate an error that wasn't properly raised
-                logger.warning(f"Handler for {self.model_type} returned empty result")
-                
-            return MCPResponse(True, data=result).to_dict()
-        except ValueError as e:
-            error_msg = str(e)
-            logger.error(f"ValueError in {self.model_type} handler: {error_msg}", exc_info=True)
-            
-            # Special handling for API key errors
-            if "api key" in error_msg.lower() or "apikey" in error_msg.lower() or "incorrect api key" in error_msg.lower():
-                logger.error(f"API key error detected: {error_msg}")
-                return MCPResponse(False, error=error_msg, error_type="api_key").to_dict()
-            return MCPResponse(False, error=error_msg).to_dict()
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Error in {self.model_type} handler: {error_msg}", exc_info=True)
-            return MCPResponse(False, error=error_msg).to_dict()
-            
-    def _handle_openai(self, context: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Handle OpenAI model requests"""
-        import logging
-        logger = logging.getLogger(__name__)
+        self.agent = None
         
+    def _get_agent(self, api_key: str) -> Any:
+        """Get appropriate agent based on model type"""
+        if self.model_type == ModelType.OPENAI:
+            from mcp.agents.openai_agent import OpenAIAgent
+            return OpenAIAgent(api_key=api_key)
+        # Add other agents here when implemented
+        raise ValueError(f"Unsupported model type: {self.model_type}")
+        
+    def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
         try:
-            # Get AI configuration
-            ai_config = context.get('ai_config', {})
+            # Get API key from context
+            api_key = context.get('api_key')
+            if not api_key:
+                raise ValueError("API key is required")
+                
+            # Initialize agent
+            self.agent = self._get_agent(api_key)
             
-            # Extract configuration values
-            api_key = ai_config.get('api_key')
-            model_name = ai_config.get('model_name')
-            model_type = ai_config.get('model_type')
+            # Get model from context or use default
+            model = context.get('model', DEFAULT_MODELS[self.model_type])
             
-            from models.openai_agent import OpenAIAgent
-            agent = OpenAIAgent(api_key=api_key)
+            # Validate model is supported
+            if model not in AVAILABLE_MODELS[self.model_type]:
+                raise ValueError(f"Model {model} is not supported for {self.model_type}")
             
-            # Measure total time for the entire operation
-            import time
-            start_time = time.time()
-            
-            # Generate question(s)
-            question_result = agent.generate_question(
-                model=model_name,
-                platform=context.get('platform'),
-                topic=context.get('topic'),
-                tech=context.get('tech'),
-                tags=context.get('keywords', [])
+            # Create AIModel instance
+            ai_model = AIModel(
+                provider=self.model_type.value,
+                model=model
             )
             
-            # Convert AIQuestionModel to dictionary
-            if hasattr(question_result, 'model_dump'):
-                # For Pydantic v2
-                result_dict = question_result.model_dump()
-            elif hasattr(question_result, 'dict'):
-                # For Pydantic v1
-                result_dict = question_result.dict()
+            # Handle different request types
+            request_type = context.get('type', 'generate')
+            if request_type == 'generate':
+                return self._handle_generate(context, ai_model)
+            elif request_type == 'validate':
+                return self._handle_validate(context, ai_model)
             else:
-                # Fallback to manual conversion
-                result_dict = {}
-                for key, value in question_result.__dict__.items():
-                    if not key.startswith('_'):
-                        result_dict[key] = value
-            
-            # Put the dictionary in a list
-            result = [result_dict]
-            
-            # Calculate total time including API calls and processing
-            total_time = time.time() - start_time
-            logger.info(f"Total request time: {total_time:.2f} seconds")
-            
-            # Add total request time to the question dictionary
-            # Make sure we're not just duplicating the processing_time
-            for question in result:
-                # Add token usage and time information
-                if hasattr(question_result, 'token_usage'):
-                    question['token_usage'] = question_result.token_usage
-                if hasattr(question_result, 'agent'):
-                    question['agent'] = question_result.agent.model_dump()
+                raise ValueError(f"Unsupported request type: {request_type}")
                 
-                # Add AI config information to the result
-                question["ai_config"] = {
-                    "model_type": str(model_type),
-                    "model_name": model_name,
-                    # Don't include API key in the response for security
-                }
-            
-            # Check if validation is enabled and validation_ai_config is provided
-            validation = context.get('validation', True)
-            validation_ai_config = context.get('validation_ai_config')
-            
-            if validation and result:
-                logger.info("Performing validation")
-                
-                # Determine validation parameters
-                validation_agent = agent
-                validation_model_name = model_name
-                validation_model_type = model_type
-                
-                # If validation_ai_config is provided, use its values
-                if validation_ai_config:
-                    logger.info("Using custom validation AI config")
-                    validation_api_key = validation_ai_config.get('api_key')
-                    validation_model_name = validation_ai_config.get('model_name')
-                    validation_model_type = validation_ai_config.get('model_type')
-                    
-                    # Create a validation agent if API key is different
-                    if validation_api_key != api_key:
-                        validation_agent = OpenAIAgent(api_key=validation_api_key)
-                
-                # Perform validation for each generated question
-                for i, question_data in enumerate(result):
-                    from models.ai_models import QuestionModel
-                    
-                    try:
-                        # Convert dict to QuestionModel
-                        question = QuestionModel.model_validate(question_data.get('question', {}))
-                        
-                        # Validate the question
-                        validation_start_time = time.time()
-                        validation_result = validation_agent.validate_question(
-                            model=validation_model_name,
-                            question=question
-                        )
-                        
-                        # Calculate validation time
-                        validation_time = time.time() - validation_start_time
-                        logger.info(f"Validation time for question {i+1}: {validation_time:.2f} seconds")
-                        
-                        # Add validation result to the question data
-                        result[i]['validation_result'] = validation_result.model_dump()
-                        result[i]['validation_result']['total_time'] = round(validation_time, 2)
-                        
-                        # Add validation config information
-                        result[i]['validation_result']['ai_config'] = {
-                            "model_type": str(validation_model_type),
-                            "model_name": validation_model_name,
-                            # Don't include API key in the response for security
-                        }
-                        
-                    except Exception as validation_error:
-                        logger.error(f"Error validating question {i+1}: {str(validation_error)}")
-                        result[i]['validation_error'] = str(validation_error)
-            
-            return result
         except Exception as e:
-            logger.error(f"Error in OpenAI handler: {str(e)}", exc_info=True)
-            # Re-raise the exception to be caught by the process_request method
+            logger.error(f"Error in AIResource: {str(e)}")
             raise
+            
+    def _handle_generate(self, context: Dict[str, Any], ai_model: AIModel) -> Dict[str, Any]:
+        """Handle generation request"""
+        try:
+            # Create request model
+            request = AIRequestQuestionModel(
+                model=ai_model,
+                request=RequestQuestionModel(
+                    platform=context.get('platform', 'Apple'),
+                    topic=context.get('topic'),
+                    technology=context.get('technology', ''),
+                    tags=context.get('tags', [])
+                )
+            )
+            
+            # Generate question
+            result = self.agent.generate(request)
+            
+            # Convert to MCP format
+            return {
+                'success': True,
+                'data': result.model_dump()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in generation: {str(e)}")
+            raise
+            
+    def _handle_validate(self, context: Dict[str, Any], ai_model: AIModel) -> Dict[str, Any]:
+        """Handle validation request"""
+        try:
+            # Create request model
+            request = AIRequestValidationModel(
+                model=ai_model,
+                request=QuestionModel.model_validate(context.get('question'))
+            )
+            
+            # Validate question
+            result = self.agent.validate(request)
+            
+            # Convert to MCP format
+            return {
+                'success': True,
+                'data': result.model_dump()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in validation: {str(e)}")
+            raise
+
+def test_generation():
+    """Test question generation"""
+    try:
+        # Create test context
+        context = {
+            'type': 'generate',
+            'api_key': os.getenv('OPENAI_API_KEY'),
+            'model': 'gpt-4o-mini',
+            'platform': 'Apple',
+            'topic': 'Concurrency',
+            'technology': 'Objective-C',
+            'tags': ['GCD', 'Threads', 'Async']
+        }
         
-    def _handle_googleai(self, context: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Handle Google AI model requests"""
-        raise NotImplementedError("Google AI handler not implemented yet")
+        # Create resource
+        resource = AIResource(ModelType.OPENAI)
         
-    def _handle_deepseek(self, context: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Handle DeepSeek model requests"""
-        raise NotImplementedError("DeepSeek handler not implemented yet")
+        # Execute request
+        result = resource.execute(context)
+        
+        # Print result
+        print(json.dumps(result, indent=2))
+        
+    except Exception as e:
+        print(f"Test failed: {str(e)}")
+
+if __name__ == "__main__":
+    test_generation()
 
 @dataclass
 class AIConfig:
