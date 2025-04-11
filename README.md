@@ -1,281 +1,174 @@
 # Programming Question Generator
 
-This project provides an API and web interface for generating programming questions, answers, and multiple-choice tests using various AI models. It supports multiple platforms (Apple, Android) and can be used with different AI providers (OpenAI, Google AI, DeepSeek AI).
+This project provides an API and web interface for generating programming questions, answers, and multiple-choice tests using various AI models. It supports multiple platforms (Apple, Android) and dynamically loads available AI providers (OpenAI, Google AI, DeepSeek AI, etc.) found in the `mcp/agents` directory.
 
 ## Features
 - Modular architecture with Model Context Protocol (MCP) for AI provider abstraction
-- Supports multiple AI providers (OpenAI, Google AI, DeepSeek AI)
-- Generates programming questions with three difficulty levels (Beginner, Intermediate, Advanced)
-- Returns structured JSON responses with detailed explanations and tests
-- Supports keyword-based question generation
-- Web interface with collapsible AI settings and tabbed difficulty levels
-- Optional validation for generated questions to ensure quality
-- Evaluation criteria for each difficulty level
-- Processing time measurement for question generation and validation
-- Token usage tracking for API requests
-- Collapsible validation information
+- **Dynamic loading** of AI agents and their supported models from the `mcp/agents` directory.
+- Supports multiple AI providers (e.g., OpenAI, Google AI, DeepSeek AI) - only providers with working agents are shown.
+- Generates programming questions (and optionally validates them).
+- Returns structured JSON responses ([MCPResponse](#mcpresponse-format)).
+- Supports keyword-based question generation.
+- Web interface with collapsible AI settings.
+- Optional validation for generated questions to ensure quality.
+- Checks for API keys in environment variables.
+- Displays masked API key (********) if using environment variable.
+- Token usage tracking (if provided by the agent).
+- Processing time measurement (if provided by the agent).
 
 ## Architecture
 
-### Model Context Protocol (MCP)
+### Model Context Protocol (MCP) - Inspired Implementation
 
-The core of the application is built around the Model Context Protocol (MCP), which provides an abstraction layer for different AI providers. The MCP architecture consists of:
+**Important Note:** This project uses concepts and naming inspired by the Model Context Protocol ([modelcontextprotocol.io](https://modelcontextprotocol.io/)), such as standardized context and response objects, to manage interactions with different AI agents. However, it is a **custom, simplified implementation** and does **not** fully adhere to the official MCP specification. Specifically, it does not implement the standard MCP server endpoints (e.g., `/mcp/v1/execute`) or resource discovery mechanisms as defined in the protocol. The primary API is handled directly by the Flask application (`app.py`).
 
-- **MCPServer**: The main server component that processes requests and routes them to appropriate resources
-- **MCPResource**: Base class for all resources that can be accessed through MCP
-- **AIResource**: Implementation of MCPResource for AI model interactions
-- **MCPContext**: Context object containing all necessary information for request processing
-- **MCPResponse**: Standardized response format for all MCP operations
+The core components of this MCP-inspired architecture are:
+
+- **[app.py](app.py)**: The Flask application handling HTTP requests, dynamic agent/model loading at startup, and routing to API endpoints (`/api/generate`, `/api/validate`).
+- **[mcp/mcp_server.py](mcp/mcp_server.py)**: Contains the core logic classes inspired by MCP.
+  - **AIResource**: Handles the execution logic, calling the appropriate methods on the agent class.
+  - **MCPContext**: Context object containing necessary information for request processing (config, request data).
+  - **MCPResponse**: Standardized response format for API operations.
+  - **BaseAgent**: Abstract base class that all AI agents must inherit from.
+- **[mcp/agents/](mcp/agents/)**: Directory containing specific agent implementations (e.g., `openai_agent.py`). Each agent defines `SUPPORTED_MODELS` and implements `generate` and `validate` methods.
 
 This architecture allows for:
 
-1. **Provider Agnosticism**: The application can work with any AI provider by implementing the appropriate handler
-2. **Unified Interface**: All AI providers are accessed through the same interface
-3. **Easy Extensibility**: New AI providers can be added without changing the core application logic
+1. **Provider Agnosticism**: Works with any AI provider via a corresponding `BaseAgent` implementation.
+2. **Unified API Interface**: All providers accessed through `/api/generate` and `/api/validate`.
+3. **Easy Extensibility**: New providers added by creating `*_agent.py` in `mcp/agents`.
+4. **Dynamic Model Availability**: Only active providers/models are shown.
 
 ## Installation
 
 ### Prerequisites
 - Python 3.8+
-- `pip install -r requirements.txt`
+- Install dependencies:
+  ```sh
+  pip install -r requirements.txt
+  ```
 
 ### Setting Up API Keys
-- OpenAI:
-  - Get your API key from [OpenAI](https://platform.openai.com/account/api-keys)
-  - Add it to environment variable `OPENAI_API_KEY` or provide it in the web interface
-- Google Gemini:
-  - Get your API key from [Google AI Studio](https://aistudio.google.com/)
-  - Add it to environment variable `GOOGLE_API_KEY` or provide it in the web interface
-- DeepSeek AI:
-  - Get your API key from [DeepSeek](https://platform.deepseek.ai/)
-  - Add it to environment variable `DEEPSEEK_API_KEY` or provide it in the web interface
+API keys are primarily managed through environment variables. The web interface allows overriding them.
+- **OpenAI**:
+  - Get key: [OpenAI](https://platform.openai.com/account/api-keys)
+  - Set env var: `OPENAI_API_KEY=your_openai_key`
+- **Google Gemini**:
+  - Get key: [Google AI Studio](https://aistudio.google.com/)
+  - Set env var: `GOOGLE_API_KEY=your_google_key`
+- **DeepSeek AI**:
+  - Get key: [DeepSeek](https://platform.deepseek.ai/)
+  - Set env var: `DEEPSEEK_API_KEY=your_deepseek_key`
 
-## Running the API
+## Running the Application
 
 1. Start the Flask application:
    ```sh
    python app.py
    ```
-2. The API will run on `http://localhost:10000`
+2. The application will run on `http://localhost:10000`
 
 ## API Usage
 
+All API endpoints expect `Content-Type: application/json` for POST requests and return JSON responses.
+
 ### **Generate a Programming Question**
-#### Endpoint:
-```http
-POST /generate_question
-```
-#### Request Body:
+Generates a question based on the provided context.
+
+- **Endpoint**: `POST /api/generate`
+- **Request Body** ([GenerateRequest Pydantic Model](app.py)):
+  ```json
+  {
+      "topic": "Memory Management",
+      "platform": "Apple",
+      "tech": "Swift",
+      "keywords": ["ARC", "Retain Cycle"],
+      "ai": "openai",         // Provider key (e.g., 'openai', 'google')
+      "model": "gpt-4o",      // Model supported by the provider
+      "validation": false,    // Set to true to perform validation after generation
+      "questionContext": "Focus on strong reference cycles."
+  }
+  ```
+- **Headers**: `Authorization: Bearer YOUR_API_KEY` (Optional - overrides environment variable if provided and not `********`)
+- **Response**: [MCPResponse](#mcpresponse-format) with `success=true` and `data` containing the generated question (structure depends on the agent), or `success=false` with error details.
+
+### **Validate a Programming Question**
+Validates an existing question using the specified AI model.
+
+- **Endpoint**: `POST /api/validate`
+- **Request Body** ([ValidateRequest Pydantic Model](app.py)):
+  ```json
+  {
+      "ai": "openai",
+      "model": "gpt-4o",
+      "questionContext": "Validate the following Swift question about ARC: ...your question here..."
+  }
+  ```
+- **Headers**: `Authorization: Bearer YOUR_API_KEY` (Optional)
+- **Response**: [MCPResponse](#mcpresponse-format) with `success=true` and `data` containing validation results (e.g., `{"is_valid": true, "feedback": "..."}`), or `success=false` with error details.
+
+### **Check Environment API Key**
+Checks if an API key for the specified provider exists as an environment variable.
+
+- **Endpoint**: `GET /api/check-env-key/{provider}`
+- **Example**: `GET /api/check-env-key/openai`
+- **Response**:
+  ```json
+  {
+      "exists": true 
+  }
+  ```
+  or
+  ```json
+  {
+      "exists": false
+  }
+  ```
+
+### **MCPResponse Format**
+All API endpoints (`/api/generate`, `/api/validate`) return a standardized JSON object:
+
 ```json
 {
-    "topic": "Memory Management",
-    "platform": "Apple",
-    "tech": "Swift",
-    "keywords": ["ARC", "Retain Cycle"],
-    "ai": "openai",
-    "model": "gpt-4o",
-    "number": 1,
-    "validation": true
-}
-```
-#### Headers:
-```
-Authorization: Bearer YOUR_API_KEY
-```
-
-### **Get Available Providers**
-#### Endpoint:
-```http
-GET /api/providers
-```
-
-### **Get Available Models for a Provider**
-#### Endpoint:
-```http
-GET /api/models/{provider}
-```
-#### Response Example:
-```json
-{
-    "topic": {
-        "name": "Memory Management",
-        "platform": "Apple",
-        "technology": "Swift"
-    },
-    "text": "How does ARC (Automatic Reference Counting) work in Swift?",
-    "tags": ["Memory Management", "Swift", "ARC", "Retain Cycle"],
-    "answerLevels": {
-        "beginer": {
-            "name": "Beginner",
-            "answer": "ARC automatically manages memory by tracking object references.",
-            "tests": [
-                {
-                    "snippet": "What does ARC stand for?",
-                    "options": ["1. Automatic Reference Counting", "2. Automatic Retain Cycle", "3. Advanced Reference Control", "4. Automatic Resource Control"],
-                    "answer": "1"
-                },
-                {
-                    "snippet": "How does ARC manage memory?",
-                    "options": ["1. By tracking strong references", "2. By manually releasing memory", "3. By using garbage collection", "4. By periodically scanning memory"],
-                    "answer": "1"
-                },
-                {
-                    "snippet": "Which keyword is used for weak references in Swift?",
-                    "options": ["1. weak", "2. strong", "3. unowned", "4. reference"],
-                    "answer": "1"
-                }
-            ],
-            "evaluation_criteria": "At the Beginner level, the student should understand basic ARC concepts, be able to identify what ARC stands for, and recognize fundamental memory management terms."
-        },
-        "intermediate": {
-            "name": "Intermediate",
-            "answer": "More detailed explanation about ARC and memory management in Swift...",
-            "tests": [/* Similar structure as above */],
-            "evaluation_criteria": "At the Intermediate level, the student should understand how reference counting works, be able to identify potential memory issues, and demonstrate knowledge of weak and strong references."
-        },
-        "advanced": {
-            "name": "Advanced",
-            "answer": "Advanced concepts of ARC including retain cycles, weak vs unowned references...",
-            "tests": [/* Similar structure as above */],
-            "evaluation_criteria": "At the Advanced level, the student should demonstrate a deep understanding of memory management patterns, be able to identify and resolve complex retain cycles, and understand the performance implications of different reference types."
-        }
-    },
-    "provider": "openai",
-    "model": "gpt-4o",
-    "validation": {
-        "quality_score": 9,
-        "validation_comments": "The question is well-structured with clear differentiation between difficulty levels.",
-        "passed": true
-    },
-    "processing_time": 15.42,
-    "total_request_time": 16.85,
-    "token_usage": {
-        "prompt_tokens": 1250,
-        "completion_tokens": 3450,
-        "total_tokens": 4700
-    }
+    "success": true, // boolean: Indicates if the operation was successful
+    "data": { ... },   // object | string | null: The result data if success is true (structure depends on endpoint and agent)
+    "error": null,     // string | null: Error message if success is false
+    "error_type": null // string | null: Type of error (e.g., 'api_key', 'validation_error', 'model_not_supported', 'server_error', 'network_error') if success is false
 }
 ```
 
-## Testing Locally
+## Web Interface
 
-### Running the Web Interface
+Access the web interface by navigating to `http://localhost:10000` in your browser after starting the application.
+
+The interface allows you to:
+- Select an AI provider (dynamically populated).
+- Select a model supported by the chosen provider.
+- Enter an API key (overrides environment variable if not `********`).
+- Input topic, platform, technology, and keywords.
+- Provide additional context for question generation or the question text for validation.
+- Choose whether to generate or validate.
+- View the generated/validated result.
+- See messages indicating if an environment API key is being used.
+
+## Testing Individual Agents
+
+You can test the core logic of individual agents directly (useful for debugging):
+
 ```sh
-python app.py
+# Example for OpenAI agent (modify as needed for others)
+python mcp/agents/openai_agent.py
 ```
-The web interface will be available at `http://localhost:10000`
+*Note: Direct agent tests might require setting environment variables or modifying the script to pass API keys.* 
 
-### Testing Individual Models
-Each AI model can be tested independently:
-- **Test OpenAI model:**
-  ```sh
-  python models/openai_model.py
-  ```
-- **Test Google Gemini model (if implemented):**
-  ```sh
-  python models/gemini_model.py
-  ```
-- **Test DeepSeek model (if implemented):**
-  ```sh
-  python models/deepseek_model.py
-  ```
+## Performance Considerations
 
-## Performance Optimization
+- **Validation**: The `validation` flag in the `/api/generate` request controls whether an additional validation step is performed after generation. Setting it to `false` can speed up the response time if quality assurance is handled separately.
+- **Agent Implementation**: The performance (latency, token usage) heavily depends on the specific AI model chosen and the implementation within the corresponding agent file.
 
-### Question Validation
+## Evaluation Criteria & Other Features
 
-The application provides an option to enable or disable validation of generated questions:
+*(This section remains largely the same as previous versions, detailing evaluation criteria concepts, but note that the specific implementation of returning detailed criteria, tests per level, etc., now depends entirely on how each agent formats its output in the `data` field of the successful `MCPResponse`.)*
 
-- **Validation Enabled (Default)**: When enabled, the system performs a two-step process: first generating the question, then validating it against quality criteria. This ensures high-quality questions but takes longer to process.
-
-- **Validation Disabled**: When disabled, the system skips the validation step, significantly reducing processing time. This is useful for rapid prototyping or when you need quick results.
-
-You can control validation through:
-- The checkbox in the web interface under AI Configuration
-- The `validation` parameter in API requests (boolean, default: true)
-
-### Processing Time and Token Usage Measurement
-
-The system now measures and reports processing time and token usage for question generation and validation:
-
-- **Total Processing Time**: The total time taken to generate and validate a question
-- **Average Processing Time**: For multiple questions, the average time per question
-- **Token Usage**: The number of tokens used in the request (prompt tokens, completion tokens, and total tokens)
-
-Processing time and token usage information is displayed in the web interface and included in API responses, helping users understand the performance implications and resource usage of different configurations.
-
-### Evaluation Criteria
-
-Each difficulty level (Beginner, Intermediate, Advanced) now includes evaluation criteria that specify:
-
-1. What knowledge the student should have at this level
-2. What skills they should demonstrate
-3. What concepts they should understand
-
-These criteria help educators and learners understand the expectations for each level and provide a framework for assessment. The criteria are displayed in collapsible sections in the web interface, allowing users to view them when needed without cluttering the display.
-
-### User Interface Improvements
-
-#### Tabbed Difficulty Levels
-The web interface now displays question difficulty levels (Beginner, Intermediate, Advanced) as tabs for easier navigation. This design:
-- Allows users to quickly switch between difficulty levels without scrolling
-- Provides a cleaner, more organized view of the content
-- Makes it easier to compare answers across different levels
-
-#### Collapsible Validation Information
-Validation information is now displayed in a collapsible section that:
-- Shows a summary of validation status and quality score by default
-- Can be expanded to view detailed validation comments
-- Uses color-coding to indicate validation status (passed, failed, or skipped)
-
-#### Token Usage Display
-The interface now displays token usage information for each question, showing:
-- Total number of tokens used
-- Breakdown of prompt tokens and completion tokens
-- Helps users understand API resource consumption
-
-#### Code Formatting Improvements
-The code formatting system has been enhanced to:
-- Better handle various code block formats
-- Support inline code snippets with language prefixes (e.g., "swift let counter = 0")
-- Provide proper syntax highlighting for multiple programming languages
-
-## Error Handling
-
-The application implements comprehensive error handling to provide clear feedback to users when issues occur:
-
-### API Key Error Handling
-
-- **Detailed API Key Errors**: When an invalid API key is provided, the system returns the exact error message from the AI provider (e.g., OpenAI), including information about how to obtain a valid key.
-- **Environment Variable Support**: If an API key exists in the environment, the system will use it automatically and display a masked version (********) in the UI with a credit message.
-- **Graceful Fallback**: If no API key is provided in the UI and no environment variable is set, a clear error message is displayed.
-
-### Other Error Types
-
-The system handles various error types with specific messages and recommendations:
-
-1. **API Key Errors**: Detailed feedback for authentication issues, including the exact error from the provider.
-2. **Validation Errors**: When generated content fails validation checks.
-3. **Rate Limit Errors**: When API rate limits are exceeded.
-4. **Timeout Errors**: When requests take too long to complete.
-5. **Network Errors**: When connection issues occur.
-6. **Response Format Errors**: When unexpected response formats are received.
-
-### Error Response Format
-
-All error responses follow a consistent format:
-
-```json
-{
-    "error": "Detailed error message",
-    "error_type": "api_key|validation|rate-limit|timeout|network|format"
-}
-```
-
-In the UI, errors are displayed with:
-- A descriptive title
-- The detailed error message
-- Recommendations for resolving the issue
-
-## License
-MIT License
+---
+*Credit Vasil_OK ☕* 

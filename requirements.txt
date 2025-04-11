@@ -1,8 +1,11 @@
-Flask
-gunicorn
+fastapi
+flask
+python-dotenv
 openai
 google-generativeai
-python-dotenv
+deepseek
+pydantic
 requests
-flask==3.0.2
+uvicorn[standard]
+gunicorn
 tiktoken

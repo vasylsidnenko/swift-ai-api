@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Tuple, Dict, Any
-from pydantic import validator
+from pydantic import validator, field_validator
 
 
 class AIModel(BaseModel):
@@ -73,12 +73,14 @@ class AnswerLevelModel(BaseModel):
     tests: List[CodeTestModel] = Field(description="List of exactly 3 test questions for this difficulty level")
     evaluation_criteria: str = Field(description="Criteria for evaluating knowledge and skills at this difficulty level")
 
-    def validate_name(self) -> None:
-        if self.name not in ["Beginner", "Intermediate", "Advanced"]:
-            raise ValueError(f"Invalid name: {self.name}. Must be one of: 'Beginner', 'Intermediate', 'Advanced'")
+    @field_validator('name')
+    def validate_name(cls, v: str) -> str:
+        if v not in ["Beginner", "Intermediate", "Advanced"]:
+            raise ValueError(f"Invalid name: {v}. Must be one of: 'Beginner', 'Intermediate', 'Advanced'")
+        return v
 
 class AnswerLevels(BaseModel):
-    beginer: AnswerLevelModel = Field(description="Beginer level of the answer")
+    beginner: AnswerLevelModel = Field(description="Beginner level of the answer")
     intermediate: AnswerLevelModel = Field(description="Intermediate level of the answer")
     advanced: AnswerLevelModel = Field(description="Advanced level of the answer")
 

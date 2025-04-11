@@ -41,11 +41,18 @@
                     </div>                    
                     
                     <div class="mb-3">
-                        <label for="keywords" class="form-label">Keywords (comma separated)</label>
-                        <input type="text" class="form-control" id="keywords">
+                        <label for="keywords" class="form-label">Keywords/Tags (optional)</label>
+                        <input type="text" class="form-control" id="keywords" placeholder="e.g., GCD, NSOperationQueue, performance">
+                        <div class="form-text text-muted">Comma-separated relevant keywords</div>
                     </div>
                     
-                    <!-- Number of questions field removed - always set to 1 -->
+                    <div class="mb-3">
+                        <label for="questionContext" class="form-label">Question Context (optional)</label>
+                        <textarea class="form-control" id="questionContext" rows="3" placeholder="Provide specific context or a base question to refine generation..."></textarea>
+                        <div class="form-text text-muted">Helps guide the AI for more specific question generation</div>
+                    </div>
+
+                    <h5 class="mt-4">AI Configuration</h5>
                     
                     <!-- Button for expanding/collapsing AI settings -->
                     <div class="mb-3">

@@ -24,7 +24,7 @@
         "Multithreading"
       ],
       "answerLevels": {
-        "beginer": {
+        "beginner": {
           "name": "Beginner",
           "answer": "Grand Central Dispatch (GCD) is a powerful API in Objective-C that allows developers to efficiently manage concurrent tasks. At a basic level, GCD helps in executing tasks asynchronously, which means the main thread remains responsive while other tasks are executed in the background. To fetch data from a URL using GCD, you can create a new dispatch queue and use the `dispatch_async` function to handle the network request. Here\u2019s a simple example:\n\n```objc\nNSURL *url = [NSURL URLWithString:@\"https://api.example.com/data\"];\nNSURLSessionDataTask *dataTask = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {\n    if (error) {\n        NSLog(@\"Error fetching data: %@\", error);\n        return;\n    }\n    // Process the data\n    NSLog(@\"Data received: %@\", data);\n}];\n[dataTask resume];\n```\n\nIn this example, the data fetching operation does not block the main thread. Instead, it runs asynchronously, allowing the app to continue running smoothly while waiting for the response. Dispatch queues are crucial for managing these tasks, as they determine the order and execution context of the operations. Using GCD correctly ensures that tasks are executed efficiently without freezing the user interface.",
           "tests": [

@@ -3,11 +3,15 @@ import sys
 import time
 import logging
 from typing import Optional, Dict, Callable, List
+# import openai
 from openai import OpenAI
 from tokenize import Intnumber
 import json
 import tiktoken
 import time
+import openai
+import pydantic
+
 
 from ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
                                 AIRequestQuestionModel, AIRequestValidationModel, 
@@ -25,7 +29,10 @@ class OpenAIAgent(BaseAgent):
     @staticmethod
     def supported_models() -> List[str]:
         """Returns list of supported models."""
-        return ["gpt-4o", "gpt-4o-mini"]
+        return [
+            "gpt-4o", 
+            "gpt-4o-mini"
+        ]
         
     def __init__(self, api_key: Optional[str] = None):
         """Initialize OpenAI agent for MCP server integration."""
@@ -33,6 +40,7 @@ class OpenAIAgent(BaseAgent):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OpenAI API key is required")
+        # openai.api_key = self.api_key
         self.client = OpenAI(api_key=self.api_key)
         
     @property
@@ -52,22 +60,43 @@ class OpenAIAgent(BaseAgent):
             
         Returns:
             AIQuestionModel with generated content
+            
+        Raises:
+            ValueError: If request validation fails
+            RuntimeError: If OpenAI API call fails
+            ValueError: If response parsing fails
         """
 
         if not self._is_support_model(request.model):
-            raise Exception("Unsupported model")
+            raise ValueError(f"Unsupported model: {request.model.model}")
+
+        # Validate request parameters
+        if not request.request.topic:
+            raise ValueError("Topic is required")
+        if not request.request.platform:
+            raise ValueError("Platform is required")
+        if not request.request.tags:
+            raise ValueError("At least one tag is required")
 
         try:
             start_time = time.time()
             messages = self._prepare_messages(request.request)
             prompt_tokens = self.count_tokens(request.model.model, messages)
             
-            response = self.client.beta.chat.completions.parse(
-                model=request.model.model,
-                messages=messages,
-                response_format=QuestionModel,
-                temperature=0.7
-            )
+            try:
+                response = self.client.beta.chat.completions.parse(
+                        model=request.model.model,
+                        messages=messages,
+                        response_format=QuestionModel,
+                        temperature=0.7
+                    )
+            except Exception as e:
+                logger.error(f"OpenAI API error: {str(e)}")
+                raise RuntimeError(f"OpenAI API error: {str(e)}")
+            
+            if not response.choices or not response.choices[0].message.content:
+                logger.error("Empty response from OpenAI")
+                raise RuntimeError("Empty response from OpenAI")
             
             return self._process_generation_response(
                 model=request.model,
@@ -105,7 +134,7 @@ class OpenAIAgent(BaseAgent):
             response = self.client.beta.chat.completions.parse(
                 model=request.model.model,
                 messages=validation_prompt,
-                response_format=QuestionValidation, 
+                response_format=QuestionValidation,
                 temperature=0
             )   
         
@@ -221,7 +250,24 @@ For each difficulty level (Beginner, Intermediate, Advanced):
         )
         
         # Get generated question from response
-        generated_question = response.choices[0].message.parsed
+        content = response.choices[0].message.content
+        try:
+            # Log the content for debugging
+            logger.debug(f"Generated content: {content}")
+            
+            # Try to parse as JSON first
+            try:
+                json_content = json.loads(content)
+                logger.debug(f"Parsed JSON: {json.dumps(json_content, indent=2)}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON format: {str(e)}")
+                raise ValueError(f"Invalid JSON format: {str(e)}")
+            
+            generated_question = QuestionModel.model_validate(json_content)
+        except Exception as e:
+            logger.error(f"Failed to parse generated question: {str(e)}")
+            logger.error(f"Content that failed validation: {content}")
+            raise ValueError(f"Invalid question format: {str(e)}")
         
         return AIQuestionModel(
             question=generated_question,
@@ -426,8 +472,16 @@ Your response should include:
 
 def main():
     print(f"Python version={sys.version}")
+    print(f"OPENAI_API_KEY={os.getenv('OPENAI_API_KEY')}")
+    print(f"OpenAI version={openai.__version__}")
+    print(f"Pydantic version={pydantic.__version__}")
 
     agent = OpenAIAgent()
+
+    print(agent._is_support_model(model=AIModel(
+        provider="oPenai",
+        model="gpt-4o-minI"
+    )))
 
     # Generate question
     # generate_request = AIRequestQuestionModel(
@@ -451,13 +505,14 @@ def main():
     # print(f"Generated question: {json.dumps(question.model_dump(), indent=2)}")
 
 
-    print(agent._is_support_model(model=AIModel(
-            provider="oPenai",
-            model="gpt-4o-minI"
-        )))
     
     
-    # with open('mcp/agents/tests_data/generate_test_result.json', 'r') as file:
+    
+    # Get the absolute path to the test data file
+    # current_dir = os.path.dirname(os.path.abspath(__file__))
+    # test_data_path = os.path.join(current_dir, 'tests_data', 'generate_test_result.json')
+    
+    # with open(test_data_path, 'r') as file:
     #     generated = json.load(file)
         
     # # Extract question from the generated structure
@@ -477,7 +532,7 @@ def main():
     #     request=validate_request
     # )
     
-    # print(f"Validation result: {json.dumps(validation.model_dump(), indent=2)}")
+    print(f"Validation result: {json.dumps(validation.model_dump(), indent=2)}")
     
 if __name__ == "__main__":
     main()
