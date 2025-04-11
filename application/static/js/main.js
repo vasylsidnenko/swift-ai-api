@@ -452,4 +452,114 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Number of questions field hidden');
     }
 
-}); // End DOMContentLoaded
+    // Load agents and models on page load
+    loadAgents();
+    loadModels();
+    
+    // Setup validation settings toggle
+    const validationCheckbox = document.getElementById('validation');
+    const sameAsGenerationCheckbox = document.getElementById('sameAsGeneration');
+    const validationSettings = document.getElementById('validationSettings');
+    
+    validationCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            sameAsGenerationCheckbox.checked = true;
+            validationSettings.style.display = 'none';
+        } else {
+            sameAsGenerationCheckbox.checked = false;
+            validationSettings.style.display = 'block';
+        }
+    });
+    
+    sameAsGenerationCheckbox.addEventListener('change', function() {
+        validationSettings.style.display = this.checked ? 'none' : 'block';
+    });
+});
+
+function loadAgents() {
+    fetch('/api/agents')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const agents = data.agents;
+                const providerSelect = document.getElementById('ai');
+                const validationProviderSelect = document.getElementById('validationProvider');
+                
+                // Clear existing options
+                providerSelect.innerHTML = '';
+                validationProviderSelect.innerHTML = '';
+                
+                // Add new options
+                agents.forEach(agent => {
+                    const option = document.createElement('option');
+                    option.value = agent.id;
+                    option.textContent = agent.name;
+                    providerSelect.appendChild(option);
+                    
+                    const validationOption = option.cloneNode(true);
+                    validationProviderSelect.appendChild(validationOption);
+                });
+                
+                // Trigger change event to load models for selected provider
+                providerSelect.dispatchEvent(new Event('change'));
+            } else {
+                console.error('Failed to load agents:', data.error);
+            }
+        })
+        .catch(error => console.error('Error loading agents:', error));
+}
+
+function loadModels() {
+    fetch('/api/models')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const models = data.models;
+                const modelSelect = document.getElementById('model');
+                const validationModelSelect = document.getElementById('validationModel');
+                
+                // Clear existing options
+                modelSelect.innerHTML = '';
+                validationModelSelect.innerHTML = '';
+                
+                // Add new options
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    option.textContent = model.name;
+                    modelSelect.appendChild(option);
+                    
+                    const validationOption = option.cloneNode(true);
+                    validationModelSelect.appendChild(validationOption);
+                });
+            } else {
+                console.error('Failed to load models:', data.error);
+            }
+        })
+        .catch(error => console.error('Error loading models:', error));
+}
+
+// Update form submission to include validation settings
+document.getElementById('questionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        platform: document.getElementById('platform').value,
+        tech: document.getElementById('tech').value,
+        topic: document.getElementById('topic').value,
+        keywords: document.getElementById('keywords').value,
+        questionContext: document.getElementById('questionContext').value,
+        provider: document.getElementById('ai').value,
+        model: document.getElementById('model').value,
+        apiKey: document.getElementById('apiKey').value,
+        validation: document.getElementById('validation').checked
+    };
+    
+    if (formData.validation && !document.getElementById('sameAsGeneration').checked) {
+        formData.validationProvider = document.getElementById('validationProvider').value;
+        formData.validationModel = document.getElementById('validationModel').value;
+        formData.validationApiKey = document.getElementById('validationApiKey').value;
+    }
+    
+    // Rest of the submission logic...
+});

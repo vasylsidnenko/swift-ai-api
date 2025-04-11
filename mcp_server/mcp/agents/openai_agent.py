@@ -3,14 +3,15 @@ import sys
 import time
 import logging
 from typing import Optional, Dict, Callable, List
+import openai
 from openai import OpenAI
 import json
 import tiktoken
 
-from mcp.agents.ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
+from ..agents.ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
                                 AIRequestQuestionModel, AIRequestValidationModel, 
                                 AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation)
-from mcp.agents.base_agent import BaseAgent
+from ..agents.base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 

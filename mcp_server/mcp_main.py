@@ -24,6 +24,11 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+# Add mcp_server to sys.path
+mcp_server_path = Path(__file__).parent
+if str(mcp_server_path) not in sys.path:
+    sys.path.insert(0, str(mcp_server_path))
+
 from mcp.agents.base_agent import BaseAgent
 from mcp.mcp_server import MCPResponse
 from mcp.agents.ai_models import AIRequestQuestionModel, AIModel, RequestQuestionModel
@@ -83,6 +88,37 @@ class MCPExecuteRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     load_agents()
+
+@app.get("/mcp/v1/agents")
+async def get_agents():
+    """Get list of available agents."""
+    agents = []
+    for resource_id, agent_class in loaded_agents.items():
+        agents.append({
+            "id": resource_id,
+            "name": agent_class.__name__.replace("Agent", ""),
+            "description": f"{agent_class.__name__} API integration"
+        })
+    return {
+        "success": True,
+        "agents": agents
+    }
+
+@app.get("/mcp/v1/models")
+async def get_models():
+    """Get list of available models."""
+    models = []
+    for resource_id, agent_class in loaded_agents.items():
+        for model in agent_class.supported_models():
+            models.append({
+                "id": model,
+                "name": model,
+                "provider": resource_id
+            })
+    return {
+        "success": True,
+        "models": models
+    }
 
 @app.post("/mcp/v1/execute", response_model=MCPResponse, status_code=status.HTTP_200_OK)
 async def execute_mcp_operation(request: MCPExecuteRequest):
@@ -158,35 +194,8 @@ async def execute_mcp_operation(request: MCPExecuteRequest):
         )
 
 if __name__ == "__main__":
-    # Test OpenAI agent generation
-    try:
-        print("Testing OpenAI agent generation...")
-        agent = OpenAIAgent()
-        
-        # Create test request
-        generate_request = AIRequestQuestionModel(
-            model=AIModel(
-                provider="openai",
-                model="gpt-4o-mini"
-            ),
-            request=RequestQuestionModel(   
-                platform="iOS",
-                topic="SwiftUI",    
-                technology="Swift",
-                tags=["View", "State", "Binding"]
-            )
-        )   
-        
-        # Generate question
-        print("Generating question...")
-        question = agent.generate(request=generate_request)
-        print(f"\nGenerated question: {json.dumps(question.model_dump(), indent=2)}")
-        
-    except Exception as e:
-        print(f"Test failed: {str(e)}")
-        
     # Start the server
     port = int(os.environ.get("MCP_PORT", 10001))
-    host = os.environ.get("MCP_HOST", "127.0.0.1")
+    host = os.environ.get("MCP_HOST", "0.0.0.0")
     logger.info(f"Starting MCP Server on http://{host}:{port}")
     uvicorn.run("mcp_main:app", host=host, port=port, log_level="info", reload=False)

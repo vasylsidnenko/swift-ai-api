@@ -52,7 +52,7 @@ def generate_question():
         print(f"\nGenerated question: {json.dumps(question.model_dump(), indent=2)}")
         
         # Save to file for validation
-        with open('generated_question.json', 'w') as f:
+        with open('test_data/generated_question.json', 'w') as f:
             f.write(json.dumps(question.model_dump(), indent=2))
         print("\nQuestion saved to generated_question.json")
         
@@ -64,7 +64,7 @@ def validate_question():
     """Validate a question from file using OpenAI agent"""
     try:
         # Load question from file
-        with open('generated_question.json', 'r') as f:
+        with open('test_data/generated_question.json', 'r') as f:
             question_data = json.load(f)
         
         agent = OpenAIAgent()

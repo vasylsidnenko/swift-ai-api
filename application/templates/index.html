@@ -69,16 +69,14 @@
                                 <div class="mb-3">
                                     <label for="ai" class="form-label tech-label">Provider</label>
                                     <select class="form-select tech-input" id="ai">
-                                        <option value="openai">OpenAI</option>
-                                        <option value="google">Google</option>
-                                        <option value="deepseek">DeepSeek</option>
+                                        <!-- Options will be populated dynamically -->
                                     </select>
                                 </div>
                                 
                                 <div class="mb-3">
                                     <label for="model" class="form-label tech-label">Model</label>
                                     <select class="form-select tech-input" id="model">
-                                        <option value="gpt-4o-mini">gpt-4o-mini</option>
+                                        <!-- Options will be populated dynamically -->
                                     </select>
                                 </div>
 
@@ -94,6 +92,36 @@
                                     <input type="checkbox" class="form-check-input" id="validation" checked>
                                     <label class="form-check-label" for="validation">Validate generated questions</label>
                                     <div class="form-text text-muted">Ensures quality but may take longer</div>
+                                </div>
+
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="sameAsGeneration" checked>
+                                    <label class="form-check-label" for="sameAsGeneration">Use same settings for validation</label>
+                                </div>
+
+                                <div id="validationSettings" class="mt-3" style="display: none;">
+                                    <h6>Validation Settings</h6>
+                                    <div class="mb-3">
+                                        <label for="validationProvider" class="form-label tech-label">Provider</label>
+                                        <select class="form-select tech-input" id="validationProvider">
+                                            <!-- Options will be populated dynamically -->
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="validationModel" class="form-label tech-label">Model</label>
+                                        <select class="form-select tech-input" id="validationModel">
+                                            <!-- Options will be populated dynamically -->
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="validationApiKey" class="form-label tech-label">API Key</label>
+                                        <input type="password" class="form-control tech-input" id="validationApiKey">
+                                        <div id="validationApiKeyCredit" class="form-text text-muted mt-1" style="display: none;">
+                                            Using environment API key - credit Vasil_OK ☕
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

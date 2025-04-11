@@ -19,7 +19,7 @@ from typing import Dict, Any, Optional, List, Type, Callable
 from dataclasses import dataclass, field
 import time
 from pydantic import BaseModel
-from mcp.agents.base_agent import BaseAgent
+from .agents.base_agent import BaseAgent
 
 # Add agents directory to sys.path to allow dynamic imports
 # We might not need this here if app.py handles loading
@@ -108,3 +108,112 @@ class AIResource:
             # Catch potential API errors (e.g., connection, authentication) here if possible
             # error_type = "api_error" or "agent_execution_error"
             return MCPResponse(success=False, error=f"An unexpected error occurred: {e}", error_type="server_error")
+
+def main():
+    """Main entry point for running the MCP server."""
+    import uvicorn
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+    
+    app = FastAPI(title="MCP Server")
+    
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    # Add routes
+    @app.get("/mcp/v1/agents")
+    async def get_agents():
+        """Get list of available agents."""
+        from .agents import openai_agent
+        return {
+            "success": True,
+            "agents": [
+                {
+                    "id": "openai",
+                    "name": "OpenAI",
+                    "description": "OpenAI API integration"
+                }
+            ]
+        }
+    
+    @app.get("/mcp/v1/models")
+    async def get_models():
+        """Get list of available models."""
+        from .agents import openai_agent
+        return {
+            "success": True,
+            "models": [
+                {
+                    "id": "gpt-4o-mini",
+                    "name": "GPT-4o Mini",
+                    "provider": "openai"
+                }
+            ]
+        }
+    
+    @app.post("/mcp/v1/execute")
+    async def execute(request: dict):
+        """Execute a request using the appropriate agent."""
+        try:
+            resource_id = request.get("resource_id")
+            operation_id = request.get("operation_id")
+            context = request.get("context", {})
+            config = request.get("config", {})
+            
+            if not resource_id or not operation_id:
+                return {
+                    "success": False,
+                    "error": "Missing resource_id or operation_id",
+                    "error_type": "request_error"
+                }
+            
+            # Create MCP context
+            mcp_context = MCPContext(
+                request_type=operation_id,
+                config=AIConfig(
+                    provider=resource_id,
+                    model=config.get("model"),
+                    api_key=config.get("api_key")
+                ),
+                payload=context
+            )
+            
+            # Get appropriate agent class
+            if resource_id == "openai":
+                from .agents import openai_agent
+                agent_class = openai_agent.OpenAIAgent
+            else:
+                return {
+                    "success": False,
+                    "error": f"Unsupported resource: {resource_id}",
+                    "error_type": "configuration_error"
+                }
+            
+            # Execute request
+            resource = AIResource()
+            response = resource.execute(agent_class, mcp_context)
+            
+            return response.model_dump()
+            
+        except Exception as e:
+            logger.exception("Error executing request")
+            return {
+                "success": False,
+                "error": str(e),
+                "error_type": "server_error"
+            }
+    
+    # Get port from environment or use default
+    port = int(os.environ.get("PORT", 10001))
+    
+    # Run server
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
+if __name__ == "__main__":
+    main()

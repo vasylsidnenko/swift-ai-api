@@ -1,0 +1,140 @@
+{
+  "agent": {
+    "model": {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    "statistic": {
+      "time": 37706,
+      "tokens": 4683
+    }
+  },
+  "question": {
+    "topic": {
+      "name": "SwiftUI",
+      "platform": "iOS",
+      "technology": "Swift"
+    },
+    "text": "Create a SwiftUI application that displays a list of items with the ability for users to add new items. Use a `@State` variable to manage the list and a `TextField` for input. Ensure that new items are added to the list when the user presses a button. Demonstrate how to use `Binding` to pass the item list to a child view that displays the list. Show how to handle state changes correctly and update the UI accordingly.",
+    "tags": [
+      "View",
+      "State",
+      "Binding",
+      "SwiftUI",
+      "iOS"
+    ],
+    "answerLevels": {
+      "beginner": {
+        "name": "Beginner",
+        "answer": "In SwiftUI, to create a simple application where users can add items to a list, you can use a `@State` variable to hold the list of items and a `TextField` to get input from the user. Here's an example:\n\n```swift\nimport SwiftUI\n\nstruct ContentView: View {\n    @State private var items: [String] = []\n    @State private var newItem: String = \"\"\n\n    var body: some View {\n        VStack {\n            TextField(\"Enter new item\", text: $newItem)\n                .padding()\n                .textFieldStyle(RoundedBorderTextFieldStyle())\n\n            Button(action: {\n                if !newItem.isEmpty {\n                    items.append(newItem)\n                    newItem = \"\"\n                }\n            }) {\n                Text(\"Add Item\")\n            }\n            .padding()\n\n            List(items, id: \\ .self) { item in\n                Text(item)\n            }\n        }\n        .padding()\n    }\n}\n\nstruct ContentView_Previews: PreviewProvider {\n    static var previews: some View {\n        ContentView()\n    }\n}",
+        "tests": [
+          {
+            "snippet": "What will happen if the user tries to add an empty item?",
+            "options": [
+              "It will crash the app",
+              "Nothing will happen",
+              "An empty string will be added",
+              "An error message will appear"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "In the provided code, what is the purpose of the @State property wrapper?",
+            "options": [
+              "It defines a constant variable",
+              "It allows the variable to be mutable",
+              "It manages the memory allocation",
+              "It creates a static variable"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "What will be the output if the user enters 'Apple' and then presses 'Add Item'?",
+            "options": [
+              "The list will show 'Apple'",
+              "The list will show 'Apple' twice",
+              "The list will be empty",
+              "The app will crash"
+            ],
+            "answer": "1"
+          }
+        ],
+        "evaluation_criteria": "At the Beginner level, the student should understand basic syntax and fundamental concepts of SwiftUI. They should demonstrate the ability to read simple code examples, identify correct syntax, and understand basic programming patterns related to SwiftUI on iOS."
+      },
+      "intermediate": {
+        "name": "Intermediate",
+        "answer": "In a more complex SwiftUI application, you might want to separate concerns by using child views. You can create a child view to display the list items and bind the list from the parent view to the child view. Here\u2019s an example:\n\n```swift\nimport SwiftUI\n\nstruct ContentView: View {\n    @State private var items: [String] = []\n    @State private var newItem: String = \"\"\n\n    var body: some View {\n        VStack {\n            TextField(\"Enter new item\", text: $newItem)\n                .padding()\n                .textFieldStyle(RoundedBorderTextFieldStyle())\n\n            Button(action: {\n                if !newItem.isEmpty {\n                    items.append(newItem)\n                    newItem = \"\"\n                }\n            }) {\n                Text(\"Add Item\")\n            }\n            .padding()\n\n            ItemListView(items: $items)\n        }\n        .padding()\n    }\n}\n\nstruct ItemListView: View {\n    @Binding var items: [String]\n\n    var body: some View {\n        List(items, id: \\ .self) { item in\n            Text(item)\n        }\n    }\n}\n\nstruct ContentView_Previews: PreviewProvider {\n    static var previews: some View {\n        ContentView()\n    }\n}",
+        "tests": [
+          {
+            "snippet": "What is the purpose of using `@Binding` in the `ItemListView`?",
+            "options": [
+              "It makes the list mutable",
+              "It allows the list to be passed by reference",
+              "It creates a new instance of the list",
+              "It prevents the list from updating"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "If a user adds an item and then changes the `newItem` text field, what will happen?",
+            "options": [
+              "The item will not be displayed",
+              "The new item will be added to the list",
+              "The list will not change",
+              "The app will crash"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "Which SwiftUI component is used to display a scrollable list of items?",
+            "options": [
+              "Text",
+              "List",
+              "VStack",
+              "HStack"
+            ],
+            "answer": "2"
+          }
+        ],
+        "evaluation_criteria": "At the Intermediate level, the student should understand more complex implementations and common design patterns related to SwiftUI. They should demonstrate the ability to analyze code, identify potential issues, and understand the practical applications of SwiftUI concepts in iOS development."
+      },
+      "advanced": {
+        "name": "Advanced",
+        "answer": "At the Advanced level, the application could include features such as persistent storage using `UserDefaults` to save the items, ensuring that the data persists even after the application is closed. Here\u2019s an example that implements this:\n\n```swift\nimport SwiftUI\n\nstruct ContentView: View {\n    @State private var items: [String] = UserDefaults.standard.stringArray(forKey: \"items\") ?? []\n    @State private var newItem: String = \"\"\n\n    var body: some View {\n        VStack {\n            TextField(\"Enter new item\", text: $newItem)\n                .padding()\n                .textFieldStyle(RoundedBorderTextFieldStyle())\n\n            Button(action: {\n                if !newItem.isEmpty {\n                    items.append(newItem)\n                    UserDefaults.standard.set(items, forKey: \"items\")\n                    newItem = \"\"\n                }\n            }) {\n                Text(\"Add Item\")\n            }\n            .padding()\n\n            ItemListView(items: $items)\n        }\n        .padding()\n    }\n}\n\nstruct ItemListView: View {\n    @Binding var items: [String]\n\n    var body: some View {\n        List(items, id: \\ .self) { item in\n            Text(item)\n        }\n    }\n}\n\nstruct ContentView_Previews: PreviewProvider {\n    static var previews: some View {\n        ContentView()\n    }\n}",
+        "tests": [
+          {
+            "snippet": "What happens when a new item is added in terms of persistent storage?",
+            "options": [
+              "The item is saved in memory only",
+              "The item is saved to UserDefaults",
+              "The item will not be saved",
+              "The app will crash"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "If the app is restarted, what will happen to the list of items?",
+            "options": [
+              "The list will be empty",
+              "The list will be restored from UserDefaults",
+              "The app will crash",
+              "The list will be duplicated"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "How can you make sure the users' input is validated before adding to the list?",
+            "options": [
+              "Add a check before appending to the array",
+              "Use a different data type",
+              "Ignore the user input",
+              "Always allow empty strings"
+            ],
+            "answer": "1"
+          }
+        ],
+        "evaluation_criteria": "At the Advanced level, the student should demonstrate deep understanding of SwiftUI internals and optimization techniques. They should be able to evaluate complex implementations, understand performance implications, and apply advanced patterns related to SwiftUI in sophisticated iOS applications."
+      }
+    }
+  }
+}

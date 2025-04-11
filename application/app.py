@@ -19,6 +19,8 @@ app = Flask(__name__,
 # --- Configuration for MCP Server --- 
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:10001") 
 EXECUTE_ENDPOINT = f"{MCP_SERVER_URL}/mcp/v1/execute"
+AGENTS_ENDPOINT = f"{MCP_SERVER_URL}/mcp/v1/agents"
+MODELS_ENDPOINT = f"{MCP_SERVER_URL}/mcp/v1/models"
 
 # --- Removed Agent Loading Logic ---
 # The Flask app no longer loads agents directly. It will call the MCP server.
@@ -31,7 +33,8 @@ ENV_API_KEYS = {
 @app.route('/')
 def index():
     """Render the main page."""
-    return render_template('index.html')
+    available_models = get_available_models()
+    return render_template('index.html', availableModels=available_models)
 
 @app.route('/get_env_key_status', methods=['POST'])
 def get_env_key_status():
@@ -156,6 +159,53 @@ def api_validate():
         else:
              return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
 
+@app.route('/api/agents', methods=['GET'])
+def get_agents():
+    """Get list of available agents from MCP server."""
+    try:
+        response = requests.get(AGENTS_ENDPOINT)
+        response.raise_for_status()
+        return jsonify(response.json()), response.status_code
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error getting agents: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/models', methods=['GET'])
+def get_models():
+    """Get list of available models from MCP server."""
+    try:
+        response = requests.get(MODELS_ENDPOINT)
+        response.raise_for_status()
+        return jsonify(response.json()), response.status_code
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error getting models: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+def get_available_models():
+    """Get available models from MCP server and format them for the frontend."""
+    try:
+        # Get agents
+        agents_response = requests.get(AGENTS_ENDPOINT)
+        agents_response.raise_for_status()
+        agents_data = agents_response.json()
+        
+        # Get models
+        models_response = requests.get(MODELS_ENDPOINT)
+        models_response.raise_for_status()
+        models_data = models_response.json()
+        
+        # Format models by provider
+        available_models = {}
+        for model in models_data.get('models', []):
+            provider = model.get('provider')
+            if provider not in available_models:
+                available_models[provider] = []
+            available_models[provider].append(model.get('id'))
+        
+        return available_models
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error getting available models: {e}")
+        return {}
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000)) 
