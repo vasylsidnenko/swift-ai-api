@@ -3,7 +3,6 @@ import os
 import sys
 import subprocess
 import time
-import signal
 import logging
 from pathlib import Path
 
