@@ -3,20 +3,14 @@ import sys
 import time
 import logging
 from typing import Optional, Dict, Callable, List
-# import openai
 from openai import OpenAI
-from tokenize import Intnumber
 import json
 import tiktoken
-import time
-import openai
-import pydantic
 
-
-from ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
+from mcp.agents.ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
                                 AIRequestQuestionModel, AIRequestValidationModel, 
                                 AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation)
-from base_agent import BaseAgent
+from mcp.agents.base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +34,16 @@ class OpenAIAgent(BaseAgent):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OpenAI API key is required")
-        # openai.api_key = self.api_key
-        self.client = OpenAI(api_key=self.api_key)
+        
+        # Check OpenAI API version
+        try:
+            self.client = OpenAI(api_key=self.api_key)
+            # Test API connection
+            self.client.models.list()
+            logger.info("Successfully connected to OpenAI API")
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenAI client: {str(e)}")
+            raise RuntimeError(f"OpenAI API initialization failed: {str(e)}")
         
     @property
     def tools(self) -> Dict[str, Callable]:
@@ -66,6 +68,9 @@ class OpenAIAgent(BaseAgent):
             RuntimeError: If OpenAI API call fails
             ValueError: If response parsing fails
         """
+
+        print(f"Python version={sys.version}")
+        print(f"OpenAI version={openai.__version__}")
 
         if not self._is_support_model(request.model):
             raise ValueError(f"Unsupported model: {request.model.model}")
@@ -126,24 +131,60 @@ class OpenAIAgent(BaseAgent):
             RuntimeError: For API or validation errors
         """
 
+        print(f"Python version={sys.version}")
+        print(f"OpenAI version={openai.__version__}")
+
         if not self._is_support_model(request.model):
-            raise Exception("Unsupported model")
+            raise ValueError(f"Unsupported model: {request.model.model}")
 
         try:
+            start_time = time.time()
             validation_prompt = self._build_validation_prompt(request.request)
-            response = self.client.beta.chat.completions.parse(
-                model=request.model.model,
-                messages=validation_prompt,
-                response_format=QuestionValidation,
-                temperature=0
-            )   
-        
-            if not (hasattr(response, 'choices') 
-                    and len(response.choices) > 0
-                    and hasattr(response.choices[0].message, 'parsed')):
-                raise ValueError("Invalid validation response format")
+            prompt_tokens = self.count_tokens(request.model.model, validation_prompt)
             
-            return self._process_validation_response(response)
+            try:
+                response = self.client.beta.chat.completions.parse(
+                    model=request.model.model,
+                    messages=validation_prompt,
+                    response_format=QuestionValidation,
+                    temperature=0
+                )
+            except Exception as e:
+                logger.error(f"OpenAI API error: {str(e)}")
+                raise RuntimeError(f"OpenAI API error: {str(e)}")
+            
+            if not response.choices or not response.choices[0].message.content:
+                logger.error("Empty response from OpenAI")
+                raise RuntimeError("Empty response from OpenAI")
+            
+            tokens_used = prompt_tokens
+            if hasattr(response, 'usage') and hasattr(response.usage, 'total_tokens'):
+                tokens_used += response.usage.total_tokens
+            
+            time_taken = int((time.time() - start_time) * 1000)  # Convert to milliseconds
+            
+            agent = AgentModel(
+                model=request.model,
+                statistic=AIStatistic(
+                    time=time_taken,
+                    tokens=tokens_used
+                )
+            )
+            
+            # Parse validation response
+            content = response.choices[0].message.content
+            try:
+                validation_dict = json.loads(content)
+                validation = QuestionValidation(**validation_dict)
+            except Exception as e:
+                logger.error(f"Failed to parse validation response: {str(e)}")
+                logger.error(f"Content that failed validation: {content}")
+                raise ValueError(f"Invalid validation format: {str(e)}")
+            
+            return AIValidationModel(
+                agent=agent,
+                validation=validation
+            )
         
         except Exception as e:
             logger.error(f"Validation failed: {str(e)}")
@@ -468,71 +509,3 @@ Your response should include:
             return self.count_tokens(model, json.dumps(content))
         else:
             return self.count_tokens(model, str(content))
-
-
-def main():
-    print(f"Python version={sys.version}")
-    print(f"OPENAI_API_KEY={os.getenv('OPENAI_API_KEY')}")
-    print(f"OpenAI version={openai.__version__}")
-    print(f"Pydantic version={pydantic.__version__}")
-
-    agent = OpenAIAgent()
-
-    print(agent._is_support_model(model=AIModel(
-        provider="oPenai",
-        model="gpt-4o-minI"
-    )))
-
-    # Generate question
-    # generate_request = AIRequestQuestionModel(
-    #     model=AIModel(
-    #         provider="openai",
-    #         model="gpt-4o-mini"
-    #     ),
-    #     request=RequestQuestionModel(   
-    #         platform="Apple",
-    #         topic="Concurrency",    
-    #         technology="Objective-C",
-    #         tags=["Atomic", "gcd", "runloop"]
-    #     )
-    # )   
-    
-    # # Generate question
-    # question = agent.generate(
-    #     request=generate_request
-    # )
-
-    # print(f"Generated question: {json.dumps(question.model_dump(), indent=2)}")
-
-
-    
-    
-    
-    # Get the absolute path to the test data file
-    # current_dir = os.path.dirname(os.path.abspath(__file__))
-    # test_data_path = os.path.join(current_dir, 'tests_data', 'generate_test_result.json')
-    
-    # with open(test_data_path, 'r') as file:
-    #     generated = json.load(file)
-        
-    # # Extract question from the generated structure
-    # question_data = generated['question']
-    # question_model = QuestionModel.model_validate(question_data)
-
-    # # Validate question
-    # validate_request = AIRequestValidationModel(
-    #     model=AIModel(
-    #         provider="openai",
-    #         model="gpt-4o-mini"
-    #     ),
-    #     request=question_model
-    # )
-    
-    # validation = agent.validate(
-    #     request=validate_request
-    # )
-    
-    print(f"Validation result: {json.dumps(validation.model_dump(), indent=2)}")
-    
-if __name__ == "__main__":
-    main()

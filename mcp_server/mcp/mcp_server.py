@@ -19,6 +19,7 @@ from typing import Dict, Any, Optional, List, Type, Callable
 from dataclasses import dataclass, field
 import time
 from pydantic import BaseModel
+from mcp.agents.base_agent import BaseAgent
 
 # Add agents directory to sys.path to allow dynamic imports
 # We might not need this here if app.py handles loading
@@ -27,30 +28,6 @@ if str(agents_dir) not in sys.path:
     sys.path.append(str(agents_dir))
 
 logger = logging.getLogger(__name__)
-
-
-class BaseAgent:
-    """Abstract base class for all AI agents."""
-    SUPPORTED_MODELS: List[str] = []
-
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv(f"{self.__class__.__name__.replace('Agent', '').upper()}_API_KEY")
-        if not self.api_key:
-            logger.warning(f"API key for {self.__class__.__name__} not provided and not found in environment variables.")
-            # raise ValueError(f"API key for {self.__class__.__name__} is required.") # Decide if this should be fatal
-
-    def generate_question(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate a question based on the provided context."""
-        raise NotImplementedError
-
-    def validate_question(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate a question based on the provided context."""
-        raise NotImplementedError
-
-    @classmethod
-    def get_supported_models(cls) -> List[str]:
-        """Return the list of supported models for this agent."""
-        return cls.SUPPORTED_MODELS
 
 
 class MCPResponse(BaseModel):
