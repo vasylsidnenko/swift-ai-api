@@ -7,13 +7,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const apiKeyCredit = document.getElementById('apiKeyCredit');
     const aiSettingsToggle = document.querySelector('[data-bs-toggle="collapse"]');
 
-    // Check if availableModels is defined and is an object
-    if (typeof availableModels === 'undefined' || typeof availableModels !== 'object' || availableModels === null) {
-        console.error('Error: availableModels is not defined or not an object. Make sure it is passed correctly from the backend to the template.');
-        // Optionally display an error message to the user
-        resultDiv.innerHTML = '<div class="alert alert-danger">Could not load AI providers. Please check the application setup.</div>';
-        return; // Stop execution if models aren't available
-    }
+    // Load agents and models
+    loadAgents();
+
+    // Add change event handler for provider select
+    aiSelect.addEventListener('change', function() {
+        const provider = this.value;
+        loadModels();
+        checkEnvKey(provider);
+    });
 
     // --- Helper Functions ---
 
@@ -38,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 apiKeyInput.value = '********'; // Masked value
                 apiKeyInput.placeholder = 'Using environment API key';
                 apiKeyInput.classList.add('has-env-key');
-                apiKeyCredit.textContent = 'Using environment API key - credit Vasil_OK ☕'; // Updated credit text
+                apiKeyCredit.textContent = 'Using environment API key - credit Vasil_OK '; // Updated credit text
                 apiKeyCredit.style.display = 'block';
             }
         } catch (error) {
@@ -52,23 +54,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Populate model select based on the chosen provider
-    function populateModels(provider) {
-        const models = availableModels[provider] || [];
-        modelSelect.innerHTML = ''; // Clear existing options
+    async function populateModels(provider) {
+        try {
+            const response = await fetch(`/api/models/${provider}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const models = await response.json();
 
-        if (models.length === 0) {
-            const option = document.createElement('option');
-            option.textContent = 'No models available';
-            option.disabled = true;
-            modelSelect.appendChild(option);
-        } else {
-            models.forEach(model => {
+            modelSelect.innerHTML = ''; // Clear existing options
+
+            if (models.length === 0) {
                 const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
+                option.textContent = 'No models available';
+                option.disabled = true;
                 modelSelect.appendChild(option);
-            });
-            modelSelect.selectedIndex = 0; // Select the first model by default
+            } else {
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    modelSelect.appendChild(option);
+                });
+                modelSelect.selectedIndex = 0; // Select the first model by default
+            }
+        } catch (error) {
+            console.error(`Error populating models for ${provider}:`, error);
         }
     }
 
@@ -453,7 +464,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Load agents and models on page load
-    loadAgents();
     loadModels();
     
     // Setup validation settings toggle
