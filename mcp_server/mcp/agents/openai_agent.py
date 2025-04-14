@@ -7,6 +7,7 @@ import openai
 from openai import OpenAI
 import json
 import tiktoken
+from dotenv import load_dotenv
 
 from ..agents.ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
                                 AIRequestQuestionModel, AIRequestValidationModel, 
@@ -32,6 +33,7 @@ class OpenAIAgent(BaseAgent):
     def __init__(self, api_key: Optional[str] = None):
         """Initialize OpenAI agent for MCP server integration."""
         os.environ['PYDANTIC_PRIVATE_ALLOW_UNHANDLED_SCHEMA_TYPES'] = '1'
+        load_dotenv()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OpenAI API key is required")

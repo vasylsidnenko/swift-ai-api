@@ -12,8 +12,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional, Type
-import json
+from typing import Any, Dict, Type
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, status
