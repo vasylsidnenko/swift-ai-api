@@ -34,7 +34,7 @@ from mcp.agents.ai_models import AIRequestQuestionModel, AIModel, RequestQuestio
 from mcp.agents.openai_agent import OpenAIAgent
 
 # --- Logging Configuration ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # --- Agent Loading ---
@@ -124,7 +124,10 @@ async def execute_mcp_operation(request: MCPExecuteRequest):
     """
     Executes an operation on a specified AI agent resource based on the MCP standard.
     """
+    logger.debug(f"Received MCP request: {request}")
     logger.info(f"Received MCP request: resource='{request.resource_id}', operation='{request.operation_id}'")
+    logger.debug(f"Request context: {request.context}")
+    logger.debug(f"Request config: {request.config}")
     
     agent_class = loaded_agents.get(request.resource_id)
     if not agent_class:
@@ -152,34 +155,70 @@ async def execute_mcp_operation(request: MCPExecuteRequest):
             ).model_dump()
         )
 
-    if model not in agent_class.supported_models():
-        logger.warning(f"Model '{model}' not supported by {agent_class.__name__}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=MCPResponse(
-                success=False,
-                error=f"Model '{model}' is not supported by the '{request.resource_id}' provider.",
-                error_type="model_not_supported"
-            ).model_dump()
-        )
-
     try:
-        agent_instance = agent_class(api_key=api_key)
-        operation_method = getattr(agent_instance, request.operation_id, None)
-
+        # Initialize agent with API key if provided
+        agent = agent_class(api_key=api_key)
+        operation_method = agent.tools.get(request.operation_id)
+        
         if not operation_method or not callable(operation_method):
             logger.error(f"Operation '{request.operation_id}' not found")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=MCPResponse(
                     success=False,
-                    error=f"Operation '{request.operation_id}' not supported.",
-                    error_type="operation_not_supported"
+                    error=f"Operation '{request.operation_id}' not found.",
+                    error_type="operation_not_found"
                 ).model_dump()
             )
 
-        result_data = operation_method(context=request.context)
-        return MCPResponse(success=True, data=result_data)
+        logger.info(f"Executing {request.operation_id} with context: {request.context}")
+        logger.debug(f"Operation method: {operation_method}")
+
+        # Create appropriate request model based on operation
+        if request.operation_id == 'generate':
+            from mcp.agents.ai_models import AIRequestQuestionModel, AIModel, RequestQuestionModel
+            operation_request = AIRequestQuestionModel(
+                model=AIModel(
+                    provider=request.resource_id,
+                    model=model
+                ),
+                request=RequestQuestionModel(   
+                    platform=request.context.get('platform', ''),
+                    topic=request.context.get('topic', ''),
+                    technology=request.context.get('tech', ''),
+                    tags=request.context.get('keywords', [])
+                )
+            )
+        elif request.operation_id == 'validate':
+            from mcp.agents.ai_models import AIRequestValidationModel, AIModel, QuestionModel, TopicModel
+            question_data = request.context.get('question', {})
+            # Create question model
+            question = QuestionModel(
+                text=question_data.get('text', ''),
+                topic=TopicModel(
+                    name=request.context.get('topic', ''),
+                    platform=request.context.get('platform', ''),
+                    technology=request.context.get('tech', '')
+                ),
+                tags=request.context.get('keywords', []),
+                answerLevels=question_data.get('answerLevels', {})  # Changed from answer_levels to answerLevels
+            )
+            operation_request = AIRequestValidationModel(
+                model=AIModel(
+                    provider=request.resource_id,
+                    model=model
+                ),
+                request=question
+            )
+        else:
+            raise ValueError(f"Unknown operation: {request.operation_id}")
+
+        result_data = operation_method(request=operation_request)
+        
+        return MCPResponse(
+            success=True,
+            data=result_data.model_dump()
+        )
 
     except Exception as e:
         logger.exception(f"Error executing {request.operation_id}: {e}")

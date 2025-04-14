@@ -56,27 +56,39 @@ def generate_question():
             f.write(json.dumps(question.model_dump(), indent=2))
         print("\nQuestion saved to generated_question.json")
         
+        return question
+        
     except Exception as e:
         logger.error(f"Generation failed: {str(e)}")
         sys.exit(1)
 
-def validate_question():
+def validate_question(generated_model=None):
     """Validate a question from file using OpenAI agent"""
     try:
-        # Load question from file
-        with open('mcp_server/test_data/generated_question.json', 'r') as f:
-            question_data = json.load(f)
-        
-        agent = OpenAIAgent()
-        
-        # Create validation request using the question data directly
-        validate_request = AIRequestValidationModel(
-            model=AIModel(
-                provider="openai",
-                model="gpt-4o-mini"
-            ),
-            request=QuestionModel(**question_data['question'])  # Convert to QuestionModel
-        )
+        if generated_model is None:
+            # Load question from file
+            with open('mcp_server/test_data/generated_question.json', 'r') as f:
+                question_data = json.load(f)
+            
+            agent = OpenAIAgent()
+            
+            # Create validation request using the question data directly
+            validate_request = AIRequestValidationModel(
+                model=AIModel(
+                    provider="openai",
+                    model="gpt-4o-mini"
+                ),
+                request=QuestionModel(**question_data['question'])  # Convert to QuestionModel
+            )
+        else:
+            agent = OpenAIAgent()
+            validate_request = AIRequestValidationModel(
+                model=AIModel(
+                    provider="openai",
+                    model="gpt-4o-mini"
+                ),
+                request=generated_model.question  # Use only the question part from AIQuestionModel
+            )
         
         print("Validating question...")
         validation = agent.validate(request=validate_request)
@@ -93,19 +105,27 @@ def validate_question():
         sys.exit(1)
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python run_agent.py [generate|validate]")
-        sys.exit(1)
-    
-    operation = sys.argv[1].lower()
     # load_dotenv()
 
+    if len(sys.argv) == 1:
+        # If no operation specified, do generate and then validate
+        print("\n=== Generating question ===")
+        generated_model = generate_question()
+        
+        if generated_model:
+            print("\n=== Validating generated question ===")
+            # Use the generated model for validation
+            validate_question(generated_model)
+        return
+
+    operation = sys.argv[1].lower()
+    
     if operation == "generate":
         generate_question()
     elif operation == "validate":
         validate_question()
     else:
-        print("Invalid operation. Use 'generate' or 'validate'")
+        print("Invalid operation. Use 'generate' or 'validate', or run without arguments for generate-then-validate flow")
         sys.exit(1)
 
 if __name__ == "__main__":
