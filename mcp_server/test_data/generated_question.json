@@ -5,8 +5,8 @@
       "model": "gpt-4o-mini"
     },
     "statistic": {
-      "time": 41593,
-      "tokens": 4588
+      "time": 35512,
+      "tokens": 5021
     }
   },
   "question": {
@@ -15,47 +15,47 @@
       "platform": "iOS",
       "technology": "Swift"
     },
-    "text": "Create a SwiftUI application that displays a list of items that can be added and removed dynamically. Implement a form to input new items, and utilize State and Binding effectively to manage the data flow between the view and the model. Ensure the UI updates appropriately when items are added or removed. Here\u2019s a basic structure to get you started:\n```swift\nstruct ContentView: View {\n    @State private var items: [String] = []\n    @State private var newItem: String = \"\"\n\n    var body: some View {\n        VStack {\n            TextField(\"Add new item\", text: $newItem)\n                .padding()\n            Button(\"Add Item\") {\n                if !newItem.isEmpty {\n                    items.append(newItem)\n                    newItem = \"\"\n                }\n            }\n            List {\n                ForEach(items, id: \\ .self) { item in\n                    Text(item)\n                }\n                .onDelete(perform: deleteItem)\n            }\n        }\n    }\n\n    func deleteItem(at offsets: IndexSet) {\n        items.remove(atOffsets: offsets)\n    }\n}\n```",
+    "text": "Create a simple SwiftUI application that displays a list of items with a toggle switch for each item. The toggle should indicate whether the item is active or inactive. When the toggle is changed, the app should reflect this change visually and in the data model. Use State and Binding to manage the state of the toggles. Provide code for the view and the model.",
     "tags": [
       "SwiftUI",
+      "View",
       "State",
       "Binding",
       "iOS",
-      "Swift",
-      "View"
+      "Swift"
     ],
     "answerLevels": {
       "beginner": {
         "name": "Beginner",
-        "answer": "At the Beginner level, students should understand the basics of SwiftUI and how to use State and Binding for managing data in a simple application. They should be able to create a basic user interface that allows for user input and display items in a list.\n\nTo implement this, students should use the provided code structure as a starting point. They need to understand how to create a `@State` property to hold the list of items and another `@State` property for the new item. The `TextField` and `Button` components will enable the input and addition of new items. The `List` will dynamically update as items are added or removed.\n\nKey components include:\n- `@State` for storing state variables.\n- `TextField` for user input.\n- `Button` for triggering actions.\n- `List` for displaying data and managing items with `onDelete` functionality.",
+        "answer": "To create a simple SwiftUI application that displays a list with toggle switches, we start by defining a model for the items. Each item will have a name and an active state. We can then create a SwiftUI view that displays each item with its corresponding toggle. Using @State, we can manage the list of items and their active states. Here\u2019s a simple implementation:\n\n```swift\nimport SwiftUI\n\nstruct Item {\n    let name: String\n    var isActive: Bool\n}\n\nstruct ContentView: View {\n    @State private var items = [\n        Item(name: \"Item 1\", isActive: true),\n        Item(name: \"Item 2\", isActive: false),\n        Item(name: \"Item 3\", isActive: true)\n    ]\n\n    var body: some View {\n        List {\n            ForEach(0..<items.count, id: \\ .self) { index in\n                HStack {\n                    Text(items[index].name)\n                    Toggle(isOn: Binding(\n                        get: { items[index].isActive },\n                        set: { items[index].isActive = $0 }\n                    )) {\n                        Text(\"\")\n                    }\n                }\n            }\n        }\n    }\n}\n\nstruct ContentView_Previews: PreviewProvider {\n    static var previews: some View {\n        ContentView()\n    }\n}\n```",
         "tests": [
           {
-            "snippet": "```swift\n@State private var items: [String] = []\n@State private var newItem: String = \"\"\n\nvar body: some View {\n    // What does @State do?\n}\n```",
+            "snippet": "```swift\nstruct Item {\n    let name: String\n    var isActive: Bool\n}\n\nlet item = Item(name: \"Test\", isActive: true)\nitem.isActive = false // This line will cause an error\n```",
             "options": [
-              "Stores a constant value",
-              "Holds a mutable state for the view",
-              "Defines a function",
-              "Creates a new view"
+              "1. True",
+              "2. False",
+              "3. It will compile without errors",
+              "4. The item will not change its state"
             ],
             "answer": "2"
           },
           {
-            "snippet": "```swift\nTextField(\"Add new item\", text: $newItem)\n\n// What is the purpose of the $ symbol here?\n```",
+            "snippet": "```swift\n@State private var items: [Item]\n```",
             "options": [
-              "It signifies a constant",
-              "It denotes a binding to a state variable",
-              "It initializes a new variable",
-              "It makes the variable private"
+              "1. A property that cannot be mutated",
+              "2. A way to store data that can change",
+              "3. A constant array",
+              "4. Used for static data"
             ],
             "answer": "2"
           },
           {
-            "snippet": "```swift\nList {\n    ForEach(items, id: \\ .self) { item in\n        Text(item)\n    }\n}\n\n// What does id: \\ .self indicate in ForEach?\n```",
+            "snippet": "```swift\nToggle(isOn: $isActive) {\n    Text(\"Active\")\n}\n```",
             "options": [
-              "It indicates the items are unique",
-              "It assigns a random ID to each item",
-              "It binds the item to its index",
-              "It is not necessary"
+              "1. Binds a toggle to a local state variable",
+              "2. Creates a static toggle",
+              "3. Does not change the item state",
+              "4. Only works in UIKit"
             ],
             "answer": "1"
           }
@@ -64,74 +64,74 @@
       },
       "intermediate": {
         "name": "Intermediate",
-        "answer": "At the Intermediate level, students should demonstrate the ability to create more complex applications using SwiftUI. They should understand how to utilize State and Binding to manage data flow effectively between the UI and the model. Additionally, students should be able to implement features such as item deletion with proper user feedback and understand the lifecycle of views in SwiftUI.\n\nTo enhance the application provided, students can add error handling for empty inputs, implement a confirmation alert before deleting an item, and perhaps allow editing of existing items. They should also understand how to structure their code for better readability and maintainability, potentially using multiple views.\n\nKey enhancements include:\n- Error handling for empty item submissions.\n- Alerts for user confirmations on delete actions.\n- Modularizing the code into smaller views for better organization.",
+        "answer": "In the intermediate level, we expand the functionality by allowing users to add and remove items from the list dynamically. We still use State and Binding to manage the state of the list. Here\u2019s how we can achieve this:\n\n```swift\nimport SwiftUI\n\nstruct Item {\n    let name: String\n    var isActive: Bool\n}\n\nstruct ContentView: View {\n    @State private var items: [Item] = []\n    @State private var newItemName: String = \"\"\n\n    var body: some View {\n        VStack {\n            TextField(\"New Item\", text: $newItemName)\n                .textFieldStyle(RoundedBorderTextFieldStyle())\n                .padding()\n            Button(\"Add Item\") {\n                let newItem = Item(name: newItemName, isActive: false)\n                items.append(newItem)\n                newItemName = \"\"\n            }\n            List {\n                ForEach(0..<items.count, id: \\ .self) { index in\n                    HStack {\n                        Text(items[index].name)\n                        Toggle(isOn: Binding(\n                            get: { items[index].isActive },\n                            set: { items[index].isActive = $0 }\n                        )) {\n                            Text(\"\")\n                        }\n                    }\n                }\n                .onDelete(perform: deleteItem)\n            }\n        }\n    }\n\n    func deleteItem(at offsets: IndexSet) {\n        items.remove(atOffsets: offsets)\n    }\n}\n\nstruct ContentView_Previews: PreviewProvider {\n    static var previews: some View {\n        ContentView()\n    }\n}\n```",
         "tests": [
           {
-            "snippet": "```swift\nif !newItem.isEmpty {\n    // What happens if newItem is empty?\n}\n```",
+            "snippet": "```swift\nitems.append(newItem)\n```",
             "options": [
-              "The app crashes",
-              "Nothing happens",
-              "An error is shown",
-              "The item is still added"
+              "1. Adds an item to the beginning of the list",
+              "2. Adds an item to the end of the list",
+              "3. Overwrites an existing item",
+              "4. Does nothing"
             ],
             "answer": "2"
           },
           {
-            "snippet": "```swift\n.onDelete(perform: deleteItem)\n// What is the purpose of onDelete?\n```",
+            "snippet": "```swift\n@State private var newItemName: String = \"\"\n```",
             "options": [
-              "To trigger an action when an item is added",
-              "To remove an item from the list",
-              "To display a confirmation alert",
-              "To save the state"
+              "1. A variable that stores the name of the last item added",
+              "2. A constant string variable",
+              "3. A variable that binds to the text field for new item names",
+              "4. A global variable"
             ],
-            "answer": "2"
+            "answer": "3"
           },
           {
-            "snippet": "```swift\nList {\n    ForEach(items, id: \\ .self) { item in\n        Text(item)\n    }\n}\n// What is the purpose of ForEach in this context?\n```",
+            "snippet": "```swift\n.onDelete(perform: deleteItem)\n```",
             "options": [
-              "To iterate through a collection",
-              "To create a new list",
-              "To sort items",
-              "To filter items"
+              "1. Used to edit items",
+              "2. Used to delete items from the list",
+              "3. Used to add new items",
+              "4. Does nothing"
             ],
-            "answer": "1"
+            "answer": "2"
           }
         ],
         "evaluation_criteria": "At the Intermediate level, the student should understand more complex implementations and common design patterns related to SwiftUI. They should demonstrate the ability to analyze code, identify potential issues, and understand the practical applications of SwiftUI concepts in iOS development."
       },
       "advanced": {
         "name": "Advanced",
-        "answer": "At the Advanced level, students should demonstrate a deep understanding of SwiftUI\u2019s reactive programming model and performance optimizations. They should be able to implement advanced techniques such as using Combine for data binding, modifying the data model to include more complex structures, and optimizing rendering performance through efficient state management.\n\nStudents can enhance the application by integrating Combine to handle asynchronous data updates, using a more sophisticated data model to manage complex objects, and ensuring that the UI responds efficiently to state changes without unnecessary redraws. They should also be able to implement unit tests for their SwiftUI views and understand how to test the responsiveness of their application under various scenarios.\n\nKey enhancements include:\n- Implementing Combine for reactive data handling.\n- Structuring a more complex data model.\n- Optimizing view updates to improve performance.",
+        "answer": "At the advanced level, we will implement more advanced features such as persistence using UserDefaults to save the state of the items. Additionally, we will use ObservableObject and @Published to manage the state more cleanly.\n\n```swift\nimport SwiftUI\nimport Combine\n\nclass ItemStore: ObservableObject {\n    @Published var items: [Item] {\n        didSet {\n            saveItems()\n        }\n    }\n\n    init() {\n        self.items = UserDefaults.standard.array(forKey: \"items\") as? [Item] ?? []\n    }\n\n    func saveItems() {\n        UserDefaults.standard.set(items, forKey: \"items\")\n    }\n}\n\nstruct ContentView: View {\n    @ObservedObject var store = ItemStore()\n    @State private var newItemName: String = \"\"\n\n    var body: some View {\n        VStack {\n            TextField(\"New Item\", text: $newItemName)\n                .textFieldStyle(RoundedBorderTextFieldStyle())\n                .padding()\n            Button(\"Add Item\") {\n                let newItem = Item(name: newItemName, isActive: false)\n                store.items.append(newItem)\n                newItemName = \"\"\n            }\n            List {\n                ForEach(0..<store.items.count, id: \\ .self) { index in\n                    HStack {\n                        Text(store.items[index].name)\n                        Toggle(isOn: Binding(\n                            get: { store.items[index].isActive },\n                            set: { store.items[index].isActive = $0 }\n                        )) {\n                            Text(\"\")\n                        }\n                    }\n                }\n                .onDelete(perform: deleteItem)\n            }\n        }\n    }\n\n    func deleteItem(at offsets: IndexSet) {\n        store.items.remove(atOffsets: offsets)\n    }\n}\n\nstruct ContentView_Previews: PreviewProvider {\n    static var previews: some View {\n        ContentView()\n    }\n}\n```",
         "tests": [
           {
-            "snippet": "```swift\n// What is Combine used for in SwiftUI?\n```",
+            "snippet": "```swift\n@Published var items: [Item]\n```",
             "options": [
-              "To create user interfaces",
-              "To manage state",
-              "To handle asynchronous events",
-              "To perform mathematical operations"
+              "1. A property that notifies views of changes",
+              "2. A property that is static",
+              "3. A property that cannot change",
+              "4. A private property"
             ],
-            "answer": "3"
+            "answer": "1"
           },
           {
-            "snippet": "```swift\n@ObservedObject var viewModel: ItemViewModel\n// What is the role of ObservedObject?\n```",
+            "snippet": "```swift\nUserDefaults.standard.set(items, forKey: \"items\")\n```",
             "options": [
-              "To create a new view",
-              "To observe state changes in a view model",
-              "To bind UI elements directly",
-              "To store static data"
+              "1. Saves data to the user's documents directory",
+              "2. Saves data to persistent storage",
+              "3. Does not save data",
+              "4. Saves data to the temporary directory"
             ],
             "answer": "2"
           },
           {
-            "snippet": "```swift\n// How can you optimize view updates in SwiftUI?\n```",
+            "snippet": "```swift\n@ObservedObject var store = ItemStore()\n```",
             "options": [
-              "By using more State properties",
-              "By using static variables",
-              "By minimizing the number of views",
-              "By using proper data binding and state management"
+              "1. Creates a new instance of ItemStore every time",
+              "2. Observes changes in ItemStore",
+              "3. Is not necessary in SwiftUI",
+              "4. Creates a static instance of ItemStore"
             ],
-            "answer": "4"
+            "answer": "2"
           }
         ],
         "evaluation_criteria": "At the Advanced level, the student should demonstrate deep understanding of SwiftUI internals and optimization techniques. They should be able to evaluate complex implementations, understand performance implications, and apply advanced patterns related to SwiftUI in sophisticated iOS applications."

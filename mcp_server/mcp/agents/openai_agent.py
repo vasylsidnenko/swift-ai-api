@@ -12,11 +12,13 @@ from dotenv import load_dotenv
 from ..agents.ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
                                 AIRequestQuestionModel, AIRequestValidationModel, 
                                 AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation)
-from ..agents.base_agent import BaseAgent
+from ..agents.base_agent import AgentProtocol
 
 logger = logging.getLogger(__name__)
 
-class OpenAIAgent(BaseAgent):
+class OpenAIAgent(AgentProtocol):
+    """OpenAI API agent for MCP server implementing AgentProtocol."""
+    
     @staticmethod
     def provider() -> str:
         """Returns the provider name for this agent."""
