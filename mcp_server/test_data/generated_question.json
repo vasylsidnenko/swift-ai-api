@@ -2,139 +2,139 @@
   "agent": {
     "model": {
       "provider": "openai",
-      "model": "gpt-4o-mini"
+      "model": "o4-mini"
     },
     "statistic": {
-      "time": 35512,
-      "tokens": 5021
+      "time": 72663,
+      "tokens": 9067
     }
   },
   "question": {
     "topic": {
-      "name": "SwiftUI",
+      "name": "SwiftUI State and Binding",
       "platform": "iOS",
       "technology": "Swift"
     },
-    "text": "Create a simple SwiftUI application that displays a list of items with a toggle switch for each item. The toggle should indicate whether the item is active or inactive. When the toggle is changed, the app should reflect this change visually and in the data model. Use State and Binding to manage the state of the toggles. Provide code for the view and the model.",
+    "text": "You need to create a reusable Stepper component in SwiftUI that can increase or decrease an integer value. This component should communicate its value changes back to a parent view using bindings. Implement StepperView with proper use of @State and @Binding, and explain how data flows between parent and child views. Highlight how SwiftUI updates the UI when state changes and describe common pitfalls.",
     "tags": [
       "SwiftUI",
-      "View",
       "State",
       "Binding",
+      "View",
       "iOS",
-      "Swift"
+      "Property Wrappers"
     ],
     "answerLevels": {
       "beginner": {
         "name": "Beginner",
-        "answer": "To create a simple SwiftUI application that displays a list with toggle switches, we start by defining a model for the items. Each item will have a name and an active state. We can then create a SwiftUI view that displays each item with its corresponding toggle. Using @State, we can manage the list of items and their active states. Here\u2019s a simple implementation:\n\n```swift\nimport SwiftUI\n\nstruct Item {\n    let name: String\n    var isActive: Bool\n}\n\nstruct ContentView: View {\n    @State private var items = [\n        Item(name: \"Item 1\", isActive: true),\n        Item(name: \"Item 2\", isActive: false),\n        Item(name: \"Item 3\", isActive: true)\n    ]\n\n    var body: some View {\n        List {\n            ForEach(0..<items.count, id: \\ .self) { index in\n                HStack {\n                    Text(items[index].name)\n                    Toggle(isOn: Binding(\n                        get: { items[index].isActive },\n                        set: { items[index].isActive = $0 }\n                    )) {\n                        Text(\"\")\n                    }\n                }\n            }\n        }\n    }\n}\n\nstruct ContentView_Previews: PreviewProvider {\n    static var previews: some View {\n        ContentView()\n    }\n}\n```",
+        "answer": "At the Beginner level, you define a local state property in your view using @State. This property holds the current value and SwiftUI observes it for changes. You can bind this property to built-in controls such as Toggle, Slider, or Stepper by prefixing it with $. When the control modifies the binding, SwiftUI updates the state and recomputes the view. Example:\n\n```swift\nstruct ContentView: View {\n    @State private var count: Int = 0\n\n    var body: some View {\n        VStack {\n            Text(\"Count: \\(count)\")\n            Stepper(\"Increment\", value: $count)\n        }\n    }\n}\n```\n\nThis simple setup demonstrates how @State and bindings work together to keep the UI and data in sync.",
         "tests": [
           {
-            "snippet": "```swift\nstruct Item {\n    let name: String\n    var isActive: Bool\n}\n\nlet item = Item(name: \"Test\", isActive: true)\nitem.isActive = false // This line will cause an error\n```",
+            "snippet": "```swift\nstruct ContentView: View {\n    @State var isOn: Bool = false\n    var body: some View {\n        Toggle(\"Enable\", isOn: $isOn)\n    }\n}\n``` Which property wrapper is used to declare a mutable state?",
             "options": [
-              "1. True",
-              "2. False",
-              "3. It will compile without errors",
-              "4. The item will not change its state"
+              "1. @Binding",
+              "2. @State",
+              "3. @ObservedObject",
+              "4. @EnvironmentObject"
             ],
             "answer": "2"
           },
           {
-            "snippet": "```swift\n@State private var items: [Item]\n```",
+            "snippet": "```swift\n@State private var count: Int = 0\ncount += 1\n``` What happens when 'count' is modified in SwiftUI?",
             "options": [
-              "1. A property that cannot be mutated",
-              "2. A way to store data that can change",
-              "3. A constant array",
-              "4. Used for static data"
-            ],
-            "answer": "2"
-          },
-          {
-            "snippet": "```swift\nToggle(isOn: $isActive) {\n    Text(\"Active\")\n}\n```",
-            "options": [
-              "1. Binds a toggle to a local state variable",
-              "2. Creates a static toggle",
-              "3. Does not change the item state",
-              "4. Only works in UIKit"
+              "1. The view updates to reflect the new state",
+              "2. Nothing happens at runtime",
+              "3. Compile-time error",
+              "4. Memory leak occurs"
             ],
             "answer": "1"
+          },
+          {
+            "snippet": "```swift\nstruct ParentView: View {\n    @State private var count = 0\n    var body: some View {\n        ChildView(count: count)\n    }\n}\n``` How should you pass 'count' to ChildView to allow two-way updates?",
+            "options": [
+              "1. ChildView(count: count)",
+              "2. ChildView(count: $count)",
+              "3. ChildView(count: Binding.count)",
+              "4. ChildView(count: .constant(count))"
+            ],
+            "answer": "2"
           }
         ],
-        "evaluation_criteria": "At the Beginner level, the student should understand basic syntax and fundamental concepts of SwiftUI. They should demonstrate the ability to read simple code examples, identify correct syntax, and understand basic programming patterns related to SwiftUI on iOS."
+        "evaluation_criteria": "At the Beginner level, the student should understand basic use of @State and how to bind it to controls. They should be able to read and write simple SwiftUI views, identify property wrappers, and predict how state changes drive UI updates."
       },
       "intermediate": {
         "name": "Intermediate",
-        "answer": "In the intermediate level, we expand the functionality by allowing users to add and remove items from the list dynamically. We still use State and Binding to manage the state of the list. Here\u2019s how we can achieve this:\n\n```swift\nimport SwiftUI\n\nstruct Item {\n    let name: String\n    var isActive: Bool\n}\n\nstruct ContentView: View {\n    @State private var items: [Item] = []\n    @State private var newItemName: String = \"\"\n\n    var body: some View {\n        VStack {\n            TextField(\"New Item\", text: $newItemName)\n                .textFieldStyle(RoundedBorderTextFieldStyle())\n                .padding()\n            Button(\"Add Item\") {\n                let newItem = Item(name: newItemName, isActive: false)\n                items.append(newItem)\n                newItemName = \"\"\n            }\n            List {\n                ForEach(0..<items.count, id: \\ .self) { index in\n                    HStack {\n                        Text(items[index].name)\n                        Toggle(isOn: Binding(\n                            get: { items[index].isActive },\n                            set: { items[index].isActive = $0 }\n                        )) {\n                            Text(\"\")\n                        }\n                    }\n                }\n                .onDelete(perform: deleteItem)\n            }\n        }\n    }\n\n    func deleteItem(at offsets: IndexSet) {\n        items.remove(atOffsets: offsets)\n    }\n}\n\nstruct ContentView_Previews: PreviewProvider {\n    static var previews: some View {\n        ContentView()\n    }\n}\n```",
+        "answer": "To create a reusable StepperView, define a view that accepts a binding to an Int. Use @Binding to declare the binding, and pass $count from the parent. The view can then modify the binding directly. Example:\n\n```swift\nstruct StepperView: View {\n    @Binding var value: Int\n\n    var body: some View {\n        HStack {\n            Button(action: { value -= 1 }) {\n                Image(systemName: \"minus.circle\")\n            }\n            Text(\"\\(value)\")\n                .frame(minWidth: 40)\n            Button(action: { value += 1 }) {\n                Image(systemName: \"plus.circle\")\n            }\n        }\n    }\n}\n\nstruct ContentView: View {\n    @State private var count = 0\n\n    var body: some View {\n        StepperView(value: $count)\n    }\n}\n```\n\nThis example shows how to declare @Binding, pass the binding from the parent, and mutate the value so SwiftUI automatically updates both views.",
         "tests": [
           {
-            "snippet": "```swift\nitems.append(newItem)\n```",
+            "snippet": "```swift\nstruct StepperView: View {\n    var value: Int\n    var body: some View {\n        HStack {\n            Button(\"-\") { value -= 1 }\n            Text(\"\\(value)\")\n            Button(\"+\") { value += 1 }\n        }\n    }\n}\n``` Why does this code fail to compile?",
             "options": [
-              "1. Adds an item to the beginning of the list",
-              "2. Adds an item to the end of the list",
-              "3. Overwrites an existing item",
-              "4. Does nothing"
+              "1. View body must be a computed property",
+              "2. Buttons require explicit action closures",
+              "3. Missing @State property wrapper",
+              "4. Missing @Binding property wrapper"
+            ],
+            "answer": "4"
+          },
+          {
+            "snippet": "```swift\nstruct ContentView: View {\n    @State private var count = 0\n    var body: some View {\n        StepperView(value: count)\n    }\n}\n``` What change fixes the two-way data flow?",
+            "options": [
+              "1. Use @ObservedObject instead of @State",
+              "2. Pass $count instead of count",
+              "3. Initialize StepperView with .constant",
+              "4. Change count to @Binding"
             ],
             "answer": "2"
           },
           {
-            "snippet": "```swift\n@State private var newItemName: String = \"\"\n```",
+            "snippet": "```swift\nstruct StepperView: View {\n    @Binding var value: Int\n    var body: some View {\n        Stepper(value: $value, in: 0...10) {\n            Text(\"Value: \\(value)\")\n        }\n    }\n}\n``` How does the Stepper control update 'value'?",
             "options": [
-              "1. A variable that stores the name of the last item added",
-              "2. A constant string variable",
-              "3. A variable that binds to the text field for new item names",
-              "4. A global variable"
-            ],
-            "answer": "3"
-          },
-          {
-            "snippet": "```swift\n.onDelete(perform: deleteItem)\n```",
-            "options": [
-              "1. Used to edit items",
-              "2. Used to delete items from the list",
-              "3. Used to add new items",
-              "4. Does nothing"
+              "1. Directly sets a published property",
+              "2. Uses the binding to write the new value back to the parent",
+              "3. Calls an onChange observer",
+              "4. Triggers an environment update"
             ],
             "answer": "2"
           }
         ],
-        "evaluation_criteria": "At the Intermediate level, the student should understand more complex implementations and common design patterns related to SwiftUI. They should demonstrate the ability to analyze code, identify potential issues, and understand the practical applications of SwiftUI concepts in iOS development."
+        "evaluation_criteria": "At the Intermediate level, the student should understand custom component design with @Binding, passing data between views, and common compile errors. They should demonstrate ability to read and debug binding-related code, and understand how parent and child views share and mutate state."
       },
       "advanced": {
         "name": "Advanced",
-        "answer": "At the advanced level, we will implement more advanced features such as persistence using UserDefaults to save the state of the items. Additionally, we will use ObservableObject and @Published to manage the state more cleanly.\n\n```swift\nimport SwiftUI\nimport Combine\n\nclass ItemStore: ObservableObject {\n    @Published var items: [Item] {\n        didSet {\n            saveItems()\n        }\n    }\n\n    init() {\n        self.items = UserDefaults.standard.array(forKey: \"items\") as? [Item] ?? []\n    }\n\n    func saveItems() {\n        UserDefaults.standard.set(items, forKey: \"items\")\n    }\n}\n\nstruct ContentView: View {\n    @ObservedObject var store = ItemStore()\n    @State private var newItemName: String = \"\"\n\n    var body: some View {\n        VStack {\n            TextField(\"New Item\", text: $newItemName)\n                .textFieldStyle(RoundedBorderTextFieldStyle())\n                .padding()\n            Button(\"Add Item\") {\n                let newItem = Item(name: newItemName, isActive: false)\n                store.items.append(newItem)\n                newItemName = \"\"\n            }\n            List {\n                ForEach(0..<store.items.count, id: \\ .self) { index in\n                    HStack {\n                        Text(store.items[index].name)\n                        Toggle(isOn: Binding(\n                            get: { store.items[index].isActive },\n                            set: { store.items[index].isActive = $0 }\n                        )) {\n                            Text(\"\")\n                        }\n                    }\n                }\n                .onDelete(perform: deleteItem)\n            }\n        }\n    }\n\n    func deleteItem(at offsets: IndexSet) {\n        store.items.remove(atOffsets: offsets)\n    }\n}\n\nstruct ContentView_Previews: PreviewProvider {\n    static var previews: some View {\n        ContentView()\n    }\n}\n```",
+        "answer": "At the Advanced level, you can create computed bindings that transform values, manage state across multiple views, and optimize performance. SwiftUI's Binding init(get:set:) lets you derive a new binding. You can also use @StateObject or @ObservedObject for shared data models and handle side effects with onChange. Example:\n\n```swift\nclass CounterModel: ObservableObject {\n    @Published var count: Int = 0\n}\n\nstruct ContentView: View {\n    @StateObject private var model = CounterModel()\n\n    private var doubledBinding: Binding<Int> {\n        Binding(\n            get: { model.count * 2 },\n            set: { model.count = $0 / 2 }\n        )\n    }\n\n    var body: some View {\n        VStack {\n            Text(\"Double: \\(doubledBinding.wrappedValue)\")\n            Stepper(\"Double\", value: doubledBinding)\n        }\n        .onChange(of: model.count) { newValue in\n            print(\"Count changed to \\(newValue)\")\n        }\n    }\n}\n```\n\nThis shows use of @StateObject for lifecycle, computed binding to transform values, and onChange for side effects. Such patterns help manage complex data flows and optimize view updates.",
         "tests": [
           {
-            "snippet": "```swift\n@Published var items: [Item]\n```",
+            "snippet": "```swift\nlet binding = Binding(\n    get: { self.count * 2 },\n    set: { self.count = $0 / 2 }\n)\n``` What is this binding doing?",
             "options": [
-              "1. A property that notifies views of changes",
-              "2. A property that is static",
-              "3. A property that cannot change",
-              "4. A private property"
+              "1. Creating a derived binding that converts raw values",
+              "2. Declaring an environment object",
+              "3. Observing object changes",
+              "4. Defining an animation"
             ],
             "answer": "1"
           },
           {
-            "snippet": "```swift\nUserDefaults.standard.set(items, forKey: \"items\")\n```",
+            "snippet": "```swift\nclass Counter: ObservableObject {\n    @Published var count: Int = 0\n}\n\nstruct ViewA: View {\n    @ObservedObject var counter = Counter()\n    // ...\n}\n``` What role does @Published play?",
             "options": [
-              "1. Saves data to the user's documents directory",
-              "2. Saves data to persistent storage",
-              "3. Does not save data",
-              "4. Saves data to the temporary directory"
+              "1. Enables basic state property",
+              "2. Notifies observers of changes",
+              "3. Forces view reload on initialization",
+              "4. Prevents memory leaks"
             ],
             "answer": "2"
           },
           {
-            "snippet": "```swift\n@ObservedObject var store = ItemStore()\n```",
+            "snippet": "```swift\n.onChange(of: value) { newValue in\n    self.value = min(max(newValue, 0), 10)\n}\n``` Why use onChange here?",
             "options": [
-              "1. Creates a new instance of ItemStore every time",
-              "2. Observes changes in ItemStore",
-              "3. Is not necessary in SwiftUI",
-              "4. Creates a static instance of ItemStore"
+              "1. To animate value changes",
+              "2. To validate and clamp input values",
+              "3. To avoid memory leaks",
+              "4. To publish values externally"
             ],
             "answer": "2"
           }
         ],
-        "evaluation_criteria": "At the Advanced level, the student should demonstrate deep understanding of SwiftUI internals and optimization techniques. They should be able to evaluate complex implementations, understand performance implications, and apply advanced patterns related to SwiftUI in sophisticated iOS applications."
+        "evaluation_criteria": "At the Advanced level, the student should demonstrate deep understanding of SwiftUI data flow, custom bindings, and state management patterns. They should be able to create derived bindings, use @StateObject and @ObservedObject correctly, handle side effects with onChange, and optimize complex views."
       }
     }
   }

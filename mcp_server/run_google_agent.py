@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""
+Script to run Google agent directly without MCP server.
+Usage: python run_google_agent.py [generate|validate]
+"""
+import os
+import sys
+import json
+import logging
+from pathlib import Path
+
+# Add project root to sys.path
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+from mcp.agents.google_agent import GeminiAgent
+from mcp.agents.ai_models import (
+    AIRequestQuestionModel, 
+    AIRequestValidationModel,
+    AIModel, 
+    RequestQuestionModel,
+    QuestionModel,
+    QuestionValidation
+)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def generate_question():
+    """Generate a test question using Google agent"""
+    try:
+        agent = GeminiAgent()
+        
+        # Create test request
+        generate_request = AIRequestQuestionModel(
+            model=AIModel(
+                provider="google",
+                model="gemini-1.5-flash"  # Using Gemini Pro model
+            ),
+            request=RequestQuestionModel(   
+                platform="iOS",
+                topic="SwiftUI",    
+                technology="Swift",
+                tags=["View", "State", "Binding"]
+            )
+        )
+        
+        print("Generating question...")
+        question = agent.generate(request=generate_request)
+        print(f"\nGenerated question: {json.dumps(question.model_dump(), indent=2)}")
+        
+        # Save to file for validation
+        with open('mcp_server/test_data/generated_question.json', 'w') as f:
+            f.write(json.dumps(question.model_dump(), indent=2))
+        print("\nQuestion saved to generated_question.json")
+        
+        return question
+        
+    except Exception as e:
+        logger.error(f"Generation failed: {str(e)}")
+        sys.exit(1)
+
+def validate_question(generated_model=None):
+    """Validate a question from file using Google agent"""
+    try:
+        if generated_model is None:
+            # Load question from file
+            with open('mcp_server/test_data/generated_question.json', 'r') as f:
+                question_data = json.load(f)
+            
+            agent = GeminiAgent()
+            
+            # Create validation request using the question data directly
+            validate_request = AIRequestValidationModel(
+                model=AIModel(
+                    provider="google",
+                    model="gemini-1.5-flash"  # Using Gemini Pro model
+                ),
+                request=QuestionModel(**question_data['question'])  # Convert to QuestionModel
+            )
+        else:
+            agent = GeminiAgent()
+            validate_request = AIRequestValidationModel(
+                model=AIModel(
+                    provider="google",
+                    model="gemini-1.5-flash"  
+                ),
+                request=generated_model.question  # Use only the question part from AIQuestionModel
+            )
+        
+        print("Validating question...")
+        validation = agent.validate(request=validate_request)
+        
+        # Parse validation result
+        if isinstance(validation.validation, str):
+            validation_dict = json.loads(validation.validation)
+            validation.validation = QuestionValidation(**validation_dict)
+        
+        print(f"\nValidation result: {json.dumps(validation.model_dump(), indent=2)}")
+        
+    except Exception as e:
+        logger.error(f"Validation failed: {str(e)}")
+        sys.exit(1)
+
+def main():
+    # load_dotenv()
+
+    if len(sys.argv) == 1:
+        # If no operation specified, do generate and then validate
+        print("\n=== Generating question ===")
+        generated_model = generate_question()
+        
+        if generated_model:
+            print("\n=== Validating generated question ===")
+            # Use the generated model for validation
+            validate_question(generated_model)
+        return
+
+    operation = sys.argv[1].lower()
+    
+    if operation == "generate":
+        generate_question()
+    elif operation == "validate":
+        validate_question()
+    else:
+        print("Invalid operation. Use 'generate' or 'validate', or run without arguments for generate-then-validate flow")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
