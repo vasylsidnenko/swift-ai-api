@@ -244,14 +244,23 @@ For each difficulty level (Beginner, Intermediate, Advanced):
                     {"role": "user", "content": generation_prompt}
                 ])
                 
-                response = self.client.beta.chat.completions.parse(
-                    model = model,
-                    messages = [
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": generation_prompt}],
-                    response_format = QuestionModel,
-                    temperature = 0.7
-                )
+                if model.lower() in ["o3-mini", "o4-mini"]:
+                    response = self.client.beta.chat.completions.parse(
+                        model = model,
+                        messages = [
+                            {"role": "system", "content": system_message},
+                            {"role": "user", "content": generation_prompt}],
+                        response_format = QuestionModel
+                    )
+                else:
+                    response = self.client.beta.chat.completions.parse(
+                        model = model,
+                        messages = [
+                            {"role": "system", "content": system_message},
+                            {"role": "user", "content": generation_prompt}],
+                        response_format = QuestionModel,
+                        temperature = 0.7
+                    )
                 
                 # Get completion tokens from response
                 completion_tokens = response.usage.completion_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'completion_tokens') else 0

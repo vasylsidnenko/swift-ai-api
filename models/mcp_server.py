@@ -41,7 +41,7 @@ class ModelType(str, Enum):
     
 # Available models for each provider
 AVAILABLE_MODELS = {
-    ModelType.OPENAI: ["gpt-4o", "gpt-4o-mini"],
+    ModelType.OPENAI: ["gpt-4o", "gpt-4o-mini", "o3-mini", "o4-mini"],
     ModelType.GOOGLEAI: ["gemini-pro"],
     ModelType.DEEPSEEKAI: ["deepseek-chat"]
 }

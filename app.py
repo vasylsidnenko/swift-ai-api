@@ -124,13 +124,13 @@ def api_generate_question():
 
         AI_MODELS = {
             "google": ["gemini-pro"],
-            "openai": ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
+            "openai": ["gpt-4o", "gpt-4o-mini", "o3-mini", "o4-mini"],
             "deepseek": ["deepseek-chat"]
         }
 
         DEFAULT_MODELS = {
             "google": "gemini-pro",
-            "openai": "gpt-4o",
+            "openai": "gpt-4o-mini",
             "deepseek": "deepseek-chat"
         }
 
@@ -185,8 +185,8 @@ def api_generate_question():
         logger.error(f"Error in api_generate_question: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)})
 
-@app.route("/generate_structured_openai", methods=["POST"])
-def api_generate_structured_questions():
+# @app.route("/generate_structured_openai", methods=["POST"])
+# def api_generate_structured_questions():
     logger.info("Received POST request to /generate_structured_openai")
     try:
         # Get API key from header
