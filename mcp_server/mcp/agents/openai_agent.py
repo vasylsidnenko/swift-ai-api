@@ -29,7 +29,9 @@ class OpenAIAgent(AgentProtocol):
         """Returns list of supported models."""
         return [
             "gpt-4o", 
-            "gpt-4o-mini"
+            "gpt-4o-mini",
+            "o3-mini",
+            "o4-mini"
         ]
         
     def __init__(self, api_key: Optional[str] = None):
@@ -94,11 +96,18 @@ class OpenAIAgent(AgentProtocol):
             prompt_tokens = self.count_tokens(request.model.model, messages)
             
             try:
-                response = self.client.beta.chat.completions.parse(
+                if self._is_support_temperature(request.model):
+                    response = self.client.beta.chat.completions.parse(
                         model=request.model.model,
                         messages=messages,
                         response_format=QuestionModel,
                         temperature=0.7
+                    )
+                else:
+                    response = self.client.beta.chat.completions.parse(
+                        model=request.model.model,
+                        messages=messages,
+                        response_format=QuestionModel,
                     )
             except Exception as e:
                 logger.error(f"OpenAI API error: {str(e)}")
@@ -148,12 +157,19 @@ class OpenAIAgent(AgentProtocol):
             prompt_tokens = self.count_tokens(request.model.model, validation_prompt)
             
             try:
-                response = self.client.beta.chat.completions.parse(
-                    model=request.model.model,
-                    messages=validation_prompt,
-                    response_format=QuestionValidation,
-                    temperature=0
+                if self._is_support_temperature(request.model):
+                    response = self.client.beta.chat.completions.parse(
+                        model=request.model.model,
+                        messages=validation_prompt,
+                        response_format=QuestionValidation,
+                        temperature=0
                 )
+                else:
+                    response = self.client.beta.chat.completions.parse(
+                        model=request.model.model,
+                        messages=validation_prompt,
+                        response_format=QuestionValidation
+                    )
             except Exception as e:
                 logger.error(f"OpenAI API error: {str(e)}")
                 raise RuntimeError(f"OpenAI API error: {str(e)}")
@@ -206,6 +222,10 @@ class OpenAIAgent(AgentProtocol):
         
         return True
 
+    def _is_support_temperature(self, model: AIModel) -> bool:
+        if model.model.lower() in ["o3-mini", "o4-mini"]:
+            return False
+        return True
 
     # Private helper methods
     def _prepare_messages(self, question: RequestQuestionModel) -> List[Dict]:

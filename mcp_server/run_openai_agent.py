@@ -37,7 +37,7 @@ def generate_question():
         generate_request = AIRequestQuestionModel(
             model=AIModel(
                 provider="openai",
-                model="gpt-4o-mini"
+                model="o4-mini"#"gpt-4o-mini"
             ),
             request=RequestQuestionModel(   
                 platform="iOS",
