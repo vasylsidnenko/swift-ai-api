@@ -19,7 +19,7 @@ from typing import Dict, Any, Optional, List, Type, Callable
 from dataclasses import dataclass, field
 import time
 from pydantic import BaseModel
-from .agents.base_agent import BaseAgent
+from .agents.base_agent import AgentProtocol  # Changed from BaseAgent to AgentProtocol
 
 # Add agents directory to sys.path to allow dynamic imports
 # We might not need this here if app.py handles loading
@@ -58,7 +58,7 @@ class MCPContext:
 class AIResource:
     """Handles executing requests using the appropriate AI agent based on context."""
 
-    def execute(self, agent_class: Type[BaseAgent], context: MCPContext) -> MCPResponse:
+    def execute(self, agent_class: Type[AgentProtocol], context: MCPContext) -> MCPResponse:  # Changed BaseAgent to AgentProtocol
         """Executes the request using the provided agent class and context."""
         start_time = time.time()
 

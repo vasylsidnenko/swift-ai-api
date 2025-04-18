@@ -28,7 +28,7 @@ mcp_server_path = Path(__file__).parent
 if str(mcp_server_path) not in sys.path:
     sys.path.insert(0, str(mcp_server_path))
 
-from mcp.agents.base_agent import BaseAgent
+from mcp.agents.base_agent import AgentProtocol  # Changed from BaseAgent to AgentProtocol
 from mcp.mcp_server import MCPResponse
 from mcp.agents.ai_models import AIRequestQuestionModel, AIModel, RequestQuestionModel
 from mcp.agents.openai_agent import OpenAIAgent
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 # --- Agent Loading ---
 agents_dir = Path(__file__).parent / 'mcp' / 'agents'
-loaded_agents: Dict[str, Type[BaseAgent]] = {}
+loaded_agents: Dict[str, Type[AgentProtocol]] = {}  # Changed BaseAgent to AgentProtocol
 
 def load_agents():
     """Dynamically loads agent classes derived from BaseAgent found in the agents directory."""
