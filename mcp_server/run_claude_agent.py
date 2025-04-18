@@ -40,7 +40,7 @@ def generate_question():
         generate_request = AIRequestQuestionModel(
             model=AIModel(
                 provider="claude",
-                model="claude-3-7-sonnet-20250219"
+                model="claude-3-7-sonnet"
             ),
             request=RequestQuestionModel(   
                 platform="iOS",
@@ -79,7 +79,7 @@ def validate_question(generated_model=None):
             validate_request = AIRequestValidationModel(
                 model=AIModel(
                     provider="claude",
-                    model="claude-3-7-sonnet-20250219"
+                    model="claude-3-7-sonnet"
                 ),
                 request=QuestionModel(**question_data['question'])  # Convert to QuestionModel
             )
@@ -88,7 +88,7 @@ def validate_question(generated_model=None):
             validate_request = AIRequestValidationModel(
                 model=AIModel(
                     provider="claude",
-                    model="claude-3-7-sonnet-20250219"
+                    model="claude-3-7-sonnet"
                 ),
                 request=generated_model.question  # Use only the question part from AIQuestionModel
             )

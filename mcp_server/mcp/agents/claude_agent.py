@@ -90,6 +90,104 @@ class ClaudeAgent(AgentProtocol):
             "claude-2.0",
             "claude-2.1"
         ]
+
+    def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
+        """
+        Generate a programming question using Claude.
+        """
+        import sys
+        logger.info(f"Python version={sys.version}")
+        try:
+            import anthropic
+            logger.info(f"Anthropic version={getattr(anthropic, '__version__', 'unknown')}")
+        except Exception:
+            logger.info("Anthropic version=unknown")
+        model_name = request.model.model
+        full_model_name = self._convert_model_name(model_name)
+        logger.info(f"Claude model (short): {model_name}, (full): {full_model_name}")
+        self._check_client()
+        start_time = time.time()
+        try:
+            if model_name not in self.supported_models():
+                logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
+            prompt = self._format_question_request(request)
+            system_prompt = self._create_system_prompt("generate")
+            response = self.client.messages.create(
+                model=full_model_name,
+                system=system_prompt,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=15000,
+                temperature=0.7
+            )
+            response_text = response.content[0].text
+            from mcp.agents.ai_models import QuestionModel
+            question_obj = self._parse_claude_response(response_text, QuestionModel)
+            agent_model = self._create_agent_model(
+                request.model,
+                start_time,
+                response.usage.output_tokens + response.usage.input_tokens
+            )
+            return AIQuestionModel(
+                agent=agent_model,
+                question=question_obj
+            )
+        except Exception as e:
+            logger.exception(f"Error generating question with Claude: {e}")
+            raise
+
+    def validate(self, request: AIRequestValidationModel) -> AIValidationModel:
+        """
+        Validate a programming question using Claude.
+        """
+        import sys
+        logger.info(f"Python version={sys.version}")
+        try:
+            import anthropic
+            logger.info(f"Anthropic version={getattr(anthropic, '__version__', 'unknown')}")
+        except Exception:
+            logger.info("Anthropic version=unknown")
+        model_name = request.model.model
+        full_model_name = self._convert_model_name(model_name)
+        logger.info(f"Claude model (short): {model_name}, (full): {full_model_name}")
+        self._check_client()
+        start_time = time.time()
+        try:
+            if model_name not in self.supported_models():
+                logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
+            prompt = self._format_validation_request(request)
+            system_prompt = self._create_system_prompt("validate")
+            response = self.client.messages.create(
+                model=full_model_name,
+                system=system_prompt,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=10000,
+                temperature=0
+            )
+            response_text = response.content[0].text
+            validation = self._parse_claude_response(response_text, QuestionValidation)
+            agent_model = self._create_agent_model(
+                request.model,
+                start_time,
+                response.usage.output_tokens + response.usage.input_tokens
+            )
+            return AIValidationModel(
+                agent=agent_model,
+                validation=validation
+            )
+        except Exception as e:
+            logger.exception(f"Error validating question with Claude: {e}")
+            raise
+
+    def test_capabilities(self) -> ModelCapabilities:
+        """
+        Return supported capabilities for Claude agent.
+        """
+        return ModelCapabilities(
+            generate=True,
+            validate=True,
+            explain=False,
+            chat=False
+        )
     
     @staticmethod
     def _convert_model_name(short_name):
@@ -192,6 +290,46 @@ Follow these guidelines:
 5. Score the question on clarity, relevance, difficulty, structure, and code quality.
 6. Provide detailed feedback and recommendations.
 7. Return your validation in a structured JSON format that matches the specified schema.
+
+Important: Return the validation result as a flat JSON object with all required fields at the top level. Do NOT wrap the result in any outer object (such as 'validation').
+
+Example output:
+{
+  "is_text_clear": true,
+  "is_question_correspond": true,
+  "is_question_not_trivial": true,
+  "do_answer_levels_exist": true,
+  "are_answer_levels_valid": true,
+  "has_evaluation_criteria": true,
+  "are_answer_levels_different": true,
+  "do_tests_exist": true,
+  "do_tags_exist": true,
+  "do_test_options_exist": true,
+  "is_question_text_different_from_existing_questions": true,
+  "are_test_options_numbered": true,
+  "does_answer_contain_option_number": true,
+  "are_code_blocks_marked_if_they_exist": true,
+  "does_snippet_have_question": true,
+  "does_snippet_have_code": true,
+  "clarity_score": 9,
+  "relevance_score": 10,
+  "difficulty_score": 9,
+  "structure_score": 9,
+  "code_quality_score": 9,
+  "quality_score": 9,
+  "clarity_feedback": "The question is well-structured and clearly articulates the problem of data flow in SwiftUI. It specifies the requirements for both parent and child views, making it easy for learners to understand what is expected. However, it could be slightly more concise in its wording.",
+  "relevance_feedback": "The question is highly relevant to the topic of SwiftUI State and Binding, and the tags accurately reflect the content. It covers essential concepts that are crucial for understanding data flow in SwiftUI applications.",
+  "difficulty_feedback": "The question presents a challenging scenario that requires a solid understanding of SwiftUI concepts, making it appropriate for the intended audience. It effectively differentiates between beginner, intermediate, and advanced levels, ensuring a range of difficulty.",
+  "structure_feedback": "The structure of the question is logical, with a clear progression from basic to advanced concepts. Each answer level is well-defined, and the inclusion of evaluation criteria enhances the overall organization.",
+  "code_quality_feedback": "The code examples are well-written and demonstrate best practices in SwiftUI. They are clear and relevant to the questions posed, providing learners with practical insights into implementing state and binding.",
+  "comments": "Overall, this question is an excellent educational resource for learners looking to understand SwiftUI's state management. It effectively challenges students at various levels and provides clear guidance on the concepts being tested.",
+  "recommendations": [
+    "Consider simplifying the wording in some areas for brevity.",
+    "Ensure that the examples are updated with the latest SwiftUI syntax if necessary.",
+    "Add a brief introduction to the question to set the context for learners."
+  ],
+  "passed": true
+}
 
 The question passes validation if the overall quality score is 7 or higher.
 """
