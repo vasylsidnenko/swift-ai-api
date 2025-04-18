@@ -10,3 +10,5 @@ uvicorn[standard]
 gunicorn
 tiktoken
 anthropic
+demjson3
+httpx

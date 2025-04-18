@@ -27,6 +27,55 @@ See [SCHEMA.md](./SCHEMA.md) for a detailed architecture diagram and request/res
 
 ## Installation
 
+---
+
+## Додаткові технічні деталі
+
+### Залежності
+
+Всі необхідні залежності вказані у requirements.txt:
+
+```
+anthropic>=0.21.0
+openai>=1.0.0
+httpx>=0.24.0
+pydantic>=2.0.0
+demjson3>=3.0.6
+```
+
+Встановити:
+```
+pip install -r requirements.txt
+```
+
+### Логування
+
+- ClaudeAgent і OpenAIAgent логують:
+  - Версію Python
+  - Версію бібліотеки anthropic (для Claude)
+  - Коротке та повне ім'я моделі
+- Усі важливі етапи роботи агента відображаються у логах (ініціалізація, генерація, валідація, помилки парсингу тощо).
+
+### Формат валідації
+
+- ClaudeAgent тепер повертає flat JSON для валідації, без обгортки "validation" (аналогічно OpenAI).
+- Приклад output для валідації (актуальний для обох агентів):
+```json
+{
+  "is_text_clear": true,
+  "is_question_correspond": true,
+  ...
+  "passed": true
+}
+```
+
+### Короткі імена моделей
+
+- Для ClaudeAgent та OpenAIAgent можна використовувати короткі імена моделей (наприклад, `claude-3-7-sonnet`), які автоматично конвертуються у повні імена для API.
+
+---
+
+
 1. Clone the repository (if not already):
    ```sh
    git clone <repo_url>
