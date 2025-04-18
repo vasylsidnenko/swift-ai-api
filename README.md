@@ -47,10 +47,19 @@ The `mcp_server` directory contains the core server code for the MCP (Multi-Comp
 
 ### Prerequisites
 - Python 3.8+
-- Install dependencies:
-  ```sh
-  pip install -r requirements.txt
-  ```
+- (Recommended) Create and activate a virtual environment for each server (MCP server і Flask Application мають окремі requirements.txt)
+
+#### MCP Server
+1. Встановіть залежності для MCP Server:
+   ```sh
+   pip install -r mcp_server/requirements.txt
+   ```
+
+#### Application (Flask frontend)
+1. Встановіть залежності для Flask Application:
+   ```sh
+   pip install -r application/requirements.txt
+   ```
 
 ### Setting Up API Keys
 API keys are primarily managed through environment variables. The web interface allows overriding them.
