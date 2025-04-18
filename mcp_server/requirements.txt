@@ -9,3 +9,4 @@ requests
 uvicorn[standard]
 gunicorn
 tiktoken
+anthropic

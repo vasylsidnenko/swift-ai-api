@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Script to run OpenAI agent directly without MCP server.
-Usage: python run_agent.py [generate|validate]
+Script to run Claude agent directly without MCP server.
+Usage: python run_claude_agent.py [generate|validate]
 """
 import os
 import sys
@@ -14,7 +14,7 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from mcp.agents.openai_agent import OpenAIAgent
+from mcp.agents.claude_agent import ClaudeAgent
 from mcp.agents.ai_models import (
     AIRequestQuestionModel, 
     AIRequestValidationModel,
@@ -24,20 +24,23 @@ from mcp.agents.ai_models import (
     QuestionValidation
 )
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def generate_question():
-    """Generate a test question using OpenAI agent"""
+    """Generate a test question using Claude agent"""
     try:
-        agent = OpenAIAgent()
+        agent = ClaudeAgent()
         
         # Create test request
         generate_request = AIRequestQuestionModel(
             model=AIModel(
-                provider="openai",
-                model="o4-mini"
+                provider="claude",
+                model="claude-3-7-sonnet-20250219"
             ),
             request=RequestQuestionModel(   
                 platform="iOS",
@@ -52,9 +55,9 @@ def generate_question():
         print(f"\nGenerated question: {json.dumps(question.model_dump(), indent=2)}")
         
         # Save to file for validation
-        with open('mcp_server/test_data/generated_question.json', 'w') as f:
+        with open('mcp_server/test_data/claude_generated_question.json', 'w') as f:
             f.write(json.dumps(question.model_dump(), indent=2))
-        print("\nQuestion saved to generated_question.json")
+        print("\nQuestion saved to claude_generated_question.json")
         
         return question
         
@@ -63,29 +66,29 @@ def generate_question():
         sys.exit(1)
 
 def validate_question(generated_model=None):
-    """Validate a question from file using OpenAI agent"""
+    """Validate a question from file using Claude agent"""
     try:
         if generated_model is None:
             # Load question from file
-            with open('mcp_server/test_data/gpt_generated_question.json', 'r') as f:
+            with open('mcp_server/test_data/claude_generated_question.json', 'r') as f:
                 question_data = json.load(f)
             
-            agent = OpenAIAgent()
+            agent = ClaudeAgent()
             
             # Create validation request using the question data directly
             validate_request = AIRequestValidationModel(
                 model=AIModel(
-                    provider="openai",
-                    model="gpt-4o-mini"
+                    provider="claude",
+                    model="claude-3-7-sonnet-20250219"
                 ),
                 request=QuestionModel(**question_data['question'])  # Convert to QuestionModel
             )
         else:
-            agent = OpenAIAgent()
+            agent = ClaudeAgent()
             validate_request = AIRequestValidationModel(
                 model=AIModel(
-                    provider="openai",
-                    model="gpt-4o-mini"
+                    provider="claude",
+                    model="claude-3-7-sonnet-20250219"
                 ),
                 request=generated_model.question  # Use only the question part from AIQuestionModel
             )
@@ -105,7 +108,11 @@ def validate_question(generated_model=None):
         sys.exit(1)
 
 def main():
-    # load_dotenv()
+    # Ensure environment variable is set
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        logger.error("ANTHROPIC_API_KEY environment variable not set")
+        print("Please set the ANTHROPIC_API_KEY environment variable")
+        sys.exit(1)
 
     if len(sys.argv) == 1:
         # If no operation specified, do generate and then validate
@@ -129,4 +136,4 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main() 
+    main()

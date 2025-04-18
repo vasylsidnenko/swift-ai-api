@@ -71,7 +71,7 @@ class AnswerLevelModel(BaseModel):
     name: str = Field(description="Difficulty level of the answer. Must be one of: 'Beginner', 'Intermediate', 'Advanced'")
     answer: str = Field(description="Detailed answer for the specific difficulty level")
     tests: List[CodeTestModel] = Field(description="List of exactly 3 test questions for this difficulty level")
-    evaluation_criteria: str = Field(description="Criteria for evaluating knowledge and skills at this difficulty level")
+    evaluationCriteria: str = Field(description="Criteria for evaluating knowledge and skills at this difficulty level")
 
     @field_validator('name')
     def validate_name(cls, v: str) -> str:

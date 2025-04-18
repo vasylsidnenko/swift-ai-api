@@ -1,0 +1,143 @@
+{
+  "agent": {
+    "model": {
+      "provider": "claude",
+      "model": "claude-3-7-sonnet-20250219"
+    },
+    "statistic": {
+      "time": 79248,
+      "tokens": 7382
+    }
+  },
+  "question": {
+    "topic": {
+      "name": "SwiftUI State Management",
+      "platform": "iOS",
+      "technology": "Swift"
+    },
+    "text": "Create a temperature converter application in SwiftUI that allows users to convert between Celsius and Fahrenheit. The app should have the following features:\n\n1. A text field for entering a numeric value\n2. A segmented control to select the input temperature unit (Celsius or Fahrenheit)\n3. A display showing the converted temperature value\n4. The conversion should happen in real-time as the user types\n\nImplement this using appropriate SwiftUI state management techniques (`@State`, `@Binding`) to ensure the UI updates correctly when values change.",
+    "tags": [
+      "SwiftUI",
+      "View",
+      "State",
+      "Binding",
+      "iOS",
+      "Swift",
+      "TextField",
+      "Segmented Control"
+    ],
+    "answerLevels": {
+      "beginner": {
+        "name": "Beginner",
+        "answer": "For a beginner approach, we'll use a simple `@State` property to track the input temperature and unit selection. The conversion will be calculated directly in the view body.\n\n```swift\nimport SwiftUI\n\nstruct ContentView: View {\n    @State private var inputTemperature = \"\"\n    @State private var selectedUnit = 0 // 0 for Celsius, 1 for Fahrenheit\n    \n    private var convertedTemperature: String {\n        guard let temp = Double(inputTemperature) else {\n            return \"Invalid input\"\n        }\n        \n        if selectedUnit == 0 {\n            // Convert from Celsius to Fahrenheit\n            let fahrenheit = temp * 9/5 + 32\n            return String(format: \"%.1f\u00b0F\", fahrenheit)\n        } else {\n            // Convert from Fahrenheit to Celsius\n            let celsius = (temp - 32) * 5/9\n            return String(format: \"%.1f\u00b0C\", celsius)\n        }\n    }\n    \n    var body: some View {\n        VStack(spacing: 20) {\n            Text(\"Temperature Converter\")\n                .font(.largeTitle)\n                .padding()\n            \n            TextField(\"Enter temperature\", text: $inputTemperature)\n                .keyboardType(.decimalPad)\n                .textFieldStyle(RoundedBorderTextFieldStyle())\n                .padding()\n            \n            Picker(\"Unit\", selection: $selectedUnit) {\n                Text(\"Celsius\").tag(0)\n                Text(\"Fahrenheit\").tag(1)\n            }\n            .pickerStyle(SegmentedPickerStyle())\n            .padding()\n            \n            Text(\"Converted temperature:\")\n                .font(.headline)\n            \n            Text(convertedTemperature)\n                .font(.largeTitle)\n                .padding()\n        }\n        .padding()\n    }\n}\n```\n\nThis implementation uses:\n- `@State` property wrapper to store the input temperature string and the selected unit\n- A computed property to perform the conversion calculation\n- `$inputTemperature` and `$selectedUnit` bindings to connect the UI controls to the state variables\n- SwiftUI's automatic UI updates when state changes",
+        "tests": [
+          {
+            "snippet": "What will happen if you remove the `$` symbol from the TextField binding like this?\n```swift\nTextField(\"Enter temperature\", text: inputTemperature)\n```",
+            "options": [
+              "1. The app will compile but the TextField won't update the state variable",
+              "2. The app won't compile because TextField requires a binding",
+              "3. The app will compile but crash at runtime",
+              "4. The TextField will become read-only"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "In the code below, what is the purpose of the `@State` property wrapper?\n```swift\n@State private var inputTemperature = \"\"\n```",
+            "options": [
+              "1. It makes the variable accessible to other views",
+              "2. It tells SwiftUI to store the value in the app's permanent storage",
+              "3. It tells SwiftUI to manage the value's storage and update the view when the value changes",
+              "4. It prevents the variable from being modified"
+            ],
+            "answer": "3"
+          },
+          {
+            "snippet": "What happens in the UI when the user types a new value in the temperature TextField?",
+            "options": [
+              "1. Nothing happens until the user taps a 'Convert' button",
+              "2. The app needs to be restarted to show the new value",
+              "3. The converted temperature updates automatically as the user types",
+              "4. The app needs to call a specific update function"
+            ],
+            "answer": "3"
+          }
+        ],
+        "evaluationCriteria": "The beginner solution should correctly implement basic state management with `@State` properties. The UI should update automatically when the input value or selected unit changes. The code should compile without errors and perform the temperature conversion correctly. The solution should use a TextField for input, a Segmented Control for unit selection, and display the converted result."
+      },
+      "intermediate": {
+        "name": "Intermediate",
+        "answer": "For an intermediate approach, we'll separate the view from the conversion logic by creating a dedicated model object. We'll also add input validation and formatting improvements.\n\n```swift\nimport SwiftUI\n\n// Model for temperature conversion\nclass TemperatureConverter: ObservableObject {\n    @Published var inputValue = \"\"\n    @Published var selectedUnit = 0 // 0 for Celsius, 1 for Fahrenheit\n    \n    var isValidInput: Bool {\n        Double(inputValue) != nil || inputValue.isEmpty\n    }\n    \n    var convertedTemperature: String {\n        guard let temp = Double(inputValue) else {\n            return \"--\"\n        }\n        \n        if selectedUnit == 0 {\n            // Convert from Celsius to Fahrenheit\n            let fahrenheit = temp * 9/5 + 32\n            return String(format: \"%.1f\u00b0F\", fahrenheit)\n        } else {\n            // Convert from Fahrenheit to Celsius\n            let celsius = (temp - 32) * 5/9\n            return String(format: \"%.1f\u00b0C\", celsius)\n        }\n    }\n    \n    var inputUnitSymbol: String {\n        selectedUnit == 0 ? \"\u00b0C\" : \"\u00b0F\"\n    }\n    \n    var outputUnitSymbol: String {\n        selectedUnit == 0 ? \"\u00b0F\" : \"\u00b0C\"\n    }\n}\n\nstruct ContentView: View {\n    @StateObject private var converter = TemperatureConverter()\n    \n    var body: some View {\n        VStack(spacing: 20) {\n            Text(\"Temperature Converter\")\n                .font(.largeTitle)\n                .padding()\n            \n            HStack {\n                TextField(\"Enter temperature\", text: $converter.inputValue)\n                    .keyboardType(.decimalPad)\n                    .textFieldStyle(RoundedBorderTextFieldStyle())\n                    .foregroundColor(converter.isValidInput ? .primary : .red)\n                \n                Text(converter.inputUnitSymbol)\n                    .font(.headline)\n            }\n            .padding()\n            \n            Picker(\"Unit\", selection: $converter.selectedUnit) {\n                Text(\"Celsius\").tag(0)\n                Text(\"Fahrenheit\").tag(1)\n            }\n            .pickerStyle(SegmentedPickerStyle())\n            .padding(.horizontal)\n            \n            Text(\"Converted temperature:\")\n                .font(.headline)\n            \n            Text(converter.convertedTemperature)\n                .font(.largeTitle)\n                .padding()\n            \n            Spacer()\n        }\n        .padding()\n    }\n}\n```\n\nThis implementation uses:\n- An `ObservableObject` class to manage the conversion logic\n- `@Published` properties to notify the view of changes\n- `@StateObject` to create and manage the model object's lifecycle\n- Input validation to highlight invalid inputs\n- Dynamic unit symbols that change based on the selected unit",
+        "tests": [
+          {
+            "snippet": "What is the purpose of the `@StateObject` property wrapper in the ContentView?\n```swift\n@StateObject private var converter = TemperatureConverter()\n```",
+            "options": [
+              "1. It creates a new instance of TemperatureConverter for each view update",
+              "2. It creates a single instance of TemperatureConverter that persists for the lifetime of the view",
+              "3. It makes the converter property read-only",
+              "4. It automatically saves the converter state to disk"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "What happens in the following code when the `inputValue` property changes?\n```swift\nclass TemperatureConverter: ObservableObject {\n    @Published var inputValue = \"\"\n    // rest of the class\n}\n```",
+            "options": [
+              "1. Nothing special happens",
+              "2. The app crashes if the value is invalid",
+              "3. SwiftUI is notified that the object has changed and views using this object should update",
+              "4. The value is automatically saved to user defaults"
+            ],
+            "answer": "3"
+          },
+          {
+            "snippet": "What's the purpose of this computed property in the TemperatureConverter class?\n```swift\nvar isValidInput: Bool {\n    Double(inputValue) != nil || inputValue.isEmpty\n}\n```",
+            "options": [
+              "1. It prevents the user from entering invalid characters",
+              "2. It's used to determine if the input should be shown in red (invalid) or normal color",
+              "3. It automatically corrects invalid input",
+              "4. It's not used in the current implementation"
+            ],
+            "answer": "2"
+          }
+        ],
+        "evaluationCriteria": "The intermediate solution should demonstrate separation of concerns by moving the conversion logic to a dedicated model class. It should use ObservableObject and @Published for state management. The solution should include input validation and better UI formatting. The code should be more maintainable than the beginner solution, with clear separation between the view and the business logic."
+      },
+      "advanced": {
+        "name": "Advanced",
+        "answer": "For an advanced approach, we'll create a more sophisticated architecture with multiple views, custom bindings, and a comprehensive model. We'll also add support for additional temperature units, history tracking, and improved accessibility.\n\n```swift\nimport SwiftUI\nimport Combine\n\n// Temperature unit enum with conversion capabilities\nenum TemperatureUnit: Int, CaseIterable, Identifiable {\n    case celsius = 0\n    case fahrenheit = 1\n    case kelvin = 2\n    \n    var id: Int { self.rawValue }\n    \n    var symbol: String {\n        switch self {\n        case .celsius: return \"\u00b0C\"\n        case .fahrenheit: return \"\u00b0F\"\n        case .kelvin: return \"K\"\n        }\n    }\n    \n    var name: String {\n        switch self {\n        case .celsius: return \"Celsius\"\n        case .fahrenheit: return \"Fahrenheit\"\n        case .kelvin: return \"Kelvin\"\n        }\n    }\n    \n    func convert(_ value: Double, to targetUnit: TemperatureUnit) -> Double {\n        // First convert to celsius as a common denominator\n        let inCelsius: Double\n        switch self {\n        case .celsius:\n            inCelsius = value\n        case .fahrenheit:\n            inCelsius = (value - 32) * 5/9\n        case .kelvin:\n            inCelsius = value - 273.15\n        }\n        \n        // Then convert from celsius to target unit\n        switch targetUnit {\n        case .celsius:\n            return inCelsius\n        case .fahrenheit:\n            return inCelsius * 9/5 + 32\n        case .kelvin:\n            return inCelsius + 273.15\n        }\n    }\n}\n\n// Model for a single temperature conversion\nstruct TemperatureConversion: Identifiable {\n    let id = UUID()\n    let timestamp = Date()\n    let value: Double\n    let fromUnit: TemperatureUnit\n    let toUnit: TemperatureUnit\n    \n    var convertedValue: Double {\n        fromUnit.convert(value, to: toUnit)\n    }\n    \n    var description: String {\n        let numberFormatter = NumberFormatter()\n        numberFormatter.maximumFractionDigits = 2\n        let inputStr = numberFormatter.string(from: NSNumber(value: value)) ?? \"\"\n        let outputStr = numberFormatter.string(from: NSNumber(value: convertedValue)) ?? \"\"\n        return \"\\(inputStr)\\(fromUnit.symbol) = \\(outputStr)\\(toUnit.symbol)\"\n    }\n}\n\n// View model for temperature conversion\nclass TemperatureConverterViewModel: ObservableObject {\n    @Published var inputValue = \"\"\n    @Published var fromUnit: TemperatureUnit = .celsius\n    @Published var toUnit: TemperatureUnit = .fahrenheit\n    @Published var history: [TemperatureConversion] = []\n    \n    private var cancellables = Set<AnyCancellable>()\n    \n    init() {\n        // Automatically update the history when a valid conversion is performed\n        $inputValue\n            .debounce(for: 0.5, scheduler: RunLoop.main)\n            .compactMap { Double($0) }\n            .sink { [weak self] value in\n                guard let self = self else { return }\n                let conversion = TemperatureConversion(\n                    value: value,\n                    fromUnit: self.fromUnit,\n                    toUnit: self.toUnit\n                )\n                self.history.insert(conversion, at: 0)\n                \n                // Keep history limited to last 10 items\n                if self.history.count > 10 {\n                    self.history = Array(self.history.prefix(10))\n                }\n            }\n            .store(in: &cancellables)\n    }\n    \n    var isValidInput: Bool {\n        Double(inputValue) != nil || inputValue.isEmpty\n    }\n    \n    var convertedValue: String {\n        guard let value = Double(inputValue) else {\n            return \"--\"\n        }\n        \n        let converted = fromUnit.convert(value, to: toUnit)\n        let formatter = NumberFormatter()\n        formatter.maximumFractionDigits = 2\n        return formatter.string(from: NSNumber(value: converted)) ?? \"--\"\n    }\n    \n    func swapUnits() {\n        let temp = fromUnit\n        fromUnit = toUnit\n        toUnit = temp\n    }\n    \n    func clearHistory() {\n        history.removeAll()\n    }\n}\n\n// Custom number formatter\nextension NumberFormatter {\n    convenience init() {\n        self.init()\n        self.numberStyle = .decimal\n        self.minimumFractionDigits = 0\n        self.maximumFractionDigits = 1\n    }\n}\n\n// Input field with validation\nstruct ValidatedTextField: View {\n    @Binding var text: String\n    let placeholder: String\n    let isValid: Bool\n    \n    var body: some View {\n        TextField(placeholder, text: $text)\n            .keyboardType(.decimalPad)\n            .textFieldStyle(RoundedBorderTextFieldStyle())\n            .overlay(\n                RoundedRectangle(cornerRadius: 8)\n                    .stroke(isValid ? Color.clear : Color.red, lineWidth: 2)\n            )\n            .accessibilityLabel(placeholder)\n            .accessibilityHint(isValid ? \"\" : \"Invalid number format\")\n    }\n}\n\n// Unit selector view\nstruct UnitSelectorView: View {\n    @Binding var selectedUnit: TemperatureUnit\n    let label: String\n    \n    var body: some View {\n        VStack(alignment: .leading) {\n            Text(label)\n                .font(.headline)\n            \n            Picker(label, selection: $selectedUnit) {\n                ForEach(TemperatureUnit.allCases) { unit in\n                    Text(unit.name).tag(unit)\n                }\n            }\n            .pickerStyle(SegmentedPickerStyle())\n        }\n        .accessibilityElement(children: .combine)\n        .accessibilityLabel(\"\\(label): \\(selectedUnit.name)\")\n    }\n}\n\n// History view\nstruct ConversionHistoryView: View {\n    let history: [TemperatureConversion]\n    let clearAction: () -> Void\n    \n    var body: some View {\n        VStack(alignment: .leading) {\n            HStack {\n                Text(\"Conversion History\")\n                    .font(.headline)\n                \n                Spacer()\n                \n                Button(action: clearAction) {\n                    Text(\"Clear\")\n                        .font(.subheadline)\n                }\n                .disabled(history.isEmpty)\n            }\n            \n            if history.isEmpty {\n                Text(\"No conversions yet\")\n                    .italic()\n                    .foregroundColor(.secondary)\n                    .padding(.top, 5)\n            } else {\n                ScrollView {\n                    LazyVStack(alignment: .leading, spacing: 8) {\n                        ForEach(history) { conversion in\n                            Text(conversion.description)\n                                .font(.subheadline)\n                        }\n                    }\n                    .padding(.top, 5)\n                }\n                .frame(maxHeight: 150)\n            }\n        }\n        .padding()\n        .background(Color(.systemGray6))\n        .cornerRadius(10)\n    }\n}\n\n// Main view\nstruct TemperatureConverterView: View {\n    @StateObject private var viewModel = TemperatureConverterViewModel()\n    \n    var body: some View {\n        NavigationView {\n            VStack(spacing: 20) {\n                VStack(alignment: .leading) {\n                    Text(\"Input Temperature\")\n                        .font(.headline)\n                    \n                    HStack {\n                        ValidatedTextField(\n                            text: $viewModel.inputValue,\n                            placeholder: \"Enter temperature\",\n                            isValid: viewModel.isValidInput\n                        )\n                        \n                        Text(viewModel.fromUnit.symbol)\n                            .font(.headline)\n                            .foregroundColor(.secondary)\n                    }\n                }\n                .padding(.horizontal)\n                \n                UnitSelectorView(selectedUnit: $viewModel.fromUnit, label: \"From Unit\")\n                    .padding(.horizontal)\n                \n                UnitSelectorView(selectedUnit: $viewModel.toUnit, label: \"To Unit\")\n                    .padding(.horizontal)\n                \n                Button(action: viewModel.swapUnits) {\n                    HStack {\n                        Image(systemName: \"arrow.up.arrow.down\")\n                        Text(\"Swap Units\")\n                    }\n                    .padding(8)\n                    .background(Color.blue.opacity(0.1))\n                    .cornerRadius(8)\n                }\n                .accessibilityLabel(\"Swap units\")\n                \n                VStack(alignment: .leading) {\n                    Text(\"Converted Temperature\")\n                        .font(.headline)\n                    \n                    HStack {\n                        Text(viewModel.convertedValue)\n                            .font(.largeTitle)\n                            .fontWeight(.bold)\n                        \n                        Text(viewModel.toUnit.symbol)\n                            .font(.headline)\n                            .foregroundColor(.secondary)\n                    }\n                    .padding(.top, 2)\n                }\n                .padding()\n                .background(Color(.systemGray6))\n                .cornerRadius(10)\n                .padding(.horizontal)\n                \n                ConversionHistoryView(\n                    history: viewModel.history,\n                    clearAction: viewModel.clearHistory\n                )\n                .padding(.horizontal)\n                \n                Spacer()\n            }\n            .navigationTitle(\"Temperature Converter\")\n            .toolbar {\n                ToolbarItem(placement: .keyboard) {\n                    Button(\"Done\") {\n                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)\n                    }\n                }\n            }\n        }\n    }\n}\n```\n\nThis advanced implementation features:\n\n1. A comprehensive architecture with separate model, view model, and view components\n2. Support for multiple temperature units (Celsius, Fahrenheit, Kelvin)\n3. Custom bindings and property wrappers for state management\n4. History tracking of recent conversions\n5. Input validation with visual feedback\n6. Improved accessibility support\n7. Reactive updates using Combine framework\n8. Custom UI components for better reusability\n9. Keyboard dismiss functionality\n10. Properly formatted number display",
+        "tests": [
+          {
+            "snippet": "In the advanced implementation, what is the purpose of the following code?\n```swift\n$inputValue\n    .debounce(for: 0.5, scheduler: RunLoop.main)\n    .compactMap { Double($0) }\n    .sink { [weak self] value in\n        // ... implementation ...\n    }\n    .store(in: &cancellables)\n```",
+            "options": [
+              "1. It adds a delay before updating the UI to improve performance",
+              "2. It waits until the user stops typing for 0.5 seconds before adding a valid entry to the history",
+              "3. It prevents memory leaks by using weak references",
+              "4. It validates the input before showing it on screen"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "What's the benefit of creating separate view components like `ValidatedTextField` and `UnitSelectorView` instead of putting all UI code in the main view?",
+            "options": [
+              "1. It makes the code run faster",
+              "2. It reduces code duplication and improves reusability and maintainability",
+              "3. It's required by SwiftUI",
+              "4. It allows the app to work on more iOS versions"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "In the `TemperatureUnit` enum implementation, what's the purpose of conforming to the `Identifiable` protocol?\n```swift\nenum TemperatureUnit: Int, CaseIterable, Identifiable {\n    // implementation\n    var id: Int { self.rawValue }\n    // more implementation\n}\n```",
+            "options": [
+              "1. It's required for all SwiftUI types",
+              "2. It allows the enum to be used with ForEach in SwiftUI",
+              "3. It makes the enum hashable",
+              "4. It's needed to store the enum in arrays"
+            ],
+            "answer": "2"
+          }
+        ],
+        "evaluationCriteria": "The advanced solution should demonstrate a comprehensive architecture with proper separation of concerns. It should include a model, view model, and modular view components. The solution should handle additional features like multiple temperature units, history tracking, and accessibility support. The code should be well-structured, maintainable, and utilize advanced SwiftUI concepts like custom bindings, Combine, and proper state management. The UI should be polished with appropriate validation feedback and user experience enhancements."
+      }
+    }
+  }
+}
