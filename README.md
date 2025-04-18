@@ -39,6 +39,10 @@ This architecture allows for:
 3. **Easy Extensibility**: New providers added by creating `*_agent.py` in `mcp/agents`.
 4. **Dynamic Model Availability**: Only active providers/models are shown.
 
+## MCP Server
+
+The `mcp_server` directory contains the core server code for the MCP (Multi-Component Platform) server. It includes main server logic, agent orchestration, and supporting scripts. See `mcp_server/README.md` for detailed usage, structure, and setup instructions.
+
 ## Installation
 
 ### Prerequisites
