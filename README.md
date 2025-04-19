@@ -52,16 +52,16 @@ The `mcp_server` directory contains the core server code for the MCP (Multi-Comp
 
 ### Prerequisites
 - Python 3.8+
-- (Recommended) Create and activate a virtual environment for each server (MCP server і Flask Application мають окремі requirements.txt)
+- (Recommended) Create and activate a virtual environment for each server (MCP server and Flask Application have separate requirements.txt)
 
 #### MCP Server
-1. Встановіть залежності для MCP Server:
+1. Install dependencies for MCP Server:
    ```sh
    pip install -r mcp_server/requirements.txt
    ```
 
 #### Application (Flask frontend)
-1. Встановіть залежності для Flask Application:
+1. Install dependencies for Flask Application:
    ```sh
    pip install -r application/requirements.txt
    ```

@@ -109,7 +109,7 @@ def validate_question(generated_model=None):
 
 def quiz_question():
     """
-    Тестовий запуск ClaudeAgent.quiz: генерує лише питання (без відповідей/тестів)
+    Test run of ClaudeAgent.quiz: generates only questions (no answers/tests)
     """
     from mcp.agents.claude_agent import ClaudeAgent
     from mcp.agents.ai_models import AIModel, AIRequestQuestionModel, RequestQuestionModel
