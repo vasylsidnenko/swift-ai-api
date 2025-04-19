@@ -39,7 +39,7 @@ The MCP server exposes a REST API for executing AI agent operations (e.g., gener
 
 - **API Layer**: Exposes endpoints like `/mcp/v1/execute`, `/mcp/v1/agents`, `/mcp/v1/models`.
 - **Agent Loader**: Dynamically discovers and loads agent classes from `mcp/agents/`.
-- **Agent Classes**: Each agent (e.g., `OpenAIAgent`) implements the `AgentProtocol`, providing `generate` and `validate` methods.
+- **Agent Classes**: Each agent (e.g., `OpenAIAgent`) implements the `AgentProtocol`, providing `generate`, `validate`, and `quiz` methods.
 - **Model Layer**: Pydantic models for request/response validation and serialization.
 
 ## Request Flow
@@ -59,6 +59,45 @@ POST /mcp/v1/execute
   "resource_id": "openai",
   "operation_id": "generate",
   "context": {
+
+## Example Request (Quiz)
+
+```json
+POST /mcp/v1/execute
+{
+  "resource_id": "openai",
+  "operation_id": "quiz",
+  "context": {
+    "model": {"provider": "openai", "model": "gpt-4o"},
+    "request": {
+      "topic": "SwiftUI",
+      "platform": "iOS",
+      "technology": "Swift",
+      "tags": ["SwiftUI", "List", "iOS"]
+    }
+  }
+}
+```
+
+### Example Response (Quiz)
+
+```json
+{
+  "agent": {
+    "model": {"provider": "openai", "model": "gpt-4o"},
+    "statistic": {"time": 123, "tokens": 56}
+  },
+  "quiz": {
+    "topic": {"name": "SwiftUI", "platform": "iOS", "technology": "Swift"},
+    "question": "Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.",
+    "tags": ["SwiftUI", "List", "iOS", "Delete", "Swipe"]
+  }
+}
+```
+
+- `quiz` field is a `QuizModel` object: contains only the question, topic, and tags (no answers/tests).
+- `agent` field is the agent metadata/statistics (model, timing, tokens).
+
     "platform": "iOS",
     "topic": "SwiftUI",
     "technology": "Swift",

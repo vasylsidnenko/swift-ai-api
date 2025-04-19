@@ -15,7 +15,8 @@ This directory contains the core server code for the MCP (Multi-Component Platfo
 
 See [SCHEMA.md](./SCHEMA.md) for a detailed architecture diagram and request/response flow of the MCP server. Below is a summary:
 
-- The MCP server exposes a REST API for agent-based operations (e.g., generate/validate).
+- The MCP server exposes a REST API for agent-based operations (e.g., generate/validate/quiz).
+- The `quiz` operation generates a programming question (question-only, no answers or tests) and returns a structured response (`AIQuizModel`/`QuizModel`).
 - Agents are dynamically loaded from `mcp/agents/` and implement a common protocol.
 - Each agent can support multiple models and capabilities.
 - The API layer routes requests to the appropriate agent and operation.

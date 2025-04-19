@@ -7,6 +7,7 @@ This project provides an API and web interface for generating programming questi
 - **Dynamic loading** of AI agents and their supported models from the `mcp/agents` directory.
 - Supports multiple AI providers (e.g., OpenAI, Google AI, DeepSeek AI) - only providers with working agents are shown.
 - Generates programming questions (and optionally validates them).
+- Generates quiz questions (question-only, no answers/tests) via the `quiz` operation.
 - Returns structured JSON responses ([MCPResponse](#mcpresponse-format)).
 - Supports keyword-based question generation.
 - Web interface with collapsible AI settings.
