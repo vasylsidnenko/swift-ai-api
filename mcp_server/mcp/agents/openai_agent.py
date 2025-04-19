@@ -351,6 +351,7 @@ Example output:
         prompt = (
             f"Create a programming question for the topic '{topic}' on platform '{platform}'. "
             f"Technology: '{technology}'. Tags: {tags}. "
+            f"Approximate or rough question/idea: '{r.question}'. "
             "Return ONLY the question, without any answers, answer levels, tests, or explanations. "
             "Format your response as a JSON object with fields: topic, question, tags. "
             "Example: {\n  \"topic\": { \"name\": \"SwiftUI\", \"platform\": \"iOS\", \"technology\": \"Swift\" },\n  \"question\": \"Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.\",\n  \"tags\": [\"SwiftUI\", \"List\", \"iOS\", \"Delete\", \"Swipe\"]\n}"
@@ -384,6 +385,7 @@ Example output:
 - Platform: {question.platform}
 {f'- Technology Stack: {question.technology}' if question.technology else ''}
 - Related Tags: {', '.join(question.tags) if question.tags else 'None provided'}
+- Approximate or rough question/idea: {question.question if question.question else 'None provided'}
 
 ## Instructions
 Create a high-quality programming question that tests understanding of {question.topic} on the {question.platform} platform. The question should:
@@ -431,9 +433,7 @@ For each difficulty level (Beginner, Intermediate, Advanced):
 ### Advanced Level Example:
 'At the Advanced level, the student should demonstrate deep understanding of {question.topic} internals and optimization techniques. They should be able to evaluate complex implementations, understand performance implications, and apply advanced patterns related to {question.topic} in sophisticated {question.platform} applications.'
 """
-        
         system_message = "You are an expert programming educator specializing in creating high-quality educational content. Your task is to generate challenging, well-structured programming questions with multiple difficulty levels. Each question should include detailed answers, appropriate test questions, and clear evaluation criteria that help assess student knowledge and skills. Ensure all code examples are properly formatted and technically accurate. IMPORTANT: Do not use any markdown headings or section titles in your responses. Do not include labels like 'Beginner Level' or 'Advanced Level' - these will be added by the UI. Keep your text clean and direct without any unnecessary formatting or section headers."
-        
         messages = [
             {"role": "system", "content": system_message},
             {"role": "user", "content": generation_prompt}

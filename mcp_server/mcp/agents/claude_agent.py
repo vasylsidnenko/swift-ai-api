@@ -437,8 +437,9 @@ Example output:
         if req_data.tags:
             prompt += f". Focus on the following keywords: {', '.join(req_data.tags)}"
         
+        # If req_data.question is provided, include it as an approximate or rough idea for the generated question
         if req_data.question:
-            prompt += f"\n\nThe question should be similar to or inspired by this: {req_data.question}"
+            prompt += f"\n\nApproximate or rough question/idea: {req_data.question}"
 
         prompt += """
 

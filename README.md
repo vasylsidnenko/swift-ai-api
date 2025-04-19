@@ -1,21 +1,25 @@
 # Programming Question Generator
 
+## Updates
+
+- The prompt for question generation (for both OpenAI and Claude agents) now uses the `question` field from `AIRequestQuestionModel`. This field is included in the prompt as an "Approximate or rough question/idea" to better guide the model towards the desired question content. An English comment is added in the relevant code section.
+
 This project provides an API and web interface for generating programming questions, answers, and multiple-choice tests using various AI models. It supports multiple platforms (Apple, Android) and dynamically loads available AI providers (OpenAI, Google AI, DeepSeek AI, etc.) found in the `mcp/agents` directory.
 
 ## Features
-- Modular architecture with Model Context Protocol (MCP) for AI provider abstraction
-- **Dynamic loading** of AI agents and their supported models from the `mcp/agents` directory.
-- Supports multiple AI providers (e.g., OpenAI, Google AI, DeepSeek AI) - only providers with working agents are shown.
-- Generates programming questions (and optionally validates them).
-- Generates quiz questions (question-only, no answers/tests) via the `quiz` operation.
-- Returns structured JSON responses ([MCPResponse](#mcpresponse-format)).
-- Supports keyword-based question generation.
-- Web interface with collapsible AI settings.
-- Optional validation for generated questions to ensure quality.
-- Checks for API keys in environment variables.
-- Displays masked API key (********) if using environment variable.
-- Token usage tracking (if provided by the agent).
-- Processing time measurement (if provided by the agent).
+- Modular architecture with a Model Context Protocol (MCP)-inspired abstraction for AI providers
+- **Dynamic loading** of AI agents and their supported models from the `mcp/agents` directory
+- Supports multiple AI providers (e.g., OpenAI, Google AI, DeepSeek AI) — only providers with working agents are shown
+- Generates programming questions (and optionally validates them)
+- Generates quiz questions (question-only, no answers/tests) via the `quiz` operation
+- Returns structured JSON responses ([MCPResponse](#mcpresponse-format))
+- Supports keyword-based question generation
+- Web interface with collapsible AI settings
+- Optional validation for generated questions to ensure quality
+- Checks for API keys in environment variables
+- Displays masked API key (********) if using environment variable
+- Token usage tracking (if provided by the agent)
+- Processing time measurement (if provided by the agent)
 
 ## Architecture
 
@@ -25,9 +29,9 @@ This project provides an API and web interface for generating programming questi
 
 The core components of this MCP-inspired architecture are:
 
-- **[app.py](app.py)**: The Flask application handling HTTP requests, dynamic agent/model loading at startup, and routing to API endpoints (`/api/generate`, `/api/validate`).
-- **[mcp/mcp_server.py](mcp/mcp_server.py)**: Contains the core logic classes inspired by MCP.
-  - **AIResource**: Handles the execution logic, calling the appropriate methods on the agent class.
+- **[app.py](app.py)**: The Flask application handling HTTP requests, dynamic agent/model loading at startup, and routing to API endpoints (`/api/generate`, `/api/validate`)
+- **[mcp/mcp_server.py](mcp/mcp_server.py)**: Contains the core logic classes inspired by MCP
+  - **AIResource**: Handles the execution logic, calling the appropriate methods on the agent class
   - **MCPContext**: Context object containing necessary information for request processing (config, request data).
   - **MCPResponse**: Standardized response format for API operations.
   - **BaseAgent**: Abstract base class that all AI agents must inherit from.

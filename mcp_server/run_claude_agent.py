@@ -125,7 +125,8 @@ def quiz_question():
                 platform="iOS",
                 topic="SwiftUI State Management",
                 technology="Swift",
-                tags=["SwiftUI", "State", "Binding", "iOS", "Swift"]
+                tags=["SwiftUI", "State", "Binding", "iOS", "Swift"],
+                question="Something about state in stack of ViewControllers"
             )
         )
         quiz = agent.quiz(quiz_request)
