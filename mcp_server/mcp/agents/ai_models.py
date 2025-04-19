@@ -51,7 +51,7 @@ class AIRequestQuestionModel(BaseModel):
     model: AIModel = Field(description="AI model information")
     request: RequestQuestionModel = Field(description="Question request information")
 
-#MARK: Responseґ
+#MARK: Response
 class TopicModel(BaseModel):
     name: str = Field(description="Name of the programming topic")
     platform: str = Field(description="Platform for which the topic is relevant (e.g., 'iOS', 'Apple')")
@@ -94,6 +94,16 @@ class AIQuestionModel(BaseModel):
     agent: AgentModel = Field(description="Agent model information")
     question: QuestionModel = Field(description="Question information")
 
+
+# Quiz models
+class QuizModel(BaseModel):
+    topic: TopicModel = Field(description="Topic and platform information")
+    question: str = Field(description="The main programming question text. If text contains code block,it must be highlighted with appropriate formatting (for example: ```swift )")
+    tags: List[str] = Field(description="Keywords and tags related to the question within the context of the platform and the topic")
+
+class AIQuizModel(BaseModel):
+    agent: AgentModel = Field(description="Agent model information")
+    quiz: QuizModel = Field(description="Quiz information")
 
 
 # MARK: Validation models

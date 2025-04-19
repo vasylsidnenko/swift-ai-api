@@ -28,7 +28,8 @@ from mcp.agents.ai_models import (
     AIValidationModel,
     QuestionValidation,
     ModelCapabilities,
-    AICapabilitiesModel
+    AICapabilitiesModel,
+    AIQuizModel
 )
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ class ClaudeAgent(AgentProtocol):
         return {
             "generate": self.generate,
             "validate": self.validate,
-            "test_capabilities": self.test_capabilities
+            "quiz": self.quiz
         }
 
     @staticmethod
@@ -178,6 +179,48 @@ class ClaudeAgent(AgentProtocol):
             logger.exception(f"Error validating question with Claude: {e}")
             raise
 
+    def quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+        """
+        Generate a programming question (без відповідей/тестів) через Claude, згідно моделі QuizModel/AIQuizModel.
+        """
+        import sys
+        logger.info(f"Python version={sys.version}")
+        try:
+            import anthropic
+            logger.info(f"Anthropic version={getattr(anthropic, '__version__', 'unknown')}")
+        except Exception:
+            logger.info("Anthropic version=unknown")
+        model_name = request.model.model
+        full_model_name = self._convert_model_name(model_name)
+        logger.info(f"Claude model (short): {model_name}, (full): {full_model_name}")
+        self._check_client()
+        start_time = time.time()
+        try:
+            prompt = self._format_quiz_request(request)
+            system_prompt = self._create_system_prompt("quiz")
+            response = self.client.messages.create(
+                model=full_model_name,
+                system=system_prompt,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=4000,
+                temperature=0.7
+            )
+            response_text = response.content[0].text
+            from mcp.agents.ai_models import QuizModel
+            quiz_obj = self._parse_claude_response(response_text, QuizModel)
+            agent_model = self._create_agent_model(
+                request.model,
+                start_time,
+                response.usage.output_tokens + response.usage.input_tokens
+            )
+            from mcp.agents.ai_models import AIQuizModel
+            return AIQuizModel(
+                agent=agent_model,
+                quiz=quiz_obj
+            )
+        except Exception as e:
+            logger.exception(f"Error generating quiz with Claude: {e}")
+            raise
     def test_capabilities(self) -> ModelCapabilities:
         """
         Return supported capabilities for Claude agent.
@@ -205,6 +248,24 @@ class ClaudeAgent(AgentProtocol):
         }
         return model_map.get(short_name, short_name)
     
+    def _format_quiz_request(self, request: AIRequestQuestionModel) -> str:
+        """
+        Формує prompt для генерації лише питання (без відповідей/тестів) для Claude.
+        """
+        r = request.request
+        topic = r.topic
+        platform = r.platform
+        technology = r.technology or ""
+        tags = r.tags
+        prompt = (
+            f"Create a programming question for the topic '{topic}' on platform '{platform}'. "
+            f"Technology: '{technology}'. Tags: {tags}. "
+            "Return ONLY the question, without any answers, answer levels, tests, or explanations. "
+            "Format your response as a JSON object with fields: topic, question, tags. "
+            "Example: {\n  \"topic\": { \"name\": \"SwiftUI\", \"platform\": \"iOS\", \"technology\": \"Swift\" },\n  \"question\": \"Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.\",\n  \"tags\": [\"SwiftUI\", \"List\", \"iOS\", \"Delete\", \"Swipe\"]\n}"
+        )
+        return prompt
+
     def _check_client(self):
         """Ensure client is initialized."""
         if not self.client:
@@ -239,7 +300,7 @@ class ClaudeAgent(AgentProtocol):
         Create system prompt based on operation.
         
         Args:
-            operation: The operation to perform (generate/validate)
+            operation: The operation to perform (generate/validate/quiz)
             
         Returns:
             System prompt for Claude
@@ -332,6 +393,25 @@ Example output:
 }
 
 The question passes validation if the overall quality score is 7 or higher.
+"""
+        elif operation == "quiz":
+            return """You are an expert at creating programming quiz questions. Your task is to generate a single high-quality programming question for the given topic, platform, and tags.
+
+IMPORTANT:
+- Only generate the main question text (no answers, no tests, no answer levels, no explanations, no code tests).
+- Return your response as a flat JSON object matching the following schema:
+  - topic: { name: string, platform: string, technology: string (optional) }
+  - question: string (the main programming question text, may include code blocks)
+  - tags: array of strings
+- Do NOT include any answers, answer levels, tests, or evaluation criteria.
+- Your response MUST start with '{' and end with '}'. Do NOT add any text before or after the JSON object.
+
+Example output:
+{
+  "topic": { "name": "SwiftUI", "platform": "iOS", "technology": "Swift" },
+  "question": "Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.",
+  "tags": ["SwiftUI", "List", "iOS", "Delete", "Swipe"]
+}
 """
         else:
             return """You are a helpful AI assistant. Respond to the question or task accurately and concisely."""

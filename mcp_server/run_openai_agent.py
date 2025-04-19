@@ -21,7 +21,8 @@ from mcp.agents.ai_models import (
     AIModel, 
     RequestQuestionModel,
     QuestionModel,
-    QuestionValidation
+    QuestionValidation,
+    AIQuizModel
 )
 
 # Configure logging
@@ -104,6 +105,34 @@ def validate_question(generated_model=None):
         logger.error(f"Validation failed: {str(e)}")
         sys.exit(1)
 
+def quiz_question():
+    """
+    Тестовий запуск OpenAIAgent.quiz: генерує лише питання (без відповідей/тестів)
+    """
+    from mcp.agents.openai_agent import OpenAIAgent
+    from mcp.agents.ai_models import AIModel, AIRequestQuestionModel, RequestQuestionModel
+    import json
+    import logging
+    logger = logging.getLogger("mcp.agents.openai_agent")
+
+    try:
+        agent = OpenAIAgent()
+        quiz_request = AIRequestQuestionModel(
+            model=AIModel(provider="openai", model="gpt-4o"),
+            request=RequestQuestionModel(
+                platform="iOS",
+                topic="SwiftUI State Management",
+                technology="Swift",
+                tags=["SwiftUI", "State", "Binding", "iOS", "Swift"]
+            )
+        )
+        quiz = agent.quiz(quiz_request)
+        print(f"\nQuiz result: {json.dumps(quiz.model_dump(), indent=2, ensure_ascii=False)}")
+    except Exception as e:
+        logger.error(f"Quiz generation failed: {str(e)}")
+        print(f"Quiz generation failed: {str(e)}")
+        import sys; sys.exit(1)
+
 def main():
     # load_dotenv()
 
@@ -124,6 +153,8 @@ def main():
         generate_question()
     elif operation == "validate":
         validate_question()
+    elif operation == "quiz":
+        quiz_question()
     else:
         print("Invalid operation. Use 'generate' or 'validate', or run without arguments for generate-then-validate flow")
         sys.exit(1)

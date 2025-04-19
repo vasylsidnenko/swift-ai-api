@@ -1,5 +1,5 @@
 from typing import Protocol, Dict, Callable, List
-from mcp.agents.ai_models import AIRequestQuestionModel, AIQuestionModel, AIRequestValidationModel, AIValidationModel
+from mcp.agents.ai_models import AIRequestQuestionModel, AIQuestionModel, AIRequestValidationModel, AIValidationModel, AIQuizModel
 
 class AgentProtocol(Protocol):
     """Protocol for all AI agents"""
@@ -36,6 +36,18 @@ class AgentProtocol(Protocol):
         """
         ...
     
+    def quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+        """
+        Generate programming quiz.
+        
+        Args:
+            request: AIRequestQuestionModel containing model info and quiz parameters
+            
+        Returns:
+            AIQuizModel with generated content
+        """
+        ...
+
     @staticmethod
     def provider() -> str:
         """Returns the provider name for this agent."""

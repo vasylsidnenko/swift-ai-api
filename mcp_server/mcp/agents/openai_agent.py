@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from ..agents.ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
                                 AIRequestQuestionModel, AIRequestValidationModel, 
-                                AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation)
+                                AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation, AIQuizModel)
 from ..agents.base_agent import AgentProtocol
 
 logger = logging.getLogger(__name__)
@@ -57,8 +57,43 @@ class OpenAIAgent(AgentProtocol):
         """Expose agent tools for MCP server."""
         return {
             'generate': self.generate,
-            'validate': self.validate
+            'validate': self.validate,
+            'quiz': self.quiz
         }
+
+    def _create_system_prompt(self, operation: str) -> str:
+        """
+        Create system prompt based on operation.
+        Args:
+            operation: The operation to perform (generate/validate/quiz)
+        Returns:
+            System prompt for OpenAI
+        """
+        if operation == "generate":
+            return "You are an expert programming question generator. Generate a high-quality programming question with detailed answers for different skill levels."
+        elif operation == "validate":
+            return "You are an expert programming question validator. Validate the provided programming question and provide structured feedback in JSON."
+        elif operation == "quiz":
+            return """You are an expert at creating programming quiz questions. Your task is to generate a single high-quality programming question for the given topic, platform, and tags.
+
+IMPORTANT:
+- Only generate the main question text (no answers, no tests, no answer levels, no explanations, no code tests).
+- Return your response as a flat JSON object matching the following schema:
+  - topic: { name: string, platform: string, technology: string (optional) }
+  - question: string (the main programming question text, may include code blocks)
+  - tags: array of strings
+- Do NOT include any answers, answer levels, tests, or evaluation criteria.
+- Your response MUST start with '{' and end with '}'. Do NOT add any text before or after the JSON object.
+
+Example output:
+{
+  "topic": { "name": "SwiftUI", "platform": "iOS", "technology": "Swift" },
+  "question": "Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.",
+  "tags": ["SwiftUI", "List", "iOS", "Delete", "Swipe"]
+}
+"""
+        else:
+            return "You are a helpful AI assistant. Respond to the question or task accurately and concisely."
 
     def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
         """
@@ -211,6 +246,117 @@ class OpenAIAgent(AgentProtocol):
             logger.error(f"Validation failed: {str(e)}")
             raise RuntimeError(f"Validation error: {str(e)}")
         
+    def quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+        """
+        Generate a programming question (без відповідей/тестів) через OpenAI, згідно моделі QuizModel/AIQuizModel.
+        """
+        import sys
+        logger.info(f"Python version={sys.version}")
+        try:
+            import openai
+            logger.info(f"OpenAI version={getattr(openai, '__version__', 'unknown')}")
+        except Exception:
+            logger.info("OpenAI version=unknown")
+        model_name = request.model.model
+        logger.info(f"OpenAI model: {model_name}")
+        start_time = time.time()
+        try:
+            prompt = self._format_quiz_request(request)
+            system_prompt = self._create_system_prompt("quiz")
+            response = self.client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=4000,
+                temperature=0.7
+            )
+            response_text = response.choices[0].message.content
+            from mcp.agents.ai_models import QuizModel
+            quiz_obj = self._parse_openai_response(response_text, QuizModel)
+            agent_model = self._create_agent_model(
+                request.model,
+                start_time,
+                response.usage.total_tokens if hasattr(response.usage, 'total_tokens') else None
+            )
+            from mcp.agents.ai_models import AIQuizModel
+            return AIQuizModel(
+                agent=agent_model,
+                quiz=quiz_obj
+            )
+        except Exception as e:
+            logger.exception(f"Error generating quiz with OpenAI: {e}")
+            raise
+
+    def _create_agent_model(self, model: AIModel, start_time: float, tokens_used: Optional[int]) -> AgentModel:
+        """
+        Create an AgentModel instance from the provided parameters.
+        Args:
+            model: AIModel instance containing model details
+            start_time: Start time of the operation
+            tokens_used: Number of tokens used (optional)
+        Returns:
+            AgentModel instance
+        """
+        return AgentModel(
+            model=model,
+            statistic=AIStatistic(
+                time=int((time.time() - start_time) * 1000),  # Convert to milliseconds
+                tokens=tokens_used
+            )
+        )
+
+    def _parse_openai_response(self, response_text: str, schema_type):
+        """
+        Parse OpenAI's response text to extract and validate JSON.
+        Args:
+            response_text: OpenAI's response text
+            schema_type: Pydantic model class to validate against
+        Returns:
+            Parsed and validated instance of schema_type
+        """
+        import json
+        try:
+            # Find the first '{' and last '}' to extract JSON object
+            start = response_text.find('{')
+            end = response_text.rfind('}')
+            if start == -1 or end == -1 or start > end:
+                raise ValueError("Could not find JSON object in response.")
+            json_str = response_text[start:end+1]
+            data = json.loads(json_str)
+        except Exception as e:
+            logger.error(f"Failed to parse JSON from OpenAI response: {e}")
+            logger.error(f"Content: {response_text}")
+            raise ValueError(f"Could not parse JSON from OpenAI response: {e}")
+        try:
+            return schema_type.model_validate(data)
+        except Exception as e:
+            logger.error(f"Failed to validate parsed JSON against schema: {e}")
+            raise ValueError(f"OpenAI response does not match expected schema: {e}")
+
+        except Exception as e:
+            logger.exception(f"Error generating quiz with OpenAI: {e}")
+            raise
+
+    def _format_quiz_request(self, request: AIRequestQuestionModel) -> str:
+        """
+        Формує prompt для генерації лише питання (без відповідей/тестів) для OpenAI.
+        """
+        r = request.request
+        topic = r.topic
+        platform = r.platform
+        technology = r.technology or ""
+        tags = r.tags
+        prompt = (
+            f"Create a programming question for the topic '{topic}' on platform '{platform}'. "
+            f"Technology: '{technology}'. Tags: {tags}. "
+            "Return ONLY the question, without any answers, answer levels, tests, or explanations. "
+            "Format your response as a JSON object with fields: topic, question, tags. "
+            "Example: {\n  \"topic\": { \"name\": \"SwiftUI\", \"platform\": \"iOS\", \"technology\": \"Swift\" },\n  \"question\": \"Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.\",\n  \"tags\": [\"SwiftUI\", \"List\", \"iOS\", \"Delete\", \"Swipe\"]\n}"
+        )
+        return prompt
+
     def _is_support_model(self, model: AIModel) -> bool:
         if model.provider.lower() != self.provider():
             logger.error(f"Provider unknonw: {model.provider}")
