@@ -15,6 +15,12 @@ This directory contains the core server code for the MCP (Multi-Component Platfo
 
 See [SCHEMA.md](./SCHEMA.md) for a detailed architecture diagram and request/response flow of the MCP server. Below is a summary:
 
+## Gemini Agent Logging & Strict Validation
+
+- GeminiAgent logs Python version, Google GenerativeAI version, model name, and request type (generate/validate/quiz) at the start of each operation. This logging is consistent with Claude and OpenAI agents for easy debugging and transparency.
+- Prompts for Gemini agent (generation, validation, quiz) now strictly enforce the expected JSON schema. For validation, the prompt includes a full example of the required JSON structure, ensuring Gemini always returns all required fields for `QuestionValidation`. This eliminates validation errors due to missing fields.
+- No extra debug logs (such as GenerativeModel instance dumps) are present in production.
+
 - The MCP server exposes a REST API for agent-based operations (e.g., generate/validate/quiz).
 - The `quiz` operation generates a programming question (question-only, no answers or tests) and returns a structured response (`AIQuizModel`/`QuizModel`).
 - Agents are dynamically loaded from `mcp/agents/` and implement a common protocol.
@@ -30,11 +36,11 @@ See [SCHEMA.md](./SCHEMA.md) for a detailed architecture diagram and request/res
 
 ---
 
-## Додаткові технічні деталі
+## Additional Technical Details
 
-### Залежності
+### Dependencies
 
-Всі необхідні залежності вказані у requirements.txt:
+All required dependencies are listed in requirements.txt:
 
 ```
 anthropic>=0.21.0
@@ -44,15 +50,15 @@ pydantic>=2.0.0
 demjson3>=3.0.6
 ```
 
-Встановити:
+To install:
 ```
 pip install -r requirements.txt
 ```
 
-### Логування
+### Logging
 
-- ClaudeAgent і OpenAIAgent логують:
-  - Версію Python
+- ClaudeAgent and OpenAIAgent log:
+  - Python version
   - Версію бібліотеки anthropic (для Claude)
   - Коротке та повне ім'я моделі
 - Усі важливі етапи роботи агента відображаються у логах (ініціалізація, генерація, валідація, помилки парсингу тощо).

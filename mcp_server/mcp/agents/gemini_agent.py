@@ -83,7 +83,15 @@ class GeminiAgent(AgentProtocol):
         """
         Generate a programming question using Gemini.
         """
+        import sys
+        logger.info(f"Python version={sys.version}")
+        try:
+            import google.generativeai as genai
+            logger.info(f"Google GenerativeAI version={getattr(genai, '__version__', 'unknown')}")
+        except Exception:
+            logger.info("Google GenerativeAI version=unknown")
         model_name = request.model.model
+        logger.info(f"Gemini model: {model_name}, request type: generate")
         if model_name not in self.supported_models():
             logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
         start_time = time.time()
@@ -114,7 +122,15 @@ class GeminiAgent(AgentProtocol):
         """
         Validate a programming question using Gemini.
         """
+        import sys
+        logger.info(f"Python version={sys.version}")
+        try:
+            import google.generativeai as genai
+            logger.info(f"Google GenerativeAI version={getattr(genai, '__version__', 'unknown')}")
+        except Exception:
+            logger.info("Google GenerativeAI version=unknown")
         model_name = request.model.model
+        logger.info(f"Gemini model: {model_name}, request type: validate")
         if model_name not in self.supported_models():
             logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
         start_time = time.time()
@@ -122,8 +138,6 @@ class GeminiAgent(AgentProtocol):
         try:
             # Використовуємо офіційний спосіб: створити модель і викликати generate_content
             model = genai.GenerativeModel(model_name)
-            # DEBUG show Gemini model object
-            logger.error(f"[GEMINI] GenerativeModel instance: {model}")
             response = model.generate_content(
                 [prompt],
                 generation_config={"temperature": 0, "max_output_tokens": 15000}
@@ -147,7 +161,15 @@ class GeminiAgent(AgentProtocol):
         """
         Generate a programming quiz using Gemini.
         """
+        import sys
+        logger.info(f"Python version={sys.version}")
+        try:
+            import google.generativeai as genai
+            logger.info(f"Google GenerativeAI version={getattr(genai, '__version__', 'unknown')}")
+        except Exception:
+            logger.info("Google GenerativeAI version=unknown")
         model_name = request.model.model
+        logger.info(f"Gemini model: {model_name}, request type: quiz")
         if model_name not in self.supported_models():
             logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
         start_time = time.time()
@@ -155,8 +177,6 @@ class GeminiAgent(AgentProtocol):
         try:
             # Використовуємо офіційний спосіб: створити модель і викликати generate_content
             model = genai.GenerativeModel(model_name)
-            # DEBUG show Gemini model object
-            logger.error(f"[GEMINI] GenerativeModel instance: {model}")
             response = model.generate_content(
                 [prompt],
                 generation_config={"temperature": 0.7, "max_output_tokens": 2048}

@@ -21,6 +21,12 @@ This project provides an API and web interface for generating programming questi
 - Token usage tracking (if provided by the agent)
 - Processing time measurement (if provided by the agent)
 
+## Gemini Agent Logging & Strict Validation
+
+- GeminiAgent logs Python version, Google GenerativeAI version, model name, and request type (generate/validate/quiz) at the start of each operation. This logging is consistent with Claude and OpenAI agents for easy debugging and transparency.
+- Prompts for Gemini agent (generation, validation, quiz) now strictly enforce the expected JSON schema. For validation, the prompt includes a full example of the required JSON structure, ensuring Gemini always returns all required fields for `QuestionValidation`. This eliminates validation errors due to missing fields.
+- No extra debug logs (such as GenerativeModel instance dumps) are present in production.
+
 ## Architecture
 
 ### Model Context Protocol (MCP) - Inspired Implementation
