@@ -74,3 +74,76 @@ def fix_unterminated_strings_in_json(text):
 
 # Example usage:
 # fixed = fix_unterminated_strings_in_json(json_str)
+
+def escape_newlines_in_json_strings(text):
+    """
+    Escapes real newlines (U+000A) and carriage returns (U+000D) inside JSON string literals with \\n and \\r respectively.
+    Only affects content inside double-quoted strings.
+    Example:
+        '{"code": "line1\nline2"}' -> '{"code": "line1\\nline2"}'
+        '{"code": "line1\rline2"}' -> '{"code": "line1\\rline2"}'
+    """
+    result = []
+    in_string = False
+    escape = False
+    for c in text:
+        if not in_string:
+            if c == '"':
+                in_string = True
+            result.append(c)
+        else:
+            if escape:
+                result.append(c)
+                escape = False
+            elif c == '\\':
+                result.append(c)
+                escape = True
+            elif c == '"':
+                in_string = False
+                result.append(c)
+            elif c == '\n':
+                result.append('\\n')
+            elif c == '\r':
+                result.append('\\r')
+            else:
+                result.append(c)
+    return ''.join(result)
+
+# Example usage:
+# fixed = escape_newlines_in_json_strings(json_str)
+
+def fix_missing_commas_in_json(text):
+    """
+    Inserts missing commas between JSON values and keys if absent.
+    Example:
+        '{"a": 1 "b": 2}' -> '{"a": 1, "b": 2}'
+    This is a best-effort fix for common AI mistakes.
+    """
+    import re
+    # Insert comma between a closing quote/number/} and a quote/[/letter
+    # Examples: "..." "key":  -> "...", "key":
+    #           123 "key":    -> 123, "key":
+    #           } "key":      -> }, "key":
+    pattern = r'([\]"|\d|\})\s+(?=[\"]|\[|\{)'  # after string/number/} before key/array/object
+    return re.sub(pattern, r'\1, ', text)
+
+# Example usage:
+# fixed = fix_missing_commas_in_json(json_str)
+
+def fix_omitted_elements_in_json(text):
+    """
+    Removes omitted elements in JSON like '"key": ,' and trailing commas before }} or ]].
+    Example:
+        '{"a": , "b": 1}' -> '{"b": 1}'
+        '{"a": 1,}' -> '{"a": 1}'
+        '[1, 2,]' -> '[1, 2]'
+    """
+    import re
+    # Remove key-value pairs with omitted value
+    text = re.sub(r'"[^"]+"\s*:\s*,', '', text)
+    # Remove trailing commas before } or ]
+    text = re.sub(r',\s*([}\]])', r'\1', text)
+    return text
+
+# Example usage:
+# fixed = fix_omitted_elements_in_json(json_str)

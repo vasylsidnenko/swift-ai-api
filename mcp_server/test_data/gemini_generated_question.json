@@ -1,0 +1,129 @@
+{
+  "agent": {
+    "model": {
+      "provider": "gemini",
+      "model": "models/gemini-1.5-pro-latest"
+    },
+    "statistic": {
+      "time": 15299,
+      "tokens": null
+    }
+  },
+  "question": {
+    "topic": {
+      "name": "SwiftUI View Composition",
+      "platform": "iOS",
+      "technology": "Swift"
+    },
+    "text": "Create a SwiftUI view that displays a list of names, where each name is displayed in a rounded rectangle with a specific background color.  The background color should alternate between two colors for consecutive names.",
+    "tags": [
+      "View",
+      "State",
+      "Binding"
+    ],
+    "answerLevels": {
+      "beginner": {
+        "name": "Beginner",
+        "answer": "Use a `ForEach` to iterate over the names and a conditional statement inside the `ForEach` to alternate the background color.",
+        "tests": [
+          {
+            "snippet": "```swift\nlet names = [\"Alice\", \"Bob\", \"Charlie\"]\n// Implement the view here\n```",
+            "options": [
+              "1. A `List` with static views.",
+              "2. A `ForEach` with conditional background color.",
+              "3. A `VStack` with static views."
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "```swift\n// What is the purpose of the `id` parameter in `ForEach`?\n```",
+            "options": [
+              "1. To identify the view type.",
+              "2. To uniquely identify each element in the collection.",
+              "3. To set the background color."
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "```swift\n// How can you make the rounded rectangle's corner radius larger?\n```",
+            "options": [
+              "1. Use the `cornerRadius` modifier with a larger value.",
+              "2. Use the `frame` modifier.",
+              "3. Use the `padding` modifier."
+            ],
+            "answer": "1"
+          }
+        ],
+        "evaluationCriteria": "Understands basic `ForEach` usage and conditional rendering."
+      },
+      "intermediate": {
+        "name": "Intermediate",
+        "answer": "Implement the alternating background color using a computed property that calculates the color based on the index of the name in the array.  Use a more complex layout, such as `LazyVGrid` or `LazyHGrid`, to arrange the names.",
+        "tests": [
+          {
+            "snippet": "```swift\n// Implement a computed property that returns a different color based on whether the index is even or odd.\n```",
+            "options": [
+              "1. Use the modulo operator (%) to check if the index is divisible by 2.",
+              "2. Use an if-else statement to check the index value.",
+              "3. Use a switch statement to check the index value."
+            ],
+            "answer": "1"
+          },
+          {
+            "snippet": "```swift\n// How can you display the names in a grid layout?\n```",
+            "options": [
+              "1. Use `LazyVGrid` or `LazyHGrid`.",
+              "2. Use `HStack` and `VStack`.",
+              "3. Use a custom layout."
+            ],
+            "answer": "1"
+          },
+          {
+            "snippet": "```swift\n// How can you make the grid items take up equal width?\n```",
+            "options": [
+              "1. Use `GridItem(.flexible())`.",
+              "2. Use `GridItem(.fixed(width))`.",
+              "3. Use `GridItem(.adaptive(minimum: width))`."
+            ],
+            "answer": "1"
+          }
+        ],
+        "evaluationCriteria": "Can implement more complex layouts and use computed properties effectively."
+      },
+      "advanced": {
+        "name": "Advanced",
+        "answer": "Create a custom `ViewModifier` to encapsulate the rounded rectangle and background color logic.  Use a `Binding` to allow the parent view to control the selected name. Implement a smooth transition when the background color changes.",
+        "tests": [
+          {
+            "snippet": "```swift\n// Create a custom `ViewModifier` that applies the rounded rectangle and background color.\n```",
+            "options": [
+              "1. Create a struct conforming to the `ViewModifier` protocol.",
+              "2. Create a class inheriting from `View`.",
+              "3. Create a function that returns a `View`."
+            ],
+            "answer": "1"
+          },
+          {
+            "snippet": "```swift\n// How can you use a `Binding` to allow the parent view to control the selected name?\n```",
+            "options": [
+              "1. Pass a `Binding` property to the child view.",
+              "2. Use an `ObservableObject`.",
+              "3. Use a `State` property in the parent view."
+            ],
+            "answer": "1"
+          },
+          {
+            "snippet": "```swift\n// How can you add a smooth transition to the background color change?\n```",
+            "options": [
+              "1. Use the `animation` modifier.",
+              "2. Use the `withAnimation` function.",
+              "3. Use the `transition` modifier."
+            ],
+            "answer": "1"
+          }
+        ],
+        "evaluationCriteria": "Understands advanced concepts like `ViewModifier`, `Binding`, and animations."
+      }
+    }
+  }
+}

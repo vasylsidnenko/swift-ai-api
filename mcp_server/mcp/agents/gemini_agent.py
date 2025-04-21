@@ -1,0 +1,368 @@
+"""
+Gemini API Integration for MCP.
+
+This module implements an agent for the Gemini API (Google) 
+that follows the MCP protocol. It provides functionality to generate
+and validate questions using the Gemini language models.
+"""
+
+import json
+import os
+import logging
+import time
+from typing import Dict, List, Optional, Any, Callable
+
+# Correct import for google-generativeai
+import google.generativeai as genai
+from mcp.agents.base_agent import AgentProtocol
+from mcp.agents.ai_models import (
+    AIModel,
+    AIStatistic,
+    AgentModel,
+    AIRequestQuestionModel,
+    AIQuestionModel,
+    AIRequestValidationModel,
+    AIValidationModel,
+    QuestionValidation,
+    ModelCapabilities,
+    AICapabilitiesModel,
+    AIQuizModel,
+    QuizModel
+)
+
+logger = logging.getLogger(__name__)
+
+class GeminiAgent(AgentProtocol):
+    """
+    Agent implementation for Gemini API (Google).
+    Provides methods to generate and validate questions using Gemini models.
+    """
+    def __init__(self, api_key: Optional[str] = None):
+        """
+        Initialize the Gemini agent with API key.
+        Args:
+            api_key: The Gemini API key. If not provided, it will try to get it from environment variable.
+        """
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        if not self.api_key:
+            logger.warning("No Gemini API key provided, agent will not function properly")
+        # Configure Gemini API key for global use
+        import google.generativeai as genai
+        genai.configure(api_key=self.api_key)
+
+    @property
+    def tools(self) -> Dict[str, Callable]:
+        """
+        Expose agent tools for MCP server.
+        Must return dictionary with 'generate' and 'validate' callables.
+        """
+        return {
+            "generate": self.generate,
+            "validate": self.validate,
+            "quiz": self.quiz
+        }
+
+    @staticmethod
+    def provider() -> str:
+        """Returns the provider name for this agent."""
+        return "gemini"
+
+    @staticmethod
+    def supported_models() -> List[str]:
+        """Returns list of supported Gemini models."""
+        # Використовуйте повне ім'я моделі Gemini для API
+        return [
+            "models/gemini-1.5-pro-latest",
+            "models/gemini-1.5-pro",
+            "models/gemini-1.5-pro-001",
+            "models/gemini-1.5-pro-002",
+            "models/gemini-2.0-flash"
+        ]
+
+    def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
+        """
+        Generate a programming question using Gemini.
+        """
+        model_name = request.model.model
+        if model_name not in self.supported_models():
+            logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
+        start_time = time.time()
+        prompt = self._format_question_request(request)
+        try:
+            # Використовуємо офіційний спосіб: створити модель і викликати generate_content
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(
+                [prompt],
+                generation_config={"temperature": 0.7, "max_output_tokens": 15000}
+            )
+            response_text = response.text if hasattr(response, 'text') else response['candidates'][0]['content']['parts'][0]['text']
+            question_obj = self._parse_gemini_response(response_text, 'question')
+            agent_model = self._create_agent_model(
+                request.model,
+                start_time,
+                None  # Gemini API does not return tokens used
+            )
+            return AIQuestionModel(
+                agent=agent_model,
+                question=question_obj
+            )
+        except Exception as e:
+            logger.exception(f"Error generating question with Gemini: {e}")
+            raise
+
+    def validate(self, request: AIRequestValidationModel) -> AIValidationModel:
+        """
+        Validate a programming question using Gemini.
+        """
+        model_name = request.model.model
+        if model_name not in self.supported_models():
+            logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
+        start_time = time.time()
+        prompt = self._format_validation_request(request)
+        try:
+            # Використовуємо офіційний спосіб: створити модель і викликати generate_content
+            model = genai.GenerativeModel(model_name)
+            # DEBUG show Gemini model object
+            logger.error(f"[GEMINI] GenerativeModel instance: {model}")
+            response = model.generate_content(
+                [prompt],
+                generation_config={"temperature": 0, "max_output_tokens": 15000}
+            )
+            response_text = response.text if hasattr(response, 'text') else response['candidates'][0]['content']['parts'][0]['text']
+            validation_obj = self._parse_gemini_response(response_text, 'validation')
+            agent_model = self._create_agent_model(
+                request.model,
+                start_time,
+                None
+            )
+            return AIValidationModel(
+                agent=agent_model,
+                validation=validation_obj
+            )
+        except Exception as e:
+            logger.exception(f"Error validating question with Gemini: {e}")
+            raise
+
+    def quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+        """
+        Generate a programming quiz using Gemini.
+        """
+        model_name = request.model.model
+        if model_name not in self.supported_models():
+            logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
+        start_time = time.time()
+        prompt = self._format_quiz_request(request)
+        try:
+            # Використовуємо офіційний спосіб: створити модель і викликати generate_content
+            model = genai.GenerativeModel(model_name)
+            # DEBUG show Gemini model object
+            logger.error(f"[GEMINI] GenerativeModel instance: {model}")
+            response = model.generate_content(
+                [prompt],
+                generation_config={"temperature": 0.7, "max_output_tokens": 2048}
+            )
+            response_text = response.text if hasattr(response, 'text') else response['candidates'][0]['content']['parts'][0]['text']
+            quiz_obj = self._parse_gemini_response(response_text, 'quiz')
+            agent_model = self._create_agent_model(
+                request.model,
+                start_time,
+                None
+            )
+            return AIQuizModel(
+                agent=agent_model,
+                quiz=quiz_obj
+            )
+        except Exception as e:
+            logger.exception(f"Error generating quiz with Gemini: {e}")
+            raise
+
+    def _format_question_request(self, request: AIRequestQuestionModel) -> str:
+        """
+        Формує prompt для генерації питання строго під QuestionModel
+        """
+        # Gemini prompt for strict QuestionModel format
+        req_data = request.request
+        prompt = f"""
+You are an expert programming question generator. Generate a JSON object STRICTLY matching the following schema:
+
+- topic: object with fields name (string), platform (string), technology (string)
+- text: string (the main programming question, can contain code block with correct markdown formatting, e.g. ```swift)
+- tags: array of strings
+- answerLevels: object with exactly 3 fields: beginner, intermediate, advanced. Each is an object with fields:
+    - name: string (one of: Beginner, Intermediate, Advanced)
+    - answer: string (detailed answer for this level)
+    - tests: array of 3 objects with fields:
+        - snippet: string (code snippet and question, with correct markdown)
+        - options: array of 3+ strings (numbered answer options)
+        - answer: string (number of correct option)
+    - evaluationCriteria: string (criteria for this level)
+
+STRICT FORMAT RULES:
+- Output ONLY valid JSON, no markdown, no comments, no explanations, no ```json, no extra text.
+- All arrays/objects must have commas between elements.
+- Do not use multiline strings.
+- All field names must match exactly.
+
+Use the following parameters:
+- topic: {req_data.topic}
+- platform: {req_data.platform}
+- technology: {req_data.technology or ''}
+- tags: {', '.join(req_data.tags)}
+"""
+        if req_data.question:
+            prompt += f"\n- Idea: {req_data.question}"
+        prompt += "\n\nExample of valid JSON:\n{\n  \"topic\": { \"name\": \"SwiftUI State\", \"platform\": \"iOS\", \"technology\": \"Swift\" },\n  \"text\": \"Explain how @State works in SwiftUI.\",\n  \"tags\": [\"SwiftUI\", \"State\", \"iOS\"],\n  \"answerLevels\": {\n    \"beginner\": {\n      \"name\": \"Beginner\",\n      \"answer\": \"In SwiftUI, ...\",\n      \"tests\": [\n        {\"snippet\": \"...\", \"options\": [\"1. ...\", \"2. ...\", \"3. ...\"], \"answer\": \"2\"},\n        {\"snippet\": \"...\", \"options\": [\"1. ...\", \"2. ...\", \"3. ...\"], \"answer\": \"1\"},\n        {\"snippet\": \"...\", \"options\": [\"1. ...\", \"2. ...\", \"3. ...\"], \"answer\": \"3\"}\n      ],\n      \"evaluationCriteria\": \"Can explain what @State is and how to use it.\"\n    },\n    \"intermediate\": { ... },\n    \"advanced\": { ... }\n  }\n}\n\nReturn ONLY the JSON object for the question as per the schema."
+        return prompt
+
+
+    def _format_validation_request(self, request: AIRequestValidationModel) -> str:
+        """
+        Формує prompt для валідації питання строго під QuestionValidation
+        """
+        # Gemini prompt for strict QuestionValidation format
+        example_json = '''{
+  "is_text_clear": true,
+  "is_question_correspond": true,
+  "is_question_not_trivial": true,
+  "do_answer_levels_exist": true,
+  "are_answer_levels_valid": true,
+  "has_evaluation_criteria": true,
+  "are_answer_levels_different": true,
+  "do_tests_exist": true,
+  "do_tags_exist": true,
+  "do_test_options_exist": true,
+  "is_question_text_different_from_existing_questions": true,
+  "are_test_options_numbered": true,
+  "does_answer_contain_option_number": true,
+  "are_code_blocks_marked_if_they_exist": true,
+  "does_snippet_have_question": true,
+  "does_snippet_have_code": true,
+  "clarity_score": 8,
+  "relevance_score": 9,
+  "difficulty_score": 7,
+  "structure_score": 8,
+  "code_quality_score": 8,
+  "quality_score": 8,
+  "clarity_feedback": "Text is clear.",
+  "relevance_feedback": "Relevant to topic.",
+  "difficulty_feedback": "Difficulty matches level.",
+  "structure_feedback": "Well structured.",
+  "code_quality_feedback": "Good code examples.",
+  "comments": "No major issues.",
+  "recommendations": ["Add more test cases."],
+  "passed": true
+}'''
+        prompt = f"""
+You are an expert programming question validator. Validate the following question and return a JSON object STRICTLY matching this schema (all fields required, do not omit any):
+
+{example_json}
+
+STRICT FORMAT RULES:
+- Output ONLY valid JSON, no markdown, no comments, no explanations, no ```json, no extra text.
+- All field names must match exactly.
+- Do not omit any fields.
+- All arrays/objects must have commas between elements.
+
+Question to validate: {request.request.model_dump_json()}
+"""
+        return prompt
+
+
+    def _format_quiz_request(self, request: AIRequestQuestionModel) -> str:
+        """
+        Формує prompt для генерації лише питання (без відповідей/тестів) для Gemini.
+        """
+        r = request.request
+        prompt = (
+            f"Create a programming question for the topic '{r.topic}' on platform '{r.platform}'. "
+            f"Technology: '{r.technology}'. Tags: {r.tags}. "
+            "Return ONLY the question, without any answers, answer levels, tests, or explanations. "
+            "Format your response as a JSON object with fields: topic, question, tags. "
+            "Example: {"
+            "\n  \"topic\": { \"name\": \"SwiftUI\", \"platform\": \"iOS\", \"technology\": \"Swift\" },"
+            "\n  \"question\": \"Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.\"," 
+            "\n  \"tags\": [\"SwiftUI\", \"List\", \"iOS\", \"Delete\", \"Swipe\"]"
+            "\n}"
+        )
+        return prompt
+
+    def _parse_gemini_response(self, response_text: str, schema_type: str) -> Any:
+        """
+        Parse Gemini's response text to extract and validate JSON.
+        """
+        import demjson3
+        from mcp.agents.ai_models import QuestionModel, QuizModel, QuestionValidation
+        from mcp.agents.utils import remove_triple_backticks_from_outer_markdown, fix_unterminated_strings_in_json, escape_newlines_in_json_strings
+        import demjson3, json, re
+        # Claude-style tolerant JSON parser for Gemini
+        try:
+            # Try raw parse (json.loads first, then demjson3)
+            start = response_text.find('{')
+            end = response_text.rfind('}')
+            if start == -1 or end == -1 or start > end:
+                raise ValueError("Could not find JSON object in Gemini response.")
+            json_str = response_text[start:end+1]
+            try:
+                data = json.loads(json_str)
+                logger.error("[GEMINI] Parsed RAW JSON with json.loads.")
+            except Exception as e_json:
+                data = demjson3.decode(json_str)
+                logger.error("[GEMINI] Parsed RAW JSON with demjson3.")
+        except Exception as raw_exc:
+            logger.error(f"[GEMINI] RAW parse failed: {raw_exc}")
+            # Try to extract JSON via regex (do NOT touch ''' blocks)
+            json_pattern = r'(\{[\s\S]*\})'
+            match = re.search(json_pattern, response_text)
+            if match:
+                json_str = match.group(1)
+                # Try json.loads first
+                try:
+                    data = json.loads(json_str)
+                    logger.error("[GEMINI] Parsed REGEX JSON with json.loads.")
+                except Exception as e_json:
+                    try:
+                        data = demjson3.decode(json_str)
+                        logger.error("[GEMINI] Parsed REGEX JSON with demjson3.")
+                    except Exception as e_demjson:
+                        # HARD CUT fallback: cut to last }
+                        last_brace = json_str.rfind('}')
+                        if last_brace != -1:
+                            cut_json_str = json_str[:last_brace+1]
+                            logger.error(f"[GEMINI] Trying hard cut fallback. Cut JSON string:\n{cut_json_str}")
+                            try:
+                                data = demjson3.decode(cut_json_str)
+                                logger.error("[GEMINI] Parsed with demjson3 after hard cut.")
+                            except Exception as e_demjson2:
+                                logger.error(f"[GEMINI] Failed hard cut fallback: {e_demjson2}")
+                                raise ValueError(f"Could not parse JSON from Gemini response after hard cut: {e_demjson2}")
+                        else:
+                            raise ValueError(f"Could not parse JSON from Gemini response: {e_demjson}")
+            else:
+                logger.error("[GEMINI] No JSON found in Gemini response")
+                raise ValueError("Could not find JSON object in Gemini response.")
+
+            logger.error(f"Failed to parse JSON from Gemini response: {e}")
+            logger.error(f"Content: {response_text}")
+            raise ValueError(f"Could not parse JSON from Gemini response: {e}")
+        # Validate against schema
+        if schema_type == 'question':
+            return QuestionModel.model_validate(data)
+        elif schema_type == 'quiz':
+            return QuizModel.model_validate(data)
+        elif schema_type == 'validation':
+            return QuestionValidation.model_validate(data)
+        else:
+            raise ValueError(f"Unknown schema type: {schema_type}")
+
+    def _create_agent_model(self, ai_model: AIModel, start_time: float, token_count: Optional[int] = None) -> AgentModel:
+        """
+        Create an agent model with statistics.
+        """
+        execution_time = int((time.time() - start_time) * 1000)  # ms
+        return AgentModel(
+            model=ai_model,
+            statistic=AIStatistic(
+                time=execution_time,
+                tokens=token_count
+            )
+        )
