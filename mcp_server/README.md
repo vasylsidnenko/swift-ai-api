@@ -59,14 +59,14 @@ pip install -r requirements.txt
 
 - ClaudeAgent and OpenAIAgent log:
   - Python version
-  - Версію бібліотеки anthropic (для Claude)
-  - Коротке та повне ім'я моделі
-- Усі важливі етапи роботи агента відображаються у логах (ініціалізація, генерація, валідація, помилки парсингу тощо).
+  - Anthropic version
+  - Model name (short and full)
+  - All important stages of agent operation are displayed in logs (initialization, generation, validation, parsing errors, etc.).
 
-### Формат валідації
+### Validation Format
 
-- ClaudeAgent тепер повертає flat JSON для валідації, без обгортки "validation" (аналогічно OpenAI).
-- Приклад output для валідації (актуальний для обох агентів):
+- ClaudeAgent now returns flat JSON for validation, without the "validation" wrapper (similar to OpenAI).
+- Example output for validation (current for both agents):
 ```json
 {
   "is_text_clear": true,
@@ -76,9 +76,9 @@ pip install -r requirements.txt
 }
 ```
 
-### Короткі імена моделей
+### Short Model Names
 
-- Для ClaudeAgent та OpenAIAgent можна використовувати короткі імена моделей (наприклад, `claude-3-7-sonnet`), які автоматично конвертуються у повні імена для API.
+- For ClaudeAgent and OpenAIAgent, short model names (e.g., `claude-3-7-sonnet`) can be used, which are automatically converted to full model names for API calls.
 
 ---
 
@@ -134,5 +134,26 @@ Test data and scripts can be found in the `test_data/` directory. To run tests, 
 - If you encounter issues, please check dependencies and Python version.
 
 ---
+
+### [NEW] Execute Endpoint
+
+The backend now exposes a POST endpoint `/mcp/v1/execute` for all agent requests (generate, validate, quiz).
+
+**Usage:**
+- Send a POST request to `/mcp/v1/execute` with JSON body:
+  ```json
+  {
+    "provider": "openai", // or "anthropic", "google", etc.
+    "model": "gpt-4o",
+    "api_key": "...", // optional
+    "request_type": "quiz", // or "generate", "validate"
+    "payload": { ... } // depends on request_type
+  }
+  ```
+- The endpoint will route the request to the correct agent and method, and return a unified response.
+- All errors (including missing agent/model, bad payload, or not implemented) are returned as structured JSON.
+
+**Fixes:**
+- This endpoint fixes the previous 404 error for quiz/generate/validate requests to `/mcp/v1/execute`.
 
 *For more information, refer to code comments or contact the maintainer.*

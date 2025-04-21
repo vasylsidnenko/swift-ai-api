@@ -6,11 +6,10 @@ that follows the MCP protocol. It provides functionality to generate
 and validate questions using the Gemini language models.
 """
 
-import json
 import os
 import logging
 import time
-from typing import Dict, List, Optional, Any, Callable
+from typing import Dict, List, Optional, Callable, Any
 
 # Correct import for google-generativeai
 import google.generativeai as genai
@@ -43,7 +42,7 @@ class GeminiAgent(AgentProtocol):
         Args:
             api_key: The Gemini API key. If not provided, it will try to get it from environment variable.
         """
-        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        self.api_key = api_key or os.environ.get("GOOGLE_API_KEY")
         if not self.api_key:
             logger.warning("No Gemini API key provided, agent will not function properly")
         # Configure Gemini API key for global use
@@ -65,18 +64,18 @@ class GeminiAgent(AgentProtocol):
     @staticmethod
     def provider() -> str:
         """Returns the provider name for this agent."""
-        return "gemini"
+        return "google"
 
     @staticmethod
     def supported_models() -> List[str]:
         """Returns list of supported Gemini models."""
-        # Використовуйте повне ім'я моделі Gemini для API
+        # Use full Gemini model names for API
         return [
-            "models/gemini-1.5-pro-latest",
-            "models/gemini-1.5-pro",
-            "models/gemini-1.5-pro-001",
-            "models/gemini-1.5-pro-002",
-            "models/gemini-2.0-flash"
+            "gemini-1.5-pro-latest",
+            "gemini-1.5-pro",
+            "gemini-1.5-pro-001",
+            "gemini-1.5-pro-002",
+            "gemini-2.0-flash"
         ]
 
     def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
@@ -97,7 +96,7 @@ class GeminiAgent(AgentProtocol):
         start_time = time.time()
         prompt = self._format_question_request(request)
         try:
-            # Використовуємо офіційний спосіб: створити модель і викликати generate_content
+            # Use official method: create model and call generate_content
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
                 [prompt],
@@ -136,7 +135,7 @@ class GeminiAgent(AgentProtocol):
         start_time = time.time()
         prompt = self._format_validation_request(request)
         try:
-            # Використовуємо офіційний спосіб: створити модель і викликати generate_content
+            # Use official method: create model and call generate_content
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
                 [prompt],
@@ -175,7 +174,7 @@ class GeminiAgent(AgentProtocol):
         start_time = time.time()
         prompt = self._format_quiz_request(request)
         try:
-            # Використовуємо офіційний спосіб: створити модель і викликати generate_content
+            # Use official method: create model and call generate_content
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
                 [prompt],

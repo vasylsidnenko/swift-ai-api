@@ -2,6 +2,9 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Tuple, Dict, Any
 from pydantic import validator, field_validator
 
+# class AIAgentConfig(BaseModel):
+#     provider: str = Field(description="Provider of the model")
+#     models: Dict[ AIModel, ModelCapabilities ] = Field(description="List of available models")
 
 class AIModel(BaseModel):
     provider: str = Field(description="Provider of the model")

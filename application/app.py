@@ -28,6 +28,8 @@ MODELS_ENDPOINT = f"{MCP_SERVER_URL}/mcp/v1/models"
 # --- Environment Variable API Key Handling ---
 ENV_API_KEYS = {
     'openai': os.getenv("OPENAI_API_KEY"),
+    'anthropic': os.getenv("ANTHROPIC_API_KEY"),
+    'google': os.getenv("GOOGLE_API_KEY"),
 }
 
 @app.route('/')
@@ -44,6 +46,16 @@ def get_env_key_status():
     logger.debug(f"Env key status check for '{provider}': {api_key_exists}")
     return jsonify({'exists': api_key_exists})
 
+# New endpoint for frontend JS: check if API key exists (and return it for local/dev)
+@app.route('/api/check-env-key/<provider>', methods=['GET'])
+def api_check_env_key(provider):
+    """Check if an API key exists in environment variables for the given provider. For dev: may return key itself."""
+    key = ENV_API_KEYS.get(provider)
+    exists = bool(key)
+    # Only return key in debug mode (never in production)
+    show_key = app.debug or os.environ.get('FLASK_ENV') == 'development'
+    return jsonify({'exists': exists, 'api_key': key if (show_key and key) else ('********' if exists else None)})
+
 @app.route('/api/generate', methods=['POST'])
 def api_generate():
     """API endpoint to generate content via MCP server."""
@@ -52,23 +64,24 @@ def api_generate():
 
     provider = data.get('provider')
     model = data.get('model')
-    api_key = data.get('apiKey') 
+    api_key = data.get('apiKey')
     context_data = data.get('context', {})
 
     if not provider or not model:
         return jsonify({"success": False, "error": "Missing provider or model", "error_type": "request_error"}), 400
 
+    # Prepare payload for MCP server
     mcp_payload = {
         "resource_id": provider,
-        "operation_id": "generate", 
+        "operation_id": "generate",
         "context": context_data,
         "config": {
             "model": model
         }
     }
-
+    # Add API key if provided and not a placeholder
     if api_key and api_key != "********":
-         mcp_payload["config"]["api_key"] = api_key
+        mcp_payload["config"]["api_key"] = api_key
     elif not api_key:
         logger.info(f"No API key provided by user for {provider}, MCP server will check environment.")
     elif api_key == "********":
@@ -76,18 +89,17 @@ def api_generate():
 
     logger.info(f"Sending request to MCP server: {EXECUTE_ENDPOINT} with payload: {mcp_payload}")
     try:
-        response = requests.post(EXECUTE_ENDPOINT, json=mcp_payload, timeout=60) 
-        response.raise_for_status() 
+        response = requests.post(EXECUTE_ENDPOINT, json=mcp_payload, timeout=60)
+        response.raise_for_status()
         mcp_response_data = response.json()
         logger.info(f"Received response from MCP server: {mcp_response_data}")
         return jsonify(mcp_response_data), response.status_code
-    
     except requests.exceptions.ConnectionError as e:
         logger.error(f"Could not connect to MCP server at {MCP_SERVER_URL}: {e}")
-        return jsonify({"success": False, "error": f"Could not connect to the AI service backend. Please ensure it's running.", "error_type": "connection_error"}), 503 
+        return jsonify({"success": False, "error": f"Could not connect to the AI service backend. Please ensure it's running.", "error_type": "connection_error"}), 503
     except requests.exceptions.Timeout:
-         logger.error(f"Request to MCP server timed out.")
-         return jsonify({"success": False, "error": "The request to the AI service timed out.", "error_type": "timeout_error"}), 504 
+        logger.error(f"Request to MCP server timed out.")
+        return jsonify({"success": False, "error": "The request to the AI service timed out.", "error_type": "timeout_error"}), 504
     except requests.exceptions.RequestException as e:
         logger.error(f"Error communicating with MCP server: {e}")
         try:
@@ -99,8 +111,64 @@ def api_generate():
         if isinstance(error_detail, dict) and 'success' in error_detail:
             return jsonify(error_detail), status_code
         else:
-             return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
+            return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
 
+
+@app.route('/api/quiz', methods=['POST'])
+def api_quiz():
+    """API endpoint to generate a quiz via MCP server."""
+    data = request.json
+    logger.info(f"Received /api/quiz request: {data}")
+
+    provider = data.get('provider')
+    model = data.get('model')
+    api_key = data.get('apiKey')
+    context_data = data.get('context', {})
+
+    if not provider or not model:
+        return jsonify({"success": False, "error": "Missing provider or model", "error_type": "request_error"}), 400
+
+    mcp_payload = {
+        "resource_id": provider,
+        "operation_id": "quiz",
+        "context": context_data,
+        "config": {
+            "model": model
+        }
+    }
+
+    if api_key and api_key != "********":
+        mcp_payload["config"]["api_key"] = api_key
+    elif not api_key:
+        logger.info(f"No API key provided by user for {provider}, MCP server will check environment.")
+    elif api_key == "********":
+        logger.info(f"Using environment API key placeholder for {provider}, MCP server will use environment key.")
+
+    logger.info(f"Sending request to MCP server: {EXECUTE_ENDPOINT} with payload: {mcp_payload}")
+    try:
+        response = requests.post(EXECUTE_ENDPOINT, json=mcp_payload, timeout=60)
+        response.raise_for_status()
+        mcp_response_data = response.json()
+        logger.info(f"Received response from MCP server: {mcp_response_data}")
+        return jsonify(mcp_response_data), response.status_code
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Could not connect to MCP server at {MCP_SERVER_URL}: {e}")
+        return jsonify({"success": False, "error": f"Could not connect to the AI service backend. Please ensure it's running.", "error_type": "connection_error"}), 503
+    except requests.exceptions.Timeout:
+        logger.error(f"Request to MCP server timed out.")
+        return jsonify({"success": False, "error": "The request to the AI service timed out.", "error_type": "timeout_error"}), 504
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error communicating with MCP server: {e}")
+        try:
+            error_detail = e.response.json() if e.response else str(e)
+            status_code = e.response.status_code if e.response else 500
+        except Exception:
+            error_detail = str(e)
+            status_code = 500
+        if isinstance(error_detail, dict) and 'success' in error_detail:
+            return jsonify(error_detail), status_code
+        else:
+            return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
 
 @app.route('/api/validate', methods=['POST'])
 def api_validate():
@@ -179,6 +247,18 @@ def get_models():
         return jsonify(response.json()), response.status_code
     except requests.exceptions.RequestException as e:
         logger.error(f"Error getting models: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# New endpoint: get models for a specific provider
+@app.route('/api/models/<provider>', methods=['GET'])
+def get_models_for_provider(provider):
+    """Get list of available models for a specific provider from MCP server."""
+    try:
+        response = requests.get(f"{MODELS_ENDPOINT}/{provider}")
+        response.raise_for_status()
+        return jsonify(response.json()), response.status_code
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error getting models for provider {provider}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 def get_available_models():

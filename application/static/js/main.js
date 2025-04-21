@@ -7,8 +7,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const apiKeyCredit = document.getElementById('apiKeyCredit');
     const aiSettingsToggle = document.querySelector('[data-bs-toggle="collapse"]');
 
-    // Load agents and models
+    // Load agents and then models (ensure models are loaded for the initial provider)
     loadAgents();
+    loadModels(); // Ensure models are loaded on page load
 
     // Add change event handler for provider select
     aiSelect.addEventListener('change', function() {
@@ -27,6 +28,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(`HTTP error! status: ${keyResponse.status}`);
             }
             const keyData = await keyResponse.json();
+            // If backend returns the key (for local/dev only), auto-fill it (never show in UI)
+            if (keyData.api_key && keyData.api_key !== '********') {
+                apiKeyInput.value = keyData.api_key;
+                apiKeyInput.placeholder = 'Loaded from environment (.env)';
+                apiKeyInput.classList.add('has-env-key');
+                apiKeyCredit.textContent = 'API key loaded from environment (local only)';
+                apiKeyCredit.style.display = 'block';
+                // Do not display the key anywhere else!
+            }
 
             // Reset input and credit message first
             apiKeyInput.value = '';
@@ -37,7 +47,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // If key exists in environment, show placeholder and credit message
             if (keyData.exists) {
-                apiKeyInput.value = '********'; // Masked value
+                // Do NOT auto-fill any API keys into the input for security reasons
+                // If there is no environment key, leave the field empty and let the user enter it manually
                 apiKeyInput.placeholder = 'Using environment API key';
                 apiKeyInput.classList.add('has-env-key');
                 apiKeyCredit.textContent = 'Using environment API key - credit Vasil_OK '; // Updated credit text
@@ -60,7 +71,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const models = await response.json();
+            const modelsResponse = await response.json();
+            // Debug: log the full response for troubleshooting
+            console.log('Models API response:', modelsResponse);
+            // The actual models array is in modelsResponse.models
+            const models = Array.isArray(modelsResponse.models) ? modelsResponse.models : [];
 
             modelSelect.innerHTML = ''; // Clear existing options
 
@@ -70,10 +85,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 option.disabled = true;
                 modelSelect.appendChild(option);
             } else {
-                models.forEach(model => {
+                models.forEach(modelObj => {
+                    // Support both string and object format for model
+                    const modelName = typeof modelObj === 'string' ? modelObj : modelObj.model;
                     const option = document.createElement('option');
-                    option.value = model;
-                    option.textContent = model;
+                    option.value = modelName;
+                    option.textContent = modelName;
                     modelSelect.appendChild(option);
                 });
                 modelSelect.selectedIndex = 0; // Select the first model by default
@@ -113,33 +130,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Populate AI provider select
-    const providers = Object.keys(availableModels);
-    aiSelect.innerHTML = ''; // Clear existing options
-
-    if (providers.length === 0) {
-        const option = document.createElement('option');
-        option.textContent = 'No AI providers available';
-        option.disabled = true;
-        aiSelect.appendChild(option);
-        // Disable form submission if no providers?
-        // form.querySelector('button[type="submit"]').disabled = true;
-    } else {
-        providers.forEach(provider => {
-            const option = document.createElement('option');
-            option.value = provider;
-            option.textContent = formatProviderName(provider);
-            aiSelect.appendChild(option);
-        });
-
-        // Initial population for the first provider
-        const initialProvider = providers[0];
-        aiSelect.value = initialProvider;
-        populateModels(initialProvider);
-        checkEnvKey(initialProvider);
-    }
+    // Remove legacy availableModels logic. Use loadAgents() to populate providers and models.
+    // Initial provider/model population is handled by loadAgents().
+    // This block is now obsolete and should be removed.
 
     // --- Event Listeners ---
+
+    // Show/hide validation settings when Validate checkbox changes
+    const validationCheckbox = document.getElementById('validation');
+    const validationSettingsDiv = document.getElementById('validationSettings');
+    if (validationCheckbox && validationSettingsDiv) {
+        validationCheckbox.addEventListener('change', function() {
+            // Show validation settings only if Validate checkbox is checked
+            validationSettingsDiv.style.display = this.checked ? 'block' : 'none';
+        });
+        // Initial state
+        validationSettingsDiv.style.display = validationCheckbox.checked ? 'block' : 'none';
+    }
 
     // Update models and check key when provider changes
     aiSelect.addEventListener('change', function() {
@@ -166,6 +173,87 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Handle form submission
+    // --- Quiz Button Logic ---
+    const quizBtn = document.getElementById('quizBtn');
+    const quizResultDiv = document.getElementById('quizResult');
+    if (quizBtn) {
+        quizBtn.addEventListener('click', async function() {
+            quizResultDiv.style.display = 'none';
+            quizResultDiv.innerHTML = '';
+            resultDiv.innerHTML = '';
+
+            // Gather form data
+            const selectedProvider = aiSelect.value;
+            const selectedModel = modelSelect.value;
+            const apiKey = apiKeyInput.value;
+            const platform = document.getElementById('platform').value;
+            const technology = document.getElementById('tech').value;
+            const topic = document.getElementById('topic').value;
+            const tags = document.getElementById('keywords').value;
+            // No question context for quiz
+
+            // Build request context
+            const context = {
+                platform: platform,
+                technology: technology,
+                topic: topic,
+                tags: tags.split(',').map(t => t.trim()).filter(Boolean)
+            };
+
+            // Prepare payload
+            const payload = {
+                provider: selectedProvider,
+                model: selectedModel,
+                apiKey: apiKey,
+                context: context
+            };
+
+            quizBtn.disabled = true;
+            quizBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Trying Quiz...';
+            try {
+                const resp = await fetch('/api/quiz', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await resp.json();
+                quizBtn.disabled = false;
+                quizBtn.innerHTML = 'Try Quiz';
+                // Use only new format: data.data.quiz
+                const quizData = data.data;
+                if (!resp.ok || !quizData || !quizData.quiz) {
+                    quizResultDiv.innerHTML = `<div class='alert alert-danger'>Quiz error: ${data.error || 'Unknown error'}</div>`;
+                    quizResultDiv.style.display = 'block';
+                    return;
+                }
+                // Display quiz question and Apply button
+                const quizQ = quizData.quiz.question || (quizData.quiz.quiz && quizData.quiz.quiz.question) || '';
+                quizResultDiv.innerHTML = `
+                    <div class='card border-info mb-3'>
+                        <div class='card-header bg-info text-white'>Quiz Result</div>
+                        <div class='card-body'>
+                            <div><strong>Quiz Question:</strong></div>
+                            <div class='mb-3'><pre>${escapeHtml(quizQ)}</pre></div>
+                            <button class='btn btn-success' id='applyQuizBtn'>Apply</button>
+                        </div>
+                    </div>
+                `;
+                quizResultDiv.style.display = 'block';
+                // Apply logic
+                document.getElementById('applyQuizBtn').onclick = function() {
+                    document.getElementById('questionContext').value = quizQ;
+                    quizResultDiv.style.display = 'none';
+                    window.scrollTo({top: document.getElementById('questionContext').offsetTop - 80, behavior: 'smooth'});
+                };
+            } catch (err) {
+                quizBtn.disabled = false;
+                quizBtn.innerHTML = 'Try Quiz';
+                quizResultDiv.innerHTML = `<div class='alert alert-danger'>Quiz error: ${err.message}</div>`;
+                quizResultDiv.style.display = 'block';
+            }
+        });
+    }
+
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         resultDiv.innerHTML = ''; // Clear previous results/errors
@@ -183,17 +271,19 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Send only 'provider' (not 'ai') according to MCP API
         const data = {
             topic: document.getElementById('topic').value,
             platform: document.getElementById('platform').value,
             tech: document.getElementById('tech').value,
             keywords: document.getElementById('keywords').value.split(',').map(k => k.trim()).filter(k => k),
-            ai: selectedProvider,
+            provider: selectedProvider,
             model: selectedModel,
             // number: 1, // 'number' is not part of GenerateRequest or ValidateRequest
             validation: document.getElementById('validation').checked,
             questionContext: document.getElementById('questionContext').value.trim()
         };
+        // Removed 'ai' field for strict MCP API compliance
 
         // Show loading indicator
         showLoadingIndicator();
@@ -467,7 +557,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadModels();
     
     // Setup validation settings toggle
-    const validationCheckbox = document.getElementById('validation');
+    // Duplicate declaration of validationCheckbox removed. Use the variable declared earlier.
     const sameAsGenerationCheckbox = document.getElementById('sameAsGeneration');
     const validationSettings = document.getElementById('validationSettings');
     
@@ -500,10 +590,11 @@ function loadAgents() {
                 validationProviderSelect.innerHTML = '';
                 
                 // Add new options
+                // agents is now an array of strings (provider ids)
                 agents.forEach(agent => {
                     const option = document.createElement('option');
-                    option.value = agent.id;
-                    option.textContent = agent.name;
+                    option.value = agent;
+                    option.textContent = agent.charAt(0).toUpperCase() + agent.slice(1); // Capitalize for display
                     providerSelect.appendChild(option);
                     
                     const validationOption = option.cloneNode(true);
@@ -520,7 +611,12 @@ function loadAgents() {
 }
 
 function loadModels() {
-    fetch('/api/models')
+    // Get selected provider from the provider select
+    const providerSelect = document.getElementById('ai');
+    const provider = providerSelect.value;
+    if (!provider) return;
+    // Fetch only models for selected provider
+    fetch(`/api/models/${provider}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -535,8 +631,8 @@ function loadModels() {
                 // Add new options
                 models.forEach(model => {
                     const option = document.createElement('option');
-                    option.value = model.id;
-                    option.textContent = model.name;
+                    option.value = model.model;
+                    option.textContent = model.model;
                     modelSelect.appendChild(option);
                     
                     const validationOption = option.cloneNode(true);

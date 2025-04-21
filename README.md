@@ -4,6 +4,15 @@
 
 - The prompt for question generation (for both OpenAI and Claude agents) now uses the `question` field from `AIRequestQuestionModel`. This field is included in the prompt as an "Approximate or rough question/idea" to better guide the model towards the desired question content. An English comment is added in the relevant code section.
 
+## Changelog
+
+### 2025-04-21
+- Frontend (main.js) updated: now sends only 'provider' (not 'ai') in requests to /api/generate and /api/validate, fully matching the MCP server API specification. The 'ai' field is removed from the payload for strict compliance.
+
+
+### 2025-04-21
+- Fixed JavaScript error `Cannot redeclare block-scoped variable 'validationCheckbox'` in `application/static/js/main.js` by removing a duplicate `const validationCheckbox` declaration. Now the variable is declared only once and reused throughout the script.
+
 This project provides an API and web interface for generating programming questions, answers, and multiple-choice tests using various AI models. It supports multiple platforms (Apple, Android) and dynamically loads available AI providers (OpenAI, Google AI, DeepSeek AI, etc.) found in the `mcp/agents` directory.
 
 ## Features
@@ -29,7 +38,7 @@ This project provides an API and web interface for generating programming questi
 
 ## Architecture
 
-### Model Context Protocol (MCP) - Inspired Implementation
+### MCP Server Architecture Update (2025-04-21)
 
 **Important Note:** This project uses concepts and naming inspired by the Model Context Protocol ([modelcontextprotocol.io](https://modelcontextprotocol.io/)), such as standardized context and response objects, to manage interactions with different AI agents. However, it is a **custom, simplified implementation** and does **not** fully adhere to the official MCP specification. Specifically, it does not implement the standard MCP server endpoints (e.g., `/mcp/v1/execute`) or resource discovery mechanisms as defined in the protocol. The primary API is handled directly by the Flask application (`app.py`).
 
@@ -40,12 +49,12 @@ The core components of this MCP-inspired architecture are:
   - **AIResource**: Handles the execution logic, calling the appropriate methods on the agent class
   - **MCPContext**: Context object containing necessary information for request processing (config, request data).
   - **MCPResponse**: Standardized response format for API operations.
-  - **BaseAgent**: Abstract base class that all AI agents must inherit from.
+  - **AgentProtocol**: Abstract base class that all AI agents must inherit from.
 - **[mcp/agents/](mcp/agents/)**: Directory containing specific agent implementations (e.g., `openai_agent.py`). Each agent defines `SUPPORTED_MODELS` and implements `generate` and `validate` methods.
 
 This architecture allows for:
 
-1. **Provider Agnosticism**: Works with any AI provider via a corresponding `BaseAgent` implementation.
+1. **Provider Agnosticism**: Works with any AI provider via a corresponding `AgentProtocol` implementation.
 2. **Unified API Interface**: All providers accessed through `/api/generate` and `/api/validate`.
 3. **Easy Extensibility**: New providers added by creating `*_agent.py` in `mcp/agents`.
 4. **Dynamic Model Availability**: Only active providers/models are shown.

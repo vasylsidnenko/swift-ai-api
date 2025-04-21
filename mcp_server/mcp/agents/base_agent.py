@@ -1,6 +1,7 @@
-from typing import Protocol, Dict, Callable, List
+from typing import Protocol, Dict, Callable, List, runtime_checkable
 from mcp.agents.ai_models import AIRequestQuestionModel, AIQuestionModel, AIRequestValidationModel, AIValidationModel, AIQuizModel
 
+@runtime_checkable
 class AgentProtocol(Protocol):
     """Protocol for all AI agents"""
     

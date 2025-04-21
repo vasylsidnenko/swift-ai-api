@@ -39,6 +39,11 @@ class ClaudeAgent(AgentProtocol):
     Agent implementation for Claude API (Anthropic).
     Provides methods to generate and validate questions using Claude models.
     """
+
+    @staticmethod
+    def provider() -> str:
+        """Return provider id for Claude agent (used by MCP server)."""
+        return "anthropic"
     
     def __init__(self, api_key: Optional[str] = None):
         """
