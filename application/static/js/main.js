@@ -748,23 +748,27 @@ document.addEventListener('DOMContentLoaded', function() {
 document.getElementById('questionForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const formData = {
+    // Build context as required by backend
+    const context = {
         platform: document.getElementById('platform').value,
-        tech: document.getElementById('tech').value,
+        technology: document.getElementById('tech').value,
         topic: document.getElementById('topic').value,
-        keywords: document.getElementById('keywords').value,
-        questionContext: document.getElementById('questionContext').value,
+        tags: document.getElementById('keywords').value.split(',').map(t => t.trim()).filter(Boolean),
+        question: document.getElementById('questionContext').value
+    };
+    // Main payload for /api/generate
+    const formData = {
         provider: document.getElementById('ai').value,
         model: document.getElementById('model').value,
         apiKey: document.getElementById('apiKey').value,
+        context: context,
         validation: document.getElementById('validation').checked
     };
-    
+    // Add validation settings if needed
     if (formData.validation && !document.getElementById('sameAsGeneration').checked) {
         formData.validationProvider = document.getElementById('validationProvider').value;
         formData.validationModel = document.getElementById('validationModel').value;
         formData.validationApiKey = document.getElementById('validationApiKey').value;
     }
-    
     // Rest of the submission logic...
 }); 

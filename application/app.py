@@ -67,6 +67,39 @@ def api_generate():
     api_key = data.get('apiKey')
     context_data = data.get('context', {})
 
+    # Patch: If context is empty but platform/technology/topic/tags/question are in root, add them to context
+    context_fields = ['platform', 'technology', 'topic', 'tags', 'question']
+    for field in context_fields:
+        # Accept both 'tech' and 'technology' for compatibility
+        if field == 'technology':
+            val = data.get('technology') or data.get('tech')
+        else:
+            val = data.get(field)
+        # If not already in context, but present in data, add to context
+        if val is not None and (field not in context_data or not context_data.get(field)):
+            context_data[field] = val
+    # If there is no tags, but there are keywords, use keywords as tags
+    if 'tags' not in context_data and 'keywords' in data:
+        keywords_val = data.get('keywords')
+        if isinstance(keywords_val, str):
+            context_data['tags'] = [t.strip() for t in keywords_val.split(',') if t.strip()]
+        elif isinstance(keywords_val, list):
+            context_data['tags'] = [str(t).strip() for t in keywords_val if str(t).strip()]
+    # Ensure tags is always a list (even if single string)
+    if 'tags' in context_data and isinstance(context_data['tags'], str):
+        context_data['tags'] = [t.strip() for t in context_data['tags'].split(',') if t.strip()]
+    # If tags is missing, add empty list (required by backend)
+    if 'tags' not in context_data:
+        context_data['tags'] = []
+    # If tags is still empty but keywords is present, use keywords
+    if not context_data['tags'] and 'keywords' in data:
+        keywords_val = data.get('keywords')
+        if isinstance(keywords_val, str):
+            context_data['tags'] = [t.strip() for t in keywords_val.split(',') if t.strip()]
+        elif isinstance(keywords_val, list):
+            context_data['tags'] = [str(t).strip() for t in keywords_val if str(t).strip()]
+    # Now context_data['tags'] always contains tags if present in keywords or tags
+
     if not provider or not model:
         return jsonify({"success": False, "error": "Missing provider or model", "error_type": "request_error"}), 400
 
