@@ -181,29 +181,23 @@ Example output:
             start_time = time.time()
             messages = self._prepare_messages(request.request)
             prompt_tokens = self.count_tokens(request.model.model, messages)
-            
+            max_tokens_param = self._get_max_tokens_param(request.model.model)
+            # Prepare arguments for OpenAI API
+            openai_kwargs = {
+                "model": request.model.model,
+                "messages": messages
+            }
+            if self._is_temperature_supported_by_model(request.model.model):
+                openai_kwargs["temperature"] = 0.7
+            openai_kwargs[max_tokens_param] = 4000
             try:
-                if self._is_support_temperature(request.model):
-                    response = self.client.beta.chat.completions.parse(
-                        model=request.model.model,
-                        messages=messages,
-                        response_format=QuestionModel,
-                        temperature=0.7
-                    )
-                else:
-                    response = self.client.beta.chat.completions.parse(
-                        model=request.model.model,
-                        messages=messages,
-                        response_format=QuestionModel,
-                    )
+                response = self.client.chat.completions.create(**openai_kwargs)
             except Exception as e:
                 logger.error(f"OpenAI API error: {str(e)}")
                 raise RuntimeError(f"OpenAI API error: {str(e)}")
-            
             if not response.choices or not response.choices[0].message.content:
                 logger.error("Empty response from OpenAI")
                 raise RuntimeError("Empty response from OpenAI")
-            
             return self._process_generation_response(
                 model=request.model,
                 question=request.request,
@@ -211,7 +205,6 @@ Example output:
                 prompt_tokens=prompt_tokens,
                 start_time=start_time
             )
-            
         except Exception as e:
             logger.error(f"Generation failed: {str(e)}")
             raise
@@ -298,6 +291,24 @@ Example output:
             logger.error(f"Validation failed: {str(e)}")
             raise RuntimeError(f"Validation error: {str(e)}")
         
+    def _get_max_tokens_param(self, model_name: str) -> str:
+        """
+        Returns the correct max tokens parameter name for the given model.
+        For new models (o4-mini, gpt-4o, gpt-4o-mini), use 'max_completion_tokens'.
+        For all others, use 'max_tokens'.
+        """
+        new_models = ['o4-mini', 'gpt-4o-mini', 'gpt-4o']
+        if any(m in model_name.lower() for m in new_models):
+            return 'max_completion_tokens'
+        return 'max_tokens'
+
+    def _is_temperature_supported_by_model(self, model_name: str) -> bool:
+        """
+        Returns False for models that only support default temperature (1), e.g. o4-mini, gpt-4o, gpt-4o-mini.
+        """
+        no_temp_models = ['o4-mini', 'gpt-4o-mini', 'gpt-4o']
+        return not any(m in model_name.lower() for m in no_temp_models)
+
     def quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
         """
         Generate a programming question (без відповідей/тестів) через OpenAI, згідно моделі QuizModel/AIQuizModel.
@@ -315,15 +326,19 @@ Example output:
         try:
             prompt = self._format_quiz_request(request)
             system_prompt = self._create_system_prompt("quiz")
-            response = self.client.chat.completions.create(
-                model=model_name,
-                messages=[
+            max_tokens_param = self._get_max_tokens_param(model_name)
+            # Prepare arguments for OpenAI API
+            openai_kwargs = {
+                "model": model_name,
+                "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
-                ],
-                max_tokens=4000,
-                temperature=0.7
-            )
+                ]
+            }
+            if self._is_temperature_supported_by_model(model_name):
+                openai_kwargs["temperature"] = 0.7
+            openai_kwargs[max_tokens_param] = 4000
+            response = self.client.chat.completions.create(**openai_kwargs)
             response_text = response.choices[0].message.content
             from mcp.agents.ai_models import QuizModel
             quiz_obj = self._parse_openai_response(response_text, QuizModel)
