@@ -336,9 +336,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     quizResultBlock.remove();
                 };
                 // Apply logic
+                // When Apply is clicked, insert the quiz question and trigger Generate automatically
                 quizResultBlock.querySelector('.apply-quiz-btn').onclick = function() {
                     document.getElementById('questionContext').value = quizQ;
                     window.scrollTo({top: document.getElementById('questionContext').offsetTop - 80, behavior: 'smooth'});
+                    // Trigger the form submission as if user clicked Generate
+                    form.requestSubmit(); // Modern browsers support requestSubmit for native submit
                 };
                 // Set provider color for header
                 quizResultBlock.querySelector('.card-header').style.setProperty('background-color', getProviderColor(selectedProvider), 'important');

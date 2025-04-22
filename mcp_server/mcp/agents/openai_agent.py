@@ -122,8 +122,6 @@ Example output:
             raise ValueError("Topic is required")
         if not request.request.platform:
             raise ValueError("Platform is required")
-        if not request.request.tags:
-            raise ValueError("At least one tag is required")
 
         try:
             start_time = time.time()

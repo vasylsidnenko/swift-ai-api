@@ -6,6 +6,9 @@
 
 ## Changelog
 
+### 2025-04-22
+- When the user clicks the 'Apply' button on a Quiz Result, the corresponding Quiz Question is now inserted into the Question Context field and the Generate action is triggered automatically. This streamlines the workflow, allowing users to immediately generate a new question based on the quiz suggestion with a single click.
+
 ### 2025-04-21
 - Frontend (main.js) updated: now sends only 'provider' (not 'ai') in requests to /api/generate and /api/validate, fully matching the MCP server API specification. The 'ai' field is removed from the payload for strict compliance.
 
