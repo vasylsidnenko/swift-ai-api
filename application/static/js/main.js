@@ -170,8 +170,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set correct initial state after DOM is ready
     updateValidationUI();
 
-
-
     // Update models and check key when provider changes
     aiSelect.addEventListener('change', function() {
         const selectedProvider = this.value;
@@ -202,38 +200,39 @@ document.addEventListener('DOMContentLoaded', function() {
     const quizResultDiv = document.getElementById('quizResult');
     if (quizBtn) {
         quizBtn.addEventListener('click', async function() {
-            quizResultDiv.style.display = 'none';
-            quizResultDiv.innerHTML = '';
-            resultDiv.innerHTML = '';
-
-            // Gather form data
+            // Build a unique key for the quiz context (topic, platform, tech, tags, question)
+            const topic = document.getElementById('topic').value.trim();
+            const platform = document.getElementById('platform').value.trim();
+            const tech = document.getElementById('tech').value.trim();
+            const tags = document.getElementById('keywords').value.trim();
+            const questionContext = document.getElementById('questionContext').value.trim();
             const selectedProvider = aiSelect.value;
             const selectedModel = modelSelect.value;
             const apiKey = apiKeyInput.value;
-            const platform = document.getElementById('platform').value;
-            const technology = document.getElementById('tech').value;
-            const topic = document.getElementById('topic').value;
-            const tags = document.getElementById('keywords').value;
-            // No question context for quiz
-
-            // Build request context
-            // Add question draft (questionContext) to context for quiz
-            const context = {
-                platform: platform,
-                technology: technology,
-                topic: topic,
-                tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-                question: document.getElementById('questionContext').value.trim()
-            };
+            const quizContextKey = `${topic}|${platform}|${tech}|${tags}|${questionContext}`;
+            const lastQuizContextKey = quizResultDiv.getAttribute('data-last-context') || '';
+            // If any of the fields changed, clear previous results
+            if (quizContextKey !== lastQuizContextKey) {
+                quizResultDiv.innerHTML = '';
+            }
+            quizResultDiv.setAttribute('data-last-context', quizContextKey);
+            // Do not hide previous quiz results during request
+            resultDiv.innerHTML = '';
 
             // Prepare payload
+            const context = {
+                platform: platform,
+                technology: tech,
+                topic: topic,
+                tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+                question: questionContext
+            };
             const payload = {
                 provider: selectedProvider,
                 model: selectedModel,
                 apiKey: apiKey,
                 context: context
             };
-
             quizBtn.disabled = true;
             quizBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Trying Quiz...';
             try {
@@ -245,34 +244,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await resp.json();
                 quizBtn.disabled = false;
                 quizBtn.innerHTML = 'Try Quiz';
-                // Use only new format: data.data.quiz
                 const quizData = data.data;
                 if (!resp.ok || !quizData || !quizData.quiz) {
                     quizResultDiv.innerHTML = `<div class='alert alert-danger'>Quiz error: ${data.error || 'Unknown error'}</div>`;
                     quizResultDiv.style.display = 'block';
                     return;
                 }
-                // Display quiz question and Apply button (multiline textarea)
+                // Display quiz question and Apply/Close buttons
                 const quizQ = quizData.quiz.question || (quizData.quiz.quiz && quizData.quiz.quiz.question) || '';
-                quizResultDiv.innerHTML = `
-                    <div class='card border-info mb-3'>
-                        <div class='card-header bg-info text-white'>Quiz Result</div>
-                        <div class='card-body'>
-                            <div><strong>Quiz Question:</strong></div>
-                            <div class='mb-3'>
-                                <textarea class='form-control' id='quizQuestionTextarea' rows='5' readonly style='width:100%'>${escapeHtml(quizQ)}</textarea>
-                            </div>
-                            <button class='btn btn-success' id='applyQuizBtn'>Apply</button>
+                const quizResultBlock = document.createElement('div');
+                quizResultBlock.className = 'card border-info mb-3';
+                quizResultBlock.innerHTML = `
+                    <div class='card-header bg-info text-white d-flex justify-content-between align-items-center'>
+                        <span>Quiz Result</span>
+                        <span class='ms-2 small'>Provider: <b>${escapeHtml(selectedProvider)}</b> | Model: <b>${escapeHtml(selectedModel)}</b></span>
+                        <button type='button' class='btn btn-sm btn-outline-light ms-3' title='Close' style='padding:2px 10px;'>&times;</button>
+                    </div>
+                    <div class='card-body'>
+                        <div><strong>Quiz Question:</strong></div>
+                        <div class='mb-3'>
+                            <textarea class='form-control' rows='5' readonly style='width:100%'>${escapeHtml(quizQ)}</textarea>
                         </div>
+                        <button class='btn btn-success apply-quiz-btn'>Apply</button>
                     </div>
                 `;
-                quizResultDiv.style.display = 'block';
+                // Close logic
+                quizResultBlock.querySelector('button[title="Close"]').onclick = function() {
+                    quizResultBlock.remove();
+                };
                 // Apply logic
-                document.getElementById('applyQuizBtn').onclick = function() {
+                quizResultBlock.querySelector('.apply-quiz-btn').onclick = function() {
                     document.getElementById('questionContext').value = quizQ;
-                    quizResultDiv.style.display = 'none';
                     window.scrollTo({top: document.getElementById('questionContext').offsetTop - 80, behavior: 'smooth'});
                 };
+                quizResultDiv.appendChild(quizResultBlock);
+                quizResultDiv.style.display = 'block';
             } catch (err) {
                 quizBtn.disabled = false;
                 quizBtn.innerHTML = 'Try Quiz';
@@ -590,14 +596,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Remove duplicated listeners and use updateValidationUI only
     // (see main logic above)
     //
-});
 
-function loadAgents() {
-    fetch('/api/agents')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const agents = data.agents;
+
+    function loadAgents() {
+        fetch('/api/agents')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const agents = data.agents;
                 const providerSelect = document.getElementById('ai');
                 const validationProviderSelect = document.getElementById('validationProvider');
                 
@@ -624,20 +630,20 @@ function loadAgents() {
             }
         })
         .catch(error => console.error('Error loading agents:', error));
-}
+    }
 
-function loadModels() {
-    // Get selected provider from the provider select
-    const providerSelect = document.getElementById('ai');
-    const provider = providerSelect.value;
-    if (!provider) return;
-    // Fetch only models for selected provider
-    fetch(`/api/models/${provider}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const models = data.models;
-                const modelSelect = document.getElementById('model');
+    function loadModels() {
+        // Get selected provider from the provider select
+        const providerSelect = document.getElementById('ai');
+        const provider = providerSelect.value;
+        if (!provider) return;
+        // Fetch only models for selected provider
+        fetch(`/api/models/${provider}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const models = data.models;
+                    const modelSelect = document.getElementById('model');
                 const validationModelSelect = document.getElementById('validationModel');
                 
                 // Clear existing options
@@ -659,7 +665,8 @@ function loadModels() {
             }
         })
         .catch(error => console.error('Error loading models:', error));
-}
+    }
+});
 
 // Update form submission to include validation settings
 document.getElementById('questionForm').addEventListener('submit', function(e) {
@@ -684,4 +691,4 @@ document.getElementById('questionForm').addEventListener('submit', function(e) {
     }
     
     // Rest of the submission logic...
-});
+}); 
