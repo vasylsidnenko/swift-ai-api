@@ -48,6 +48,26 @@ document.addEventListener('DOMContentLoaded', function() {
         updateAIConfigHeader(aiSelect.value, modelSelect.value);
     });
 
+    // --- Enable/disable Generate & Quiz buttons depending on required fields ---
+    const platformInput = document.getElementById('platform');
+    const techInput = document.getElementById('tech');
+    const topicInput = document.getElementById('topic');
+    const generateBtn = document.querySelector('button[type="submit"]');
+    const quizBtnTop = document.getElementById('quizBtn');
+
+    function validateRequiredFields() {
+        const isValid = platformInput.value && techInput.value.trim() && topicInput.value.trim();
+        if (generateBtn) generateBtn.disabled = !isValid;
+        if (quizBtnTop) quizBtnTop.disabled = !isValid;
+    }
+
+    // Initial validation
+    validateRequiredFields();
+    platformInput.addEventListener('change', validateRequiredFields);
+    techInput.addEventListener('input', validateRequiredFields);
+    topicInput.addEventListener('input', validateRequiredFields);
+
+
     // --- Helper Functions ---
 
     // Check if API key exists in environment for the selected provider
