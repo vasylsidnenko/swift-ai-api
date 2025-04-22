@@ -320,6 +320,26 @@ def get_available_models():
         logger.error(f"Error getting available models: {e}")
         return {}
 
+@app.route('/api/model-description/<provider>/<model>', methods=['GET'])
+def api_model_description(provider, model):
+    """
+    API endpoint to get the model description for a given provider/model.
+    Proxies the request to the MCP server, which calls the agent's models_description method.
+    Returns: {"description": <description>}
+    """
+    # Forward the request to the MCP server (new endpoint to be implemented)
+    try:
+        url = f"{MCP_SERVER_URL}/mcp/v1/model-description/{provider}/{model}"
+        resp = requests.get(url)
+        if resp.ok:
+            data = resp.json()
+            return jsonify({"description": data.get("description", "No description available.")})
+        else:
+            return jsonify({"description": "No description available."}), 404
+    except Exception as e:
+        logger.error(f"Failed to fetch model description: {e}")
+        return jsonify({"description": "No description available."}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000)) 
     logger.info(f"Starting Flask application server on http://0.0.0.0:{port}")

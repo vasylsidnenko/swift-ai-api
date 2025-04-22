@@ -145,14 +145,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 option.disabled = true;
                 modelSelect.appendChild(option);
             } else {
-                models.forEach(modelObj => {
+                // Fetch descriptions for all models in parallel and populate select
+                await Promise.all(models.map(async modelObj => {
                     // Support both string and object format for model
                     const modelName = typeof modelObj === 'string' ? modelObj : modelObj.model;
                     const option = document.createElement('option');
                     option.value = modelName;
                     option.textContent = modelName;
+                    // Fetch model description and set as tooltip (title)
+                    try {
+                        const descResp = await fetch(`/api/model-description/${provider}/${modelName}`);
+                        if (descResp.ok) {
+                            const descData = await descResp.json();
+                            if (descData && descData.description) {
+                                option.title = descData.description.trim();
+                            }
+                        }
+                    } catch (e) {
+                        // Fallback: no description
+                    }
                     modelSelect.appendChild(option);
-                });
+                }));
                 modelSelect.selectedIndex = 0; // Select the first model by default
                 // Update header after model select is updated (use actual DOM value)
                 const actualModel = modelSelect.options[modelSelect.selectedIndex]?.value;

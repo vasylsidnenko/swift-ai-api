@@ -8,7 +8,26 @@ function setProviderModelInHeader(provider, model) {
     var provEl = document.getElementById('aiConfigProvider');
     var modEl = document.getElementById('aiConfigModel');
     if (provEl) provEl.textContent = prov;
-    if (modEl) modEl.textContent = mod;
+    if (modEl) {
+        modEl.textContent = mod;
+        // Fetch and set tooltip with model description
+        if (prov !== '—' && mod !== '—') {
+            fetch(`/api/model-description/${prov}/${mod}`)
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data && data.description) {
+                        modEl.title = data.description.trim();
+                    } else {
+                        modEl.title = 'No description available.';
+                    }
+                })
+                .catch(() => {
+                    modEl.title = 'No description available.';
+                });
+        } else {
+            modEl.title = '';
+        }
+    }
 }
 
 function updateAIConfigHeader(provider, model) {

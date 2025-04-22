@@ -258,6 +258,22 @@ async def get_models():
     }
 
 # New endpoint: get models for a specific provider
+
+@app.get("/mcp/v1/model-description/{provider}/{model}")
+async def get_model_description(provider: str, model: str):
+    """
+    Returns the description for a specific model from the specified provider.
+    """
+    agent_class = loaded_agents.get(provider)
+    if not agent_class or not hasattr(agent_class, "models_description"):
+        return {"description": "No description available."}
+    try:
+        desc = agent_class.models_description(model)
+        return {"description": desc or "No description available."}
+    except Exception as e:
+        logger.error(f"Error getting model description for {provider}/{model}: {e}")
+        return {"description": "No description available."}
+
 @app.get("/mcp/v1/models/{provider}")
 async def get_models_for_provider(provider: str):
     """Return models only for the specified provider."""
