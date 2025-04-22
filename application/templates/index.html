@@ -13,6 +13,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ range(1, 10000) | random }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/field-label.css') }}?v={{ range(1, 10000) | random }}">
 </head>
 <body>
     <div class="container mt-5">
@@ -23,7 +24,7 @@
             <div class="card-body">
                 <form id="questionForm">
                     <div class="mb-3">
-                        <label for="platform" class="form-label">Platform</label>
+                        <label for="platform" class="form-label field-label">Platform</label>
                         <select class="form-select" id="platform">
                             <option value="Apple">Apple</option>
                             <option value="Android">Android</option>
@@ -31,23 +32,23 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="tech" class="form-label">Technology</label>
+                        <label for="tech" class="form-label field-label">Technology</label>
                         <input type="text" class="form-control" id="tech">
                     </div>
 
                     <div class="mb-3">
-                        <label for="topic" class="form-label">Topic</label>
+                        <label for="topic" class="form-label field-label">Topic</label>
                         <input type="text" class="form-control" id="topic" required>
                     </div>                    
                     
                     <div class="mb-3">
-                        <label for="keywords" class="form-label">Keywords/Tags (optional)</label>
+                        <label for="keywords" class="form-label field-label">Keywords/Tags <span class='optional-label'>(optional)</span></label>
                         <input type="text" class="form-control" id="keywords" placeholder="e.g., GCD, NSOperationQueue, performance">
                         <div class="form-text text-muted">Comma-separated relevant keywords</div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="questionContext" class="form-label">Question Context (optional)</label>
+                        <label for="questionContext" class="form-label field-label">Question Context <span class='optional-label'>(optional)</span></label>
                         <textarea class="form-control" id="questionContext" rows="3" placeholder="Provide specific context or a base question to refine generation..."></textarea>
                         <div class="form-text text-muted">Helps guide the AI for more specific question generation</div>
                     </div>
