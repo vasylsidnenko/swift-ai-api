@@ -23,18 +23,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load agents and then models (ensure models are loaded for the initial provider)
     loadAgents();
     loadModels(); // Ensure models are loaded on page load
-    // Set AI config header on load
+    // Set AI config header after agents/models loaded
     setTimeout(function() {
         updateAIConfigHeader(aiSelect.value, modelSelect.value);
-    }, 0);
+        // Set collapse button style (force gray)
+        var collapseBtn = document.getElementById('aiConfigCollapseBtn');
+        if (collapseBtn) {
+            collapseBtn.classList.remove('btn-primary');
+            collapseBtn.classList.add('btn-secondary');
+            collapseBtn.style.background = '#6c757d';
+            collapseBtn.style.border = 'none';
+        }
+    }, 200);
 
     // Add change event handler for provider select
     aiSelect.addEventListener('change', function() {
         const provider = this.value;
-        loadModels();
+        populateModels(provider); // асинхронно оновить select і хедер
         checkEnvKey(provider);
-        // Update AI config header on provider change
-        updateAIConfigHeader(provider, modelSelect.value);
+    });
+
+    // Add change event handler for model select
+    modelSelect.addEventListener('change', function() {
+        updateAIConfigHeader(aiSelect.value, modelSelect.value);
     });
 
     // --- Helper Functions ---
@@ -113,6 +124,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     modelSelect.appendChild(option);
                 });
                 modelSelect.selectedIndex = 0; // Select the first model by default
+                // Update header after model select is updated (use actual DOM value)
+                const actualModel = modelSelect.options[modelSelect.selectedIndex]?.value;
+                updateAIConfigHeader(aiSelect.value, actualModel);
             }
         } catch (error) {
             console.error(`Error populating models for ${provider}:`, error);
@@ -284,7 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class='mb-3'>
                 <textarea class='form-control' style='width:100%;resize:none;overflow:hidden' readonly>${escapeHtml(quizQ)}</textarea>
             </div>
-            <button class='btn apply-quiz-btn' style='background-color:${getProviderColor(selectedProvider)} !important;color:#fff !important;border:none !important;'>Apply</button>
+            <button class='btn apply-quiz-btn' style='background-color:#6c757d !important;color:#fff !important;border:none !important;'>Apply</button>
         </div>
     `;
                 // Close logic
