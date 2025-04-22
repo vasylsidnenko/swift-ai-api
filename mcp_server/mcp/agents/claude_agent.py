@@ -87,15 +87,60 @@ class ClaudeAgent(AgentProtocol):
         return [
             "claude-3-7-sonnet",
             "claude-3-5-sonnet",
-            "claude-3-opus",
-            "claude-3-sonnet",
-            "claude-3-haiku",
             "claude-3-5-haiku",
-            "claude-3-5-opus",
-            "claude-instant-1.2",
-            "claude-2.0",
-            "claude-2.1"
+            "claude-3-5-opus"
         ]
+
+    @staticmethod
+    def models_description(model: str) -> str:
+        """
+        Return description of the Claude model.
+        
+        Args:
+            model: The model name
+        
+        Returns:
+            Description of the model
+        """
+
+        if model.lower() == "claude-3-7-sonnet":
+            return """
+            Improved reasoning power compared to Claude 3.5 Sonnet
+Maintains the balance between performance and speed typical of Sonnet models
+200K token context window
+Better capacity for logical thinking and solving complex problems
+Enhanced accuracy in mathematical calculations and programming
+Improved processing of structured data
+Better understanding of nuances in complex texts
+            """
+        if model.lower() == "claude-3-5-sonnet":
+            return """
+            Balanced mid-tier model
+Handles a variety of tasks well
+Good performance-to-speed ratio
+Context window also 200K tokens
+Faster than Opus but slower than Haiku
+Medium cost to use
+            """
+        if model.lower() == "claude-3-5-haiku":
+            return """
+            Lightest and fastest model
+Optimized for response speed
+Ideal for simpler tasks and real-time interactions
+Smaller practical context capacity (200K tokens technically, but may be somewhat limited in complex cases)
+Cheapest to use
+Compact but still powerful for many everyday tasks
+            """
+        if model.lower() == "claude-3-5-opus":
+            return """
+            The most powerful model in the Claude 3.5 family
+Highest reasoning and analytical abilities
+Best for complex tasks requiring deep understanding
+Largest context window (200K tokens)
+Slowest of the three models
+Most expensive to use
+            """
+        return "Unknown model"
 
     def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
         """

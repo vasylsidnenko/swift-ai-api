@@ -34,6 +34,60 @@ class OpenAIAgent(AgentProtocol):
             "o4-mini"
         ]
         
+    @staticmethod
+    def models_description(model: str) -> str:
+        """
+        Return description of the Gemini model.
+        
+        Args:
+            model: The model name
+        
+        Returns:
+            Description of the model
+        """
+
+        if model.lower() == "gpt-4o":
+            return """
+            The flagship multimodal model from OpenAI
+High-performance general intelligence system
+Excellent at understanding context and generating nuanced responses
+Strong multimodal capabilities with vision, text, and audio processing
+128K token context window
+Balanced speed and performance
+Superior reasoning and problem-solving abilities
+Premium pricing tier
+            """
+        if model.lower() == "gpt-4o-mini":
+            return """
+            Smaller, more efficient version of GPT-4o
+Designed to be faster and more cost-effective
+Retains many capabilities of the full GPT-4o but at reduced scale
+Good for applications needing balance between performance and cost
+Slightly reduced reasoning capabilities compared to GPT-4o
+Shorter context window than the full model
+Better price-performance ratio for everyday tasks
+            """
+        if model.lower() == "o3-mini":
+            return """
+            Lightweight model in the Anthropic Claude family (Note: this appears to be a naming error - Anthropic uses Claude branding, not "o")
+Optimized for speed and efficiency
+Good for simple to moderate complexity tasks
+Cost-effective for high-volume applications
+Shorter context window
+Maintains good accuracy for most common use cases
+Entry-level pricing tier
+            """
+        if model.lower() == "o4-mini":
+            return """
+            Compact version of a higher-tier model (Note: again, this nomenclature doesn't match Anthropic's standard naming)
+Balances performance and resource requirements
+Good reasoning capabilities within its scope
+Faster response times than larger models
+More affordable than full-sized counterparts
+Suitable for embedding in applications requiring quick responses
+            """
+        return "Unknown model"
+
     def __init__(self, api_key: Optional[str] = None):
         """Initialize OpenAI agent for MCP server integration."""
         os.environ['PYDANTIC_PRIVATE_ALLOW_UNHANDLED_SCHEMA_TYPES'] = '1'

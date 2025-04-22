@@ -73,10 +73,55 @@ class GeminiAgent(AgentProtocol):
         return [
             "gemini-1.5-pro-latest",
             "gemini-1.5-pro",
-            "gemini-1.5-pro-001",
             "gemini-1.5-pro-002",
             "gemini-2.0-flash"
         ]
+
+    @staticmethod
+    def models_description(model: str) -> str:
+        """
+        Return description of the Claude model.
+        
+        Args:
+            model: The model name
+        
+        Returns:
+            Description of the model
+        """
+
+        if model.lower() == "gemini-1.5-pro-latest":
+            return """
+            The newest version in the Gemini 1.5 Pro lineup
+Contains the latest updates and improvements
+Huge context window (up to 1 million tokens)
+Multimodal capabilities - processing text, images, audio, and video
+Balanced performance and cost-efficiency
+Supports structured output
+            """
+        if model.lower() == "gemini-1.5-pro":
+            return """
+            Base version of the powerful universal model
+Huge context window (up to 1 million tokens)
+Good multimodal abilities
+Balanced power-to-cost ratio
+Created for a wide range of applications
+            """
+        if model.lower() == "gemini-1.5-pro-002":
+            return """
+            Updated version with improvements compared to 001
+Enhanced accuracy and reliability
+Better processing of complex context
+Optimized performance with multimodal data
+            """
+        if model.lower() == "gemini-2.0-flash":
+            return """
+            The newest and fastest model in the Gemini family
+Optimized for response speed while maintaining high quality
+Created for applications requiring real-time interaction
+Smaller context window compared to 1.5 Pro, but significantly faster operation
+Good choice for interactive applications, chatbots, and assistance tools
+            """
+        return "Unknown model"
 
     def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
         """

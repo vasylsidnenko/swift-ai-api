@@ -58,3 +58,9 @@ class AgentProtocol(Protocol):
     def supported_models() -> List[str]:
         """Returns list of supported models."""
         ... 
+
+    @staticmethod
+    def models_description(model: str) -> str:
+        """Returns description of the model."""
+        ...
+        
