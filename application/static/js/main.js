@@ -217,11 +217,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // No question context for quiz
 
             // Build request context
+            // Add question draft (questionContext) to context for quiz
             const context = {
                 platform: platform,
                 technology: technology,
                 topic: topic,
-                tags: tags.split(',').map(t => t.trim()).filter(Boolean)
+                tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+                question: document.getElementById('questionContext').value.trim()
             };
 
             // Prepare payload
@@ -250,14 +252,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     quizResultDiv.style.display = 'block';
                     return;
                 }
-                // Display quiz question and Apply button
+                // Display quiz question and Apply button (multiline textarea)
                 const quizQ = quizData.quiz.question || (quizData.quiz.quiz && quizData.quiz.quiz.question) || '';
                 quizResultDiv.innerHTML = `
                     <div class='card border-info mb-3'>
                         <div class='card-header bg-info text-white'>Quiz Result</div>
                         <div class='card-body'>
                             <div><strong>Quiz Question:</strong></div>
-                            <div class='mb-3'><pre>${escapeHtml(quizQ)}</pre></div>
+                            <div class='mb-3'>
+                                <textarea class='form-control' id='quizQuestionTextarea' rows='5' readonly style='width:100%'>${escapeHtml(quizQ)}</textarea>
+                            </div>
                             <button class='btn btn-success' id='applyQuizBtn'>Apply</button>
                         </div>
                     </div>
@@ -296,6 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Send only 'provider' (not 'ai') according to MCP API
+        // Add question draft (questionContext) to data for generate as 'question'
         const data = {
             topic: document.getElementById('topic').value,
             platform: document.getElementById('platform').value,
@@ -305,8 +310,9 @@ document.addEventListener('DOMContentLoaded', function() {
             model: selectedModel,
             // number: 1, // 'number' is not part of GenerateRequest or ValidateRequest
             validation: document.getElementById('validation').checked,
-            questionContext: document.getElementById('questionContext').value.trim()
+            question: document.getElementById('questionContext').value.trim()
         };
+        // Removed 'questionContext' field, now using 'question' for backend compatibility
         // Removed 'ai' field for strict MCP API compliance
 
         // Show loading indicator

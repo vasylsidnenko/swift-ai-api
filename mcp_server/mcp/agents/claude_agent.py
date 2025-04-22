@@ -269,6 +269,7 @@ class ClaudeAgent(AgentProtocol):
             "Format your response as a JSON object with fields: topic, question, tags. "
             "Example: {\n  \"topic\": { \"name\": \"SwiftUI\", \"platform\": \"iOS\", \"technology\": \"Swift\" },\n  \"question\": \"Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.\",\n  \"tags\": [\"SwiftUI\", \"List\", \"iOS\", \"Delete\", \"Swipe\"]\n}"
         )
+        print(f"Claude quiz prompt={prompt}")
         return prompt
 
     def _check_client(self):

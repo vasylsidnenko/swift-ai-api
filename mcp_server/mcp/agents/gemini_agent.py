@@ -303,6 +303,7 @@ Question to validate: {request.request.model_dump_json()}
             "\n  \"tags\": [\"SwiftUI\", \"List\", \"iOS\", \"Delete\", \"Swipe\"]"
             "\n}"
         )
+        print(f"Gemini quiz prompt={prompt}")
         return prompt
 
     def _parse_gemini_response(self, response_text: str, schema_type: str) -> Any:
