@@ -135,18 +135,42 @@ document.addEventListener('DOMContentLoaded', function() {
     // This block is now obsolete and should be removed.
 
     // --- Event Listeners ---
-
-    // Show/hide validation settings when Validate checkbox changes
+    // Unified logic for validation settings visibility
+    // Declare all elements once at the top!
     const validationCheckbox = document.getElementById('validation');
+    const sameAsGenerationCheckbox = document.getElementById('sameAsGeneration');
     const validationSettingsDiv = document.getElementById('validationSettings');
-    if (validationCheckbox && validationSettingsDiv) {
-        validationCheckbox.addEventListener('change', function() {
-            // Show validation settings only if Validate checkbox is checked
-            validationSettingsDiv.style.display = this.checked ? 'block' : 'none';
+    // Controls visibility of validation settings section
+    function updateValidationUI() {
+        console.log('[DEBUG] updateValidationUI called:', {
+            validationChecked: validationCheckbox.checked,
+            sameAsGenerationChecked: sameAsGenerationCheckbox.checked
         });
-        // Initial state
-        validationSettingsDiv.style.display = validationCheckbox.checked ? 'block' : 'none';
+        // Show 'Use same settings...' checkbox only if validation is enabled
+        if (!validationCheckbox.checked) {
+            validationSettingsDiv.style.display = 'none';
+            sameAsGenerationCheckbox.parentElement.style.display = 'none';
+        } else {
+            sameAsGenerationCheckbox.parentElement.style.display = '';
+            if (sameAsGenerationCheckbox.checked) {
+                validationSettingsDiv.style.display = 'none';
+            } else {
+                validationSettingsDiv.style.display = 'block';
+            }
+        }
     }
+    validationCheckbox.addEventListener('change', function(e) {
+        console.log('[DEBUG] validationCheckbox change:', e.target.checked);
+        updateValidationUI();
+    });
+    sameAsGenerationCheckbox.addEventListener('change', function(e) {
+        console.log('[DEBUG] sameAsGenerationCheckbox change:', e.target.checked);
+        updateValidationUI();
+    });
+    // Set correct initial state after DOM is ready
+    updateValidationUI();
+
+
 
     // Update models and check key when provider changes
     aiSelect.addEventListener('change', function() {
@@ -556,24 +580,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load agents and models on page load
     loadModels();
     
-    // Setup validation settings toggle
-    // Duplicate declaration of validationCheckbox removed. Use the variable declared earlier.
-    const sameAsGenerationCheckbox = document.getElementById('sameAsGeneration');
-    const validationSettings = document.getElementById('validationSettings');
-    
-    validationCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-            sameAsGenerationCheckbox.checked = true;
-            validationSettings.style.display = 'none';
-        } else {
-            sameAsGenerationCheckbox.checked = false;
-            validationSettings.style.display = 'block';
-        }
-    });
-    
-    sameAsGenerationCheckbox.addEventListener('change', function() {
-        validationSettings.style.display = this.checked ? 'none' : 'block';
-    });
+    // --- Unified validation settings toggle logic ---
+    // Remove duplicated listeners and use updateValidationUI only
+    // (see main logic above)
+    //
 });
 
 function loadAgents() {
