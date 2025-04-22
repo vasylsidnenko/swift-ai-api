@@ -53,6 +53,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const techInput = document.getElementById('tech');
     const topicInput = document.getElementById('topic');
     const generateBtn = document.querySelector('button[type="submit"]');
+    const validationCheckboxTop = document.getElementById('validation');
+
+    function updateGenerateBtnText() {
+        if (!generateBtn) return;
+        generateBtn.textContent = validationCheckboxTop && validationCheckboxTop.checked ? 'Generate & Validate' : 'Generate';
+    }
+    if (validationCheckboxTop) {
+        validationCheckboxTop.addEventListener('change', updateGenerateBtnText);
+        updateGenerateBtnText(); // initial
+    }
     const quizBtnTop = document.getElementById('quizBtn');
 
     function validateRequiredFields() {
