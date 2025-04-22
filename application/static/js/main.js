@@ -1,3 +1,16 @@
+// Returns a color for the quiz result header based on provider name
+function getProviderColor(provider) {
+    switch ((provider || '').toLowerCase()) {
+        case 'openai': return '#10a37f';         // OpenAI green
+        case 'google': return '#4285F4';         // Google blue
+        case 'gemini': return '#4285F4';         // Gemini (Google) blue
+        case 'anthropic': return '#ffb300';      // Anthropic yellow
+        case 'claude': return '#ffb300';         // Claude (Anthropic) yellow
+        case 'microsoft': return '#0078d4';      // Microsoft blue
+        default: return '#17c9f7';               // Default cyan
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('questionForm');
     const resultDiv = document.getElementById('result');
@@ -10,12 +23,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load agents and then models (ensure models are loaded for the initial provider)
     loadAgents();
     loadModels(); // Ensure models are loaded on page load
+    // Set AI config header on load
+    setTimeout(function() {
+        updateAIConfigHeader(aiSelect.value, modelSelect.value);
+    }, 0);
 
     // Add change event handler for provider select
     aiSelect.addEventListener('change', function() {
         const provider = this.value;
         loadModels();
         checkEnvKey(provider);
+        // Update AI config header on provider change
+        updateAIConfigHeader(provider, modelSelect.value);
     });
 
     // --- Helper Functions ---
@@ -171,10 +190,10 @@ document.addEventListener('DOMContentLoaded', function() {
     updateValidationUI();
 
     // Update models and check key when provider changes
-    aiSelect.addEventListener('change', function() {
-        const selectedProvider = this.value;
-        populateModels(selectedProvider);
-        checkEnvKey(selectedProvider);
+    modelSelect.addEventListener('change', function() {
+        updateValidationUI();
+        // Update AI config header on model change
+        updateAIConfigHeader(aiSelect.value, modelSelect.value);
     });
 
     // Handle API key input changes
@@ -255,19 +274,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 const quizResultBlock = document.createElement('div');
                 quizResultBlock.className = 'card border-info mb-3';
                 quizResultBlock.innerHTML = `
-                    <div class='card-header bg-info text-white d-flex justify-content-between align-items-center'>
-                        <span>Quiz Result</span>
-                        <span class='ms-2 small'>Provider: <b>${escapeHtml(selectedProvider)}</b> | Model: <b>${escapeHtml(selectedModel)}</b></span>
-                        <button type='button' class='btn btn-sm btn-outline-light ms-3' title='Close' style='padding:2px 10px;'>&times;</button>
-                    </div>
-                    <div class='card-body'>
-                        <div><strong>Quiz Question:</strong></div>
-                        <div class='mb-3'>
-                            <textarea class='form-control' rows='5' readonly style='width:100%'>${escapeHtml(quizQ)}</textarea>
-                        </div>
-                        <button class='btn btn-success apply-quiz-btn'>Apply</button>
-                    </div>
-                `;
+        <div class='card-header text-white d-flex justify-content-between align-items-center'>
+            <span>Quiz Result</span>
+            <span class='ms-2 small'>Provider: <b>${escapeHtml(selectedProvider)}</b> | Model: <b>${escapeHtml(selectedModel)}</b></span>
+            <button type='button' class='btn btn-sm btn-outline-light ms-3' title='Close' style='padding:2px 10px;'>&times;</button>
+        </div>
+        <div class='card-body'>
+            <div><strong>Quiz Question:</strong></div>
+            <div class='mb-3'>
+                <textarea class='form-control' style='width:100%;resize:none;overflow:hidden' readonly>${escapeHtml(quizQ)}</textarea>
+            </div>
+            <button class='btn apply-quiz-btn' style='background-color:${getProviderColor(selectedProvider)} !important;color:#fff !important;border:none !important;'>Apply</button>
+        </div>
+    `;
                 // Close logic
                 quizResultBlock.querySelector('button[title="Close"]').onclick = function() {
                     quizResultBlock.remove();
@@ -277,6 +296,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('questionContext').value = quizQ;
                     window.scrollTo({top: document.getElementById('questionContext').offsetTop - 80, behavior: 'smooth'});
                 };
+                // Set provider color for header
+                quizResultBlock.querySelector('.card-header').style.setProperty('background-color', getProviderColor(selectedProvider), 'important');
+                // Make quiz question textarea auto-resize and no scroll
+                const quizTextarea = quizResultBlock.querySelector('textarea');
+                quizTextarea.style.overflow = 'hidden';
+                quizTextarea.style.height = 'auto';
+                quizTextarea.style.resize = 'none';
+                function autoResizeTA(t) {
+                    t.style.height = 'auto';
+                    t.style.height = t.scrollHeight + 'px';
+                }
+                autoResizeTA(quizTextarea);
+                quizTextarea.addEventListener('input', function() { autoResizeTA(this); });
                 quizResultDiv.appendChild(quizResultBlock);
                 quizResultDiv.style.display = 'block';
             } catch (err) {

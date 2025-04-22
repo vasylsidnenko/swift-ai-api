@@ -52,7 +52,11 @@
                         <div class="form-text text-muted">Helps guide the AI for more specific question generation</div>
                     </div>
 
-                    <h5 class="mt-4">AI Configuration</h5>
+                    <!-- Dynamic AI Configuration Header -->
+<div id="aiConfigHeader" class="card-header mb-0 px-3 py-2 d-flex justify-content-between align-items-center" style="border-radius: .5rem .5rem 0 0; background: #17c9f7; color: #fff; font-weight: 500; font-size: 1.1rem;">
+    <span>AI Configuration</span>
+    <span class="ms-2 small">Provider: <b id="aiConfigProvider">—</b> | Model: <b id="aiConfigModel">—</b></span>
+</div>
                     
                     <!-- Button for expanding/collapsing AI settings -->
                     <div class="mb-3">
@@ -146,5 +150,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-swift.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}?v={{ range(1, 10000) | random }}"></script>
+<script src="{{ url_for('static', filename='js/ai-config-header.js') }}?v=1"></script>
 </body>
 </html> 
