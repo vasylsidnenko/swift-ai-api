@@ -19,6 +19,10 @@
 This project provides an API and web interface for generating programming questions, answers, and multiple-choice tests using various AI models. It supports multiple platforms (Apple, Android) and dynamically loads available AI providers (OpenAI, Google AI, DeepSeek AI, etc.) found in the `mcp/agents` directory.
 
 ## Features
+
+### [2024-xx-xx] UI Improvement: Quiz Question Textarea
+- The quiz question textarea in the quiz result block is now fully multiline, auto-expands to fit content, and has no scrollbars. This improves readability and usability for longer quiz questions.
+- Implementation: moved the `autoResizeTA` function to top-level JS scope, and ensured all quiz result textareas use it for dynamic resizing.
 - Modular architecture with a Model Context Protocol (MCP)-inspired abstraction for AI providers
 - **Dynamic loading** of AI agents and their supported models from the `mcp/agents` directory
 - Supports multiple AI providers (e.g., OpenAI, Google AI, DeepSeek AI) — only providers with working agents are shown

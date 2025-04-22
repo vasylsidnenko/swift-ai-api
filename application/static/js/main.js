@@ -11,6 +11,12 @@ function getProviderColor(provider) {
     }
 }
 
+// Auto-resize textarea to fit its content (no scrollbars)
+function autoResizeTA(t) {
+    t.style.height = 'auto';
+    t.style.height = t.scrollHeight + 'px';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('questionForm');
     const resultDiv = document.getElementById('result');
@@ -360,13 +366,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 quizResultBlock.querySelector('.card-header').style.setProperty('background-color', getProviderColor(selectedProvider), 'important');
                 // Make quiz question textarea auto-resize and no scroll
                 const quizTextarea = quizResultBlock.querySelector('textarea');
+                // Make textarea auto-expand to fit content, no scrollbars, min-height for usability
+                // Make textarea auto-expand to fit content, no scrollbars, min-height for usability
                 quizTextarea.style.overflow = 'hidden';
                 quizTextarea.style.height = 'auto';
                 quizTextarea.style.resize = 'none';
-                function autoResizeTA(t) {
-                    t.style.height = 'auto';
-                    t.style.height = t.scrollHeight + 'px';
-                }
+                quizTextarea.style.minHeight = '80px'; // Ensures it's always at least 3 lines tall
+                autoResizeTA(quizTextarea);
+                quizTextarea.addEventListener('input', function() { autoResizeTA(this); });
                 autoResizeTA(quizTextarea);
                 quizTextarea.addEventListener('input', function() { autoResizeTA(this); });
                 quizResultDiv.appendChild(quizResultBlock);
