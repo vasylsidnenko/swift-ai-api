@@ -1,28 +1,30 @@
 // Injects provider/model info into the AI Configuration header and applies provider color
-function setProviderModelInHeader(provider, model) {
-    // Set values in <b id=aiConfigProvider> and <b id=aiConfigModel>
-    var prov = provider || (window.aiSelect && window.aiSelect.options.length ? window.aiSelect.options[0].value : '—');
-    var mod = model || (window.modelSelect && window.modelSelect.options.length ? window.modelSelect.options[0].value : '—');
-    if (!prov || prov === '-') prov = '—';
-    if (!mod || mod === '-') mod = '—';
+function setProviderModelInHeader() {
+    // Always use current DOM values for provider and model
     var provEl = document.getElementById('aiConfigProvider');
     var modEl = document.getElementById('aiConfigModel');
+    var aiSelect = document.getElementById('ai');
+    var modelSelect = document.getElementById('model');
+    var prov = aiSelect && aiSelect.value ? aiSelect.value : '—';
+    var mod = modelSelect && modelSelect.value ? modelSelect.value : '—';
     if (provEl) provEl.textContent = prov;
     if (modEl) {
         modEl.textContent = mod;
-        // Fetch and set tooltip with model description
         if (prov !== '—' && mod !== '—') {
+            // Save current model for closure
+            const currentModel = mod;
             fetch(`/api/model-description/${prov}/${mod}`)
                 .then(resp => resp.json())
                 .then(data => {
-                    if (data && data.description) {
-                        modEl.title = data.description.trim();
-                    } else {
-                        modEl.title = 'No description available.';
+                    // Only update if model is still current
+                    if (modelSelect && modelSelect.value === currentModel) {
+                        modEl.title = data && data.description ? data.description.trim() : 'No description available.';
                     }
                 })
                 .catch(() => {
-                    modEl.title = 'No description available.';
+                    if (modelSelect && modelSelect.value === currentModel) {
+                        modEl.title = 'No description available.';
+                    }
                 });
         } else {
             modEl.title = '';
@@ -30,11 +32,10 @@ function setProviderModelInHeader(provider, model) {
     }
 }
 
-function updateAIConfigHeader(provider, model) {
+function updateAIConfigHeader() {
     var header = document.getElementById('aiConfigHeader');
     if (!header) return;
-    var color = getProviderColor(provider);
-    setProviderModelInHeader(provider, model);
+    setProviderModelInHeader();
     header.style.setProperty('background-color', '#6c757d', 'important');
     header.style.color = '#fff';
 }

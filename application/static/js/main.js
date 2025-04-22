@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadModels(); // Ensure models are loaded on page load
     // Set AI config header after agents/models loaded
     setTimeout(function() {
-        updateAIConfigHeader(aiSelect.value, modelSelect.value);
+        updateAIConfigHeader(); // Use current DOM values
         // Set collapse button style (force gray)
         var collapseBtn = document.getElementById('aiConfigCollapseBtn');
         if (collapseBtn) {
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add change event handler for model select
     modelSelect.addEventListener('change', function() {
-        updateAIConfigHeader(aiSelect.value, modelSelect.value);
+        updateAIConfigHeader(); // Use current DOM values
     });
 
     // --- Enable/disable Generate & Quiz buttons depending on required fields ---
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 modelSelect.selectedIndex = 0; // Select the first model by default
                 // Update header after model select is updated (use actual DOM value)
                 const actualModel = modelSelect.options[modelSelect.selectedIndex]?.value;
-                updateAIConfigHeader(aiSelect.value, actualModel);
+                updateAIConfigHeader(); // Use current DOM values
             }
         } catch (error) {
             console.error(`Error populating models for ${provider}:`, error);
@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
     modelSelect.addEventListener('change', function() {
         updateValidationUI();
         // Update AI config header on model change
-        updateAIConfigHeader(aiSelect.value, modelSelect.value);
+        updateAIConfigHeader(); // Use current DOM values
     });
 
     // Handle API key input changes

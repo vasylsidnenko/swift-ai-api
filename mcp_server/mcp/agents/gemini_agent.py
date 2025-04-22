@@ -80,7 +80,7 @@ class GeminiAgent(AgentProtocol):
     @staticmethod
     def models_description(model: str) -> str:
         """
-        Return description of the Claude model.
+        Return description of the Gemini model.
         
         Args:
             model: The model name
