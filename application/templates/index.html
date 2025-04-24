@@ -43,13 +43,13 @@
                     
                     <div class="mb-3">
                         <label for="keywords" class="form-label field-label">Keywords/Tags <span class='optional-label'>(optional)</span></label>
-                        <input type="text" class="form-control" id="keywords" placeholder="e.g., GCD, NSOperationQueue, performance">
-                        <div class="form-text text-muted">Comma-separated relevant keywords</div>
+                        <input type="text" class="form-control enhanced-input placeholder-small" id="keywords" placeholder="Enter keywords (e.g., GCD, NSOperationQueue, performance)">
+<div class="form-text subdued-help">Comma-separated relevant keywords</div>
                     </div>
                     
                     <div class="mb-3">
                         <label for="questionContext" class="form-label field-label">Question Context <span class='optional-label'>(optional)</span></label>
-                        <textarea class="form-control" id="questionContext" rows="3" placeholder="Provide specific context or a base question to refine generation..."></textarea>
+                        <textarea class="form-control placeholder-small" id="questionContext" rows="3" placeholder="Provide specific context or a base question to refine generation..."></textarea>
                         <div class="form-text text-muted">Helps guide the AI for more specific question generation</div>
                     </div>
 
@@ -147,6 +147,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-swift.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}?v={{ range(1, 10000) | random }}"></script>
-<script src="{{ url_for('static', filename='js/ai-config-header.js') }}?v=1"></script>
+    <script src="{{ url_for('static', filename='js/ai-config-header.js') }}?v={{ range(1, 10000) | random }}"></script>
+    <script src="{{ url_for('static', filename='js/field-highlight.js') }}?v={{ range(1, 10000) | random }}"></script>
 </body>
-</html> 
+</html>
