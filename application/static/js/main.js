@@ -590,7 +590,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (levels[level]) {
                 const colorClass = levelColors[level] ? levelColors[level].tab : '';
                 tabs += `<li class="nav-item" role="presentation">
-                    <button class="nav-link ${colorClass}${first ? ' active' : ''}" id="tab-${level}" data-bs-toggle="tab" data-bs-target="#level-${level}" type="button" role="tab" aria-controls="level-${level}" aria-selected="${first ? 'true' : 'false'}">${level.charAt(0).toUpperCase() + level.slice(1)}</button>
+                    <button class="nav-link ${colorClass}${first ? ' active' : ''}" style="font-weight:600;" id="tab-${level}" data-bs-toggle="tab" data-bs-target="#level-${level}" type="button" role="tab" aria-controls="level-${level}" aria-selected="${first ? 'true' : 'false'}">${level.charAt(0).toUpperCase() + level.slice(1)}</button>
                 </li>`;
                 first = false;
             }
@@ -603,7 +603,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const borderClass = levelColors[level] ? levelColors[level].border : '';
             const bgClass = levelColors[level] ? levelColors[level].bg : '';
             tabContent += `<div class="tab-pane fade${first ? ' show active' : ''} ${borderClass} ${bgClass}" id="level-${level}" role="tabpanel" aria-labelledby="tab-${level}" style="border-width:2px; border-style:solid; border-radius:0 0 8px 8px; margin-bottom:1rem;">`;
-            tabContent += `<div class="mb-2"><b>${escapeHtml(l.name || level.charAt(0).toUpperCase() + level.slice(1))}</b></div>`;
+            tabContent += `<div class=\"mb-2\"></div>`;
             tabContent += `<div class="mb-2">${formatSingleQuestion(l.answer || '')}</div>`;
             // Тести
             if (Array.isArray(l.tests) && l.tests.length > 0) {
@@ -614,9 +614,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (Array.isArray(test.options)) {
                         tabContent += '<ul class="list-group mb-1">';
                         const answerIdx = (typeof test.answer === 'string' && /^\d+$/.test(test.answer)) ? (parseInt(test.answer, 10) - 1) : (typeof test.answer === 'number' ? test.answer : -1);
+                        const correctClass = level === 'beginner' ? 'list-group-item-success' : (level === 'intermediate' ? 'list-group-item-warning' : (level === 'advanced' ? 'list-group-item-danger' : 'list-group-item-success'));
                         test.options.forEach((opt, i) => {
                             const isCorrect = i === answerIdx;
-                            tabContent += `<li class="list-group-item${isCorrect ? ' list-group-item-success' : ''}">${escapeHtml(opt)}</li>`;
+                            tabContent += `<li class=\"list-group-item${isCorrect ? ' ' + correctClass : ''}\">${escapeHtml(opt)}</li>`;
                         });
                         tabContent += '</ul>';
                     }
