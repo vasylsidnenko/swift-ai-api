@@ -6,12 +6,19 @@
 
 ## Changelog
 
+### 2025-04-24
+- UI/UX: Tab content and tab headers now have colored lines (green/yellow/red) that match the selected difficulty, with no colored background for a clean look.
+- UI/UX: Tokens used and execution time are now displayed together, right-aligned, with time shown in seconds.
+- UI/UX: Tags section background removed; only individual tags retain their badge background.
+- UI/UX: Syntax highlighting for code blocks is enabled using Prism.js (including Swift support).
+- UI/UX: AI Configuration section can be expanded/collapsed by clicking on the whole header (except the gear button), and the collapse logic is now smooth and non-redundant.
+- Bugfix: Frontend now sends 'provider' (or uses 'ai' as provider if 'provider' is missing) for /api/generate, preventing 400 errors due to missing provider field.
+
 ### 2025-04-22
 - When the user clicks the 'Apply' button on a Quiz Result, the corresponding Quiz Question is now inserted into the Question Context field and the Generate action is triggered automatically. This streamlines the workflow, allowing users to immediately generate a new question based on the quiz suggestion with a single click.
 
 ### 2025-04-21
 - Frontend (main.js) updated: now sends only 'provider' (not 'ai') in requests to /api/generate and /api/validate, fully matching the MCP server API specification. The 'ai' field is removed from the payload for strict compliance.
-
 
 ### 2025-04-21
 - Fixed JavaScript error `Cannot redeclare block-scoped variable 'validationCheckbox'` in `application/static/js/main.js` by removing a duplicate `const validationCheckbox` declaration. Now the variable is declared only once and reused throughout the script.

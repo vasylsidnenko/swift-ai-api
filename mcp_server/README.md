@@ -15,6 +15,13 @@ This directory contains the core server code for the MCP (Multi-Component Platfo
 
 See [SCHEMA.md](./SCHEMA.md) for a detailed architecture diagram and request/response flow of the MCP server. Below is a summary:
 
+## Changelog
+
+### 2025-04-24
+- Bugfix: The server now supports requests where only the 'ai' field is sent instead of 'provider' (for example, `{"ai": "openai"}`), using 'ai' as the provider if 'provider' is missing. This prevents 400 errors for frontend/backend integration and improves compatibility with various clients.
+- API: All errors (including missing provider/model, bad payload, or not implemented) are returned as structured JSON.
+- Logging: Improved logging for agent operations and error handling.
+
 ## Gemini Agent Logging & Strict Validation
 
 - GeminiAgent logs Python version, Google GenerativeAI version, model name, and request type (generate/validate/quiz) at the start of each operation. This logging is consistent with Claude and OpenAI agents for easy debugging and transparency.
