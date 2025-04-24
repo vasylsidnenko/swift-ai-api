@@ -2,7 +2,7 @@
 Mock MCP Server for local UI development.
 This mock intercepts MCP server requests and returns fake responses for /mcp/v1/execute and other endpoints.
 """
-from flask import Blueprint, request, jsonify
+from flask import Flask, Blueprint, request, jsonify
 
 mock_mcp = Blueprint('mock_mcp', __name__)
 
@@ -38,13 +38,13 @@ def mock_execute():
                         'correct': 0
                     },
                     'advanced': {
-                        'text': 'Explain how closures capture variables in Swift.',
+                        'text': 'MOCK:: Explain how closures capture variables in Swift.',
                         'choices': [],
                         'correct': None
                     }
                 }
             }
-        })
+        }), 200
     elif operation == 'quiz':
         # Return a mock AIQuizModel structure
         return jsonify({
@@ -60,11 +60,11 @@ def mock_execute():
                         'technology': 'Swift',
                         'topic': 'Strings'
                     },
-                    'question': 'Write a Swift function to reverse a string.',
+                    'question': 'MOCK:: Write a Swift function to reverse a string.',
                     'tags': ['swift', 'string'],
                 }
             }
-        })  # Note: No answers block in AIQuizModel, matches model definition
+        }), 200  
 
     elif operation == 'validate':
         return jsonify({
@@ -74,13 +74,16 @@ def mock_execute():
                 'score': 0.95,
                 'details': 'Your answer is correct.'
             }
-        })
-    return jsonify({'success': False, 'error': 'Unknown operation', 'error_type': 'mock_error'})
+        }), 200
+    return jsonify({'success': False, 'error': 'Unknown operation', 'error_type': 'mock_error'}), 500
 
 @mock_mcp.route('/mcp/v1/providers', methods=['GET'])
 def mock_providers():
     # Return a list of dicts for providers to match frontend expectations
-    return jsonify({'providers': ['openai', 'anthropic', 'google']}, success=True)
+    return jsonify({
+        'providers': ['openai', 'anthropic', 'google'],
+        'success': True
+    }), 200 
 
 @mock_mcp.route('/mcp/v1/models/<provider>', methods=['GET'])
 def mock_models_for_provider(provider):
@@ -88,21 +91,23 @@ def mock_models_for_provider(provider):
     """
     if provider == 'openai':
         return jsonify({
+            'success': True,
             'models': [
-                {'id': 'gpt-4o'},
-                {'id': 'gpt-3.5-turbo'}
+                'gpt-4o'
             ]
         }), 200
     elif provider == 'anthropic':
         return jsonify({
+            'success': True,
             'models': [
-                {'id': 'claude-3-opus'}
+                'claude-3-5-sonnet'
             ]
         }), 200
     elif provider == 'google':
         return jsonify({
+            'success': True,
             'models': [
-                {'id': 'gemini-pro'}
+                'gemini-pro'
             ]
         }), 200
     else:
@@ -113,5 +118,9 @@ def mock_models_for_provider(provider):
 
 @mock_mcp.route('/mcp/v1/model-description/<provider>/<model>', methods=['GET'])
 def mock_model_description(provider, model):
-    return jsonify({'description': f'Mock description for {provider}/{model}.'})
+    return jsonify({'description': f'MOCK:: description for {provider}/{model}.'}), 200
+
+# Export Flask app for standalone mock server (needed for run_mock.py and FLASK_APP=application.mock_mcp_server:app)
+app = Flask(__name__)
+app.register_blueprint(mock_mcp)
 

@@ -87,8 +87,8 @@ class ClaudeAgent(AgentProtocol):
         return [
             "claude-3-7-sonnet",
             "claude-3-5-sonnet",
-            "claude-3-5-haiku",
-            "claude-3-5-opus"
+            # "claude-3-5-haiku",
+            # "claude-3-5-opus"
         ]
 
     @staticmethod
@@ -285,16 +285,10 @@ Most expensive to use
     @staticmethod
     def _convert_model_name(short_name):
         model_map = {
-            "claude-3-7-sonnet": "claude-3-7-sonnet-20250219",
-            "claude-3-5-sonnet": "claude-3-5-sonnet-20240620",
-            "claude-3-opus": "claude-3-opus-20240229",
-            "claude-3-sonnet": "claude-3-sonnet-20240229",
-            "claude-3-haiku": "claude-3-haiku-20240307",
-            "claude-3-5-haiku": "claude-3-5-haiku-20240307",
-            "claude-3-5-opus": "claude-3-5-opus-20240620",
-            "claude-instant-1.2": "claude-instant-1.2",
-            "claude-2.0": "claude-2.0",
-            "claude-2.1": "claude-2.1"
+            "claude-3-5-haiku": "claude-3-5-haiku-latest",
+            "claude-3-5-sonnet": "claude-3-5-sonnet-latest",
+            "claude-3-5-opus": "claude-3-5-opus-latest",
+            "claude-3-7-sonnet": "claude-3-7-sonnet-latest",
         }
         return model_map.get(short_name, short_name)
     

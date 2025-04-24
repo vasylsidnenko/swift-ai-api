@@ -368,16 +368,19 @@ def _get_available_models():
                 else:
                     models_data = models_result
                 print(f'[DEBUG] models_data for provider {provider}: {models_data}')
-            # The new MCP server returns a list of models (not a dict with 'models' key)
-            # Defensive: support both list and dict (for backward compatibility)
+            # Unwrap Flask Response if needed (for mock MCP)
+            if isinstance(models_data, tuple) and hasattr(models_data[0], 'get_json'):
+                models_data = models_data[0].get_json()
+            elif hasattr(models_data, 'get_json'):
+                models_data = models_data.get_json()
+            # Defensive: support both list/dict for backward compatibility
             if isinstance(models_data, list):
                 models_list = models_data
             elif isinstance(models_data, dict) and 'models' in models_data:
                 models_list = models_data['models']
             else:
                 logger.error(f"Unexpected models_data for provider {provider}: {models_data}")
-                available_models[provider] = []
-                continue
+                models_list = []
             ids = []
             for model in models_list:
                 if isinstance(model, dict) and 'id' in model:
