@@ -222,42 +222,45 @@ class AIResource:
             # error_type = "api_error" or "agent_execution_error"
             return MCPResponse(success=False, error=f"An unexpected error occurred: {e}", error_type="server_error")
 
-@app.get("/mcp/v1/agents")
-async def get_agents():
+@app.get("/mcp/v1/providers")
+async def get_providers():
     """Return the list of loaded agent resource_ids."""
     if len(loaded_agents) == 0:
         return {
             "success": False,
-            "error": "No agents loaded",
+            "error": "No providers loaded",
             "error_type": "server_error"
         }
 
     return {
         "success": True,
-        "agents": list(loaded_agents.keys())
+        "providers": list(loaded_agents.keys())
     }
 
-@app.get("/mcp/v1/models")
-async def get_models():
-    """Return all models for each loaded agent."""
+@app.get("/mcp/v1/models/{provider}")
+async def get_models_for_provider(provider: str):
+    """Return models only for the specified provider."""
+    if len(loaded_agents) == 0:
+        return {
+            "success": False,
+            "error": "No providers loaded",
+            "error_type": "server_error"
+        }
+
     model_list = []
     for resource_id, agent_class in loaded_agents.items():
         try:
             provider_id = agent_class.provider() if hasattr(agent_class, "provider") else resource_id
-            models = agent_class.supported_models() if hasattr(agent_class, "supported_models") else []
-            for model in models:
-                model_list.append({
-                    "provider": provider_id,
-                    "model": model
-                })
+            if provider_id == provider:
+                models = agent_class.supported_models() if hasattr(agent_class, "supported_models") else []
+                for model in models:
+                    model_list.append(model)
         except Exception as e:
             logger.error(f"Error loading models for agent '{resource_id}': {e}")
     return {
         "success": True,
         "models": model_list
     }
-
-# New endpoint: get models for a specific provider
 
 @app.get("/mcp/v1/model-description/{provider}/{model}")
 async def get_model_description(provider: str, model: str):
@@ -274,23 +277,4 @@ async def get_model_description(provider: str, model: str):
         logger.error(f"Error getting model description for {provider}/{model}: {e}")
         return {"description": "No description available."}
 
-@app.get("/mcp/v1/models/{provider}")
-async def get_models_for_provider(provider: str):
-    """Return models only for the specified provider."""
-    model_list = []
-    for resource_id, agent_class in loaded_agents.items():
-        try:
-            provider_id = agent_class.provider() if hasattr(agent_class, "provider") else resource_id
-            if provider_id == provider:
-                models = agent_class.supported_models() if hasattr(agent_class, "supported_models") else []
-                for model in models:
-                    model_list.append({
-                        "provider": provider_id,
-                        "model": model
-                    })
-        except Exception as e:
-            logger.error(f"Error loading models for agent '{resource_id}': {e}")
-    return {
-        "success": True,
-        "models": model_list
-    }
+

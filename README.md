@@ -100,6 +100,31 @@ API keys are primarily managed through environment variables. The web interface 
   - Get key: [DeepSeek](https://platform.deepseek.ai/)
   - Set env var: `DEEPSEEK_API_KEY=your_deepseek_key`
 
+## Mock MCP Server for UI Development
+
+To develop and test the UI without making real requests to AI models, you can enable a mock MCP server. This mock server intercepts all `/mcp/v1/execute`, `/mcp/v1/agents`, `/mcp/v1/models`, and `/mcp/v1/model-description/<provider>/<model>` requests and returns fake data suitable for frontend development.
+
+### How to Enable Mock MCP
+
+Set the environment variable `MOCK_MCP=1` before running the Flask app:
+
+```sh
+export MOCK_MCP=1
+python application/app.py
+```
+
+When enabled, the Flask app will automatically attach the mock MCP server. You will see a log message: `Mock MCP server is enabled!`
+
+### What the Mock Server Returns
+- **/mcp/v1/execute**: Returns fake quiz, generate, and validate responses with sample data for UI rendering.
+- **/mcp/v1/agents**: Returns a static list of mock agents.
+- **/mcp/v1/models**: Returns a static list of mock models for each provider.
+- **/mcp/v1/model-description/<provider>/<model>**: Returns a mock description string.
+
+This allows you to work on and verify the UI logic, question/answer rendering, and error handling without needing access to real AI APIs or models.
+
+---
+
 ## Running the Application
 
 1. Start the Flask application:

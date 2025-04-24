@@ -697,38 +697,38 @@ document.addEventListener('DOMContentLoaded', function() {
     //
 
 
+    // Loads providers from the backend and populates provider selects
     function loadAgents() {
-        fetch('/api/agents')
+        fetch('/api/providers')
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    const agents = data.agents;
-                const providerSelect = document.getElementById('ai');
-                const validationProviderSelect = document.getElementById('validationProvider');
-                
-                // Clear existing options
-                providerSelect.innerHTML = '';
-                validationProviderSelect.innerHTML = '';
-                
-                // Add new options
-                // agents is now an array of strings (provider ids)
-                agents.forEach(agent => {
-                    const option = document.createElement('option');
-                    option.value = agent;
-                    option.textContent = agent.charAt(0).toUpperCase() + agent.slice(1); // Capitalize for display
-                    providerSelect.appendChild(option);
+                    const providers = data.providers;
+                    const providerSelect = document.getElementById('ai');
+                    const validationProviderSelect = document.getElementById('validationProvider');
                     
-                    const validationOption = option.cloneNode(true);
-                    validationProviderSelect.appendChild(validationOption);
-                });
-                
-                // Trigger change event to load models for selected provider
-                providerSelect.dispatchEvent(new Event('change'));
-            } else {
-                console.error('Failed to load agents:', data.error);
-            }
-        })
-        .catch(error => console.error('Error loading agents:', error));
+                    // Clear existing options
+                    providerSelect.innerHTML = '';
+                    validationProviderSelect.innerHTML = '';
+                    
+                    // Add new options
+                    providers.forEach(provider => {
+                        const option = document.createElement('option');
+                        option.value = provider;
+                        option.textContent = provider.charAt(0).toUpperCase() + provider.slice(1); // Capitalize for display
+                        providerSelect.appendChild(option);
+                        
+                        const validationOption = option.cloneNode(true);
+                        validationProviderSelect.appendChild(validationOption);
+                    });
+                    
+                    // Trigger change event to load models for selected provider
+                    providerSelect.dispatchEvent(new Event('change'));
+                } else {
+                    console.error('Failed to load providers:', data.error);
+                }
+            })
+            .catch(error => console.error('Error loading providers:', error));
     }
 
     function loadModels() {

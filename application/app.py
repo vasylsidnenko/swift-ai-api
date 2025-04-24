@@ -16,14 +16,19 @@ app = Flask(__name__,
             template_folder='templates', 
             static_folder='static')
 
+# --- Attach mock MCP server if MOCK_MCP env is set ---
+if os.environ.get('MOCK_MCP', '0') == '1':
+    # Import and register the mock MCP server blueprint
+    from mock_mcp_server import mock_mcp
+    app.register_blueprint(mock_mcp)
+    logger.info('Mock MCP server is enabled!')
+
+
 # --- Configuration for MCP Server --- 
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:10001") 
 EXECUTE_ENDPOINT = f"{MCP_SERVER_URL}/mcp/v1/execute"
-AGENTS_ENDPOINT = f"{MCP_SERVER_URL}/mcp/v1/agents"
+PROVIDERS_ENDPOINT = f"{MCP_SERVER_URL}/mcp/v1/providers"
 MODELS_ENDPOINT = f"{MCP_SERVER_URL}/mcp/v1/models"
-
-# --- Removed Agent Loading Logic ---
-# The Flask app no longer loads agents directly. It will call the MCP server.
 
 # --- Environment Variable API Key Handling ---
 ENV_API_KEYS = {
@@ -35,26 +40,40 @@ ENV_API_KEYS = {
 @app.route('/')
 def index():
     """Render the main page."""
-    available_models = get_available_models()
+    available_models = _get_available_models()
     return render_template('index.html', availableModels=available_models)
+
+# Keys API
 
 @app.route('/get_env_key_status', methods=['POST'])
 def get_env_key_status():
     """Check if an API key exists in environment variables for the given provider."""
+
+    if os.environ.get('MOCK_MCP', '0') == '1':
+        # Return mock agents directly for UI development
+        return jsonify({'exists': True}), 200
+
     provider = request.json.get('provider')
     api_key_exists = bool(ENV_API_KEYS.get(provider))
     logger.debug(f"Env key status check for '{provider}': {api_key_exists}")
     return jsonify({'exists': api_key_exists})
 
-# New endpoint for frontend JS: check if API key exists (and return it for local/dev)
 @app.route('/api/check-env-key/<provider>', methods=['GET'])
 def api_check_env_key(provider):
     """Check if an API key exists in environment variables for the given provider. For dev: may return key itself."""
+
+    if os.environ.get('MOCK_MCP', '0') == '1':
+        # Return mock agents directly for UI development
+        return jsonify({'exists': True, 'api_key': '********'}), 200
+
     key = ENV_API_KEYS.get(provider)
     exists = bool(key)
     # Only return key in debug mode (never in production)
     show_key = app.debug or os.environ.get('FLASK_ENV') == 'development'
     return jsonify({'exists': exists, 'api_key': key if (show_key and key) else ('********' if exists else None)})
+
+
+# MCP Execute
 
 @app.route('/api/generate', methods=['POST'])
 def api_generate():
@@ -146,7 +165,6 @@ def api_generate():
         else:
             return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
 
-
 @app.route('/api/quiz', methods=['POST'])
 def api_quiz():
     """API endpoint to generate a quiz via MCP server."""
@@ -210,6 +228,9 @@ def api_validate():
     logger.info(f"Received /api/validate request: {data}")
 
     provider = data.get('provider')
+    # PATCH: If provider is missing but 'ai' is present, use 'ai' as provider
+    if not provider and 'ai' in data:
+        provider = data.get('ai')
     model = data.get('model')
     api_key = data.get('apiKey') 
     context_data = data.get('context', {})
@@ -260,29 +281,19 @@ def api_validate():
         else:
              return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
 
-@app.route('/api/agents', methods=['GET'])
-def get_agents():
-    """Get list of available agents from MCP server."""
+@app.route('/api/providers', methods=['GET'])
+def get_providers():
+    """Get list of available providers from MCP server."""
     try:
-        response = requests.get(AGENTS_ENDPOINT)
+        response = requests.get(PROVIDERS_ENDPOINT)
         response.raise_for_status()
         return jsonify(response.json()), response.status_code
     except requests.exceptions.RequestException as e:
         logger.error(f"Error getting agents: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/models', methods=['GET'])
-def get_models():
-    """Get list of available models from MCP server."""
-    try:
-        response = requests.get(MODELS_ENDPOINT)
-        response.raise_for_status()
-        return jsonify(response.json()), response.status_code
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error getting models: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+# MCP Info 
 
-# New endpoint: get models for a specific provider
 @app.route('/api/models/<provider>', methods=['GET'])
 def get_models_for_provider(provider):
     """Get list of available models for a specific provider from MCP server."""
@@ -294,32 +305,6 @@ def get_models_for_provider(provider):
         logger.error(f"Error getting models for provider {provider}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-def get_available_models():
-    """Get available models from MCP server and format them for the frontend."""
-    try:
-        # Get agents
-        agents_response = requests.get(AGENTS_ENDPOINT)
-        agents_response.raise_for_status()
-        agents_data = agents_response.json()
-        
-        # Get models
-        models_response = requests.get(MODELS_ENDPOINT)
-        models_response.raise_for_status()
-        models_data = models_response.json()
-        
-        # Format models by provider
-        available_models = {}
-        for model in models_data.get('models', []):
-            provider = model.get('provider')
-            if provider not in available_models:
-                available_models[provider] = []
-            available_models[provider].append(model.get('id'))
-        
-        return available_models
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error getting available models: {e}")
-        return {}
-
 @app.route('/api/model-description/<provider>/<model>', methods=['GET'])
 def api_model_description(provider, model):
     """
@@ -327,6 +312,7 @@ def api_model_description(provider, model):
     Proxies the request to the MCP server, which calls the agent's models_description method.
     Returns: {"description": <description>}
     """
+
     # Forward the request to the MCP server (new endpoint to be implemented)
     try:
         url = f"{MCP_SERVER_URL}/mcp/v1/model-description/{provider}/{model}"
@@ -339,6 +325,76 @@ def api_model_description(provider, model):
     except Exception as e:
         logger.error(f"Failed to fetch model description: {e}")
         return jsonify({"description": "No description available."}), 500
+
+# Private
+
+def _get_available_models():
+    """
+    Get available models from MCP server and format them for the frontend.
+    Uses get_agents() and get_models_for_provider(provider) to avoid code duplication.
+    Handles Flask Response and tuple (response, status_code) correctly in mock mode.
+    Returns mock if MOCK_MCP is set.
+    """
+    import os
+    from flask import jsonify, request
+    available_models = {}
+    try:
+        mock_env = os.environ.get('MOCK_MCP', '0')
+        print(f'[DEBUG] MOCK_MCP env: {mock_env}')
+        # Call get_providers() to get the list of providers
+        providers_result = get_providers()
+        # Extract data from Flask Response or tuple
+        if hasattr(providers_result, 'get_json'):
+            providers_data = providers_result.get_json()
+        elif isinstance(providers_result, tuple):
+            providers_data = providers_result[0].get_json()
+        else:
+            providers_data = providers_result
+        print(f'[DEBUG] providers_data: {providers_data}')
+        providers = providers_data.get('providers', [])
+        print(f'[DEBUG] providers: {providers}')
+        mock_mode = mock_env == '1'
+        for provider in providers:
+            # Use raw=True for mock mode to get plain dict, not Flask Response
+            if mock_mode:
+                models_data = get_models_for_provider(provider)
+                print(f'[DEBUG] models_data for provider {provider} (mock): {models_data}')
+            else:
+                models_result = get_models_for_provider(provider)
+                if hasattr(models_result, 'get_json'):
+                    models_data = models_result.get_json()
+                elif isinstance(models_result, tuple):
+                    models_data = models_result[0].get_json()
+                else:
+                    models_data = models_result
+                print(f'[DEBUG] models_data for provider {provider}: {models_data}')
+            # The new MCP server returns a list of models (not a dict with 'models' key)
+            # Defensive: support both list and dict (for backward compatibility)
+            if isinstance(models_data, list):
+                models_list = models_data
+            elif isinstance(models_data, dict) and 'models' in models_data:
+                models_list = models_data['models']
+            else:
+                logger.error(f"Unexpected models_data for provider {provider}: {models_data}")
+                available_models[provider] = []
+                continue
+            ids = []
+            for model in models_list:
+                if isinstance(model, dict) and 'id' in model:
+                    ids.append(model['id'])
+                elif isinstance(model, str):
+                    ids.append(model)
+                else:
+                    logger.error(f"Model entry for provider {provider} has no 'id': {model}")
+            available_models[provider] = ids
+        print('[get_available_models] available_models:', available_models)
+        # Return as Flask JSON response for frontend compatibility
+        return jsonify(available_models), 200
+    except Exception as e:
+        logger.error(f"Error getting available models: {e}")
+        # Always return valid JSON response on error
+        return jsonify({}), 500
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000)) 
