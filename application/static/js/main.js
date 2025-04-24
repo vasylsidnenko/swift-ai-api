@@ -194,6 +194,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Change icon when expanding/collapsing AI settings block
     if (aiSettingsToggle) {
+        aiSettingsToggle.addEventListener('click', function() {
+            const chevron = document.getElementById('aiConfigChevron');
+            if (chevron) {
+                chevron.classList.toggle('bi-chevron-down');
+                chevron.classList.toggle('bi-chevron-up');
+            }
+        });
+    }
+    // Allow clicking on the whole AI Configuration header (except the button) to toggle collapse
+    // Клік по хедеру (крім кнопки) відкриває/закриває секцію
+    const aiConfigHeader = document.getElementById('aiConfigHeader');
+    const aiConfigCollapseBtn = document.getElementById('aiConfigCollapseBtn');
+    const aiSettingsCollapse = document.getElementById('aiSettings');
+    if (aiConfigHeader && aiConfigCollapseBtn && aiSettingsCollapse) {
+        aiConfigHeader.addEventListener('click', function(e) {
+            // Не реагувати на клік по кнопці
+            if (e.target === aiConfigCollapseBtn || aiConfigCollapseBtn.contains(e.target)) return;
+            // Використовуємо Bootstrap Collapse API
+            const collapse = bootstrap.Collapse.getOrCreateInstance(aiSettingsCollapse);
+            if (aiSettingsCollapse.classList.contains('show')) {
+                collapse.hide();
+            } else {
+                collapse.show();
+            }
+        });
+    }
+
+    // Change icon when expanding/collapsing AI settings block
+    if (aiSettingsToggle) {
         const chevronIcon = aiSettingsToggle.querySelector('.bi-chevron-down, .bi-chevron-up'); // Select either icon
         const aiSettingsElement = document.getElementById('aiSettings');
 
@@ -563,16 +592,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if (questionText) {
             html += `<div class="mb-3 p-3 border rounded shadow-sm" style="background:#fff;">
                 <div style="font-size:1.16rem; font-weight:600; color:#23232b; line-height:1.25; margin-bottom:0.5rem;">${escapeHtml(questionText)}</div>
-                ${Array.isArray(tags) && tags.length > 0 ? `<div class="mt-2 p-1 rounded" style="background:#f7f7fa;"><span class="badge" style="background:#e3e3ee; color:#555; font-weight:400; margin-right:0.3em;">${tags.map(t=>escapeHtml(t)).join('</span> <span class="badge" style="background:#e3e3ee; color:#555; font-weight:400; margin-right:0.3em;">')}</span></div>` : ''}
+                ${Array.isArray(tags) && tags.length > 0 ? `<div class="mt-2"><span class="badge" style="background:#e3e3ee; color:#555; font-weight:400; margin-right:0.3em;">${tags.map(t=>escapeHtml(t)).join('</span> <span class="badge" style="background:#e3e3ee; color:#555; font-weight:400; margin-right:0.3em;">')}</span></div>` : ''}
             </div>`;
         }
-        // 3. Token usage
+        // 3. Token usage and time
         let tokens = '';
-        if (data.agent && data.agent.statistic && typeof data.agent.statistic.tokens === 'number') {
-            tokens = data.agent.statistic.tokens;
+        let time = '';
+        if (data.agent && data.agent.statistic) {
+            if (typeof data.agent.statistic.tokens === 'number') {
+                tokens = data.agent.statistic.tokens;
+            }
+            if (typeof data.agent.statistic.time === 'number') {
+                time = (data.agent.statistic.time / 1000).toFixed(2);
+            }
         }
-        if (tokens) {
-            html += `<div class="mb-2 text-muted">Tokens used: <b>${tokens}</b></div>`;
+        if (tokens || time) {
+            let statLine = '';
+            if (tokens) statLine += `Tokens used: <b>${tokens}</b>`;
+            if (tokens && time) statLine += ' | ';
+            if (time) statLine += `Time: <b>${time}s</b>`;
+            html += `<div class="d-flex"><div class="flex-grow-1"></div><div class="mb-2 text-muted text-end" style="min-width:180px;">${statLine}</div></div>`;
         }
         // 4. Tabs for answer levels
         const levels = data.answerLevels || (data.question && data.question.answerLevels) || {};
@@ -631,6 +670,7 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `<div>${tabs}<div class="tab-content">${tabContent}</div></div>`;
         }
         resultDiv.innerHTML = html;
+        if (typeof highlightAllCodeBlocks === 'function') highlightAllCodeBlocks();
         // Активувати bootstrap таби (якщо потрібно)
         if (window.bootstrap && window.bootstrap.Tab) {
             const tabEls = document.querySelectorAll('#answerLevelTabs button[data-bs-toggle="tab"]');
