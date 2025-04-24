@@ -20,31 +20,13 @@ def mock_execute():
 
     # Simple mock responses for UI development
     if operation == 'generate':
-        return jsonify({
-            'success': True,
-            'data': {
-                'question': 'What is a closure in Swift?\n```swift\nlet closure = { print("Hello") }\n```',
-                'tags': ['swift', 'closures'],
-                'token_usage': {'prompt': 50, 'completion': 120, 'total': 170},
-                'answers': {
-                    'beginner': {
-                        'text': 'A closure is a self-contained block of functionality.',
-                        'choices': ['A function', 'A variable', 'A closure', 'A class'],
-                        'correct': 2
-                    },
-                    'intermediate': {
-                        'text': 'Closures can capture and store references to variables.',
-                        'choices': ['True', 'False'],
-                        'correct': 0
-                    },
-                    'advanced': {
-                        'text': 'MOCK:: Explain how closures capture variables in Swift.',
-                        'choices': [],
-                        'correct': None
-                    }
-                }
-            }
-        }), 200
+        # Serve mock_generate.json as the response for generate
+        import os, json
+        mock_path = os.path.join(os.path.dirname(__file__), 'mock_generate.json')
+        with open(mock_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return jsonify({"success": True, "data": data}), 200
+
     elif operation == 'quiz':
         # Return a mock AIQuizModel structure
         return jsonify({
