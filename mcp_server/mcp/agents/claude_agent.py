@@ -301,18 +301,18 @@ Most expensive to use
         platform = r.platform
         technology = r.technology or ""
         tags = r.tags
+        # If a draft question is provided, include it as a hint for the model
+        hint = f" Draft question (use as a base or inspiration): '{r.question}'." if getattr(r, 'question', None) else ""
         prompt = (
             f"Create a programming question for the topic '{topic}' on platform '{platform}'. "
-            f"Technology: '{technology}'. Tags: {tags}. "
+            f"Technology: '{technology}'. Tags: {tags}.{hint} "
             "Return ONLY the question, without any answers, answer levels, tests, or explanations. "
             "Format your response as a JSON object with fields: topic, question, tags. "
             "Example: {\n  \"topic\": { \"name\": \"SwiftUI\", \"platform\": \"iOS\", \"technology\": \"Swift\" },\n  \"question\": \"Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.\",\n  \"tags\": [\"SwiftUI\", \"List\", \"iOS\", \"Delete\", \"Swipe\"]\n}"
         )
+        # Log the prompt for debugging
         print(f"Claude quiz prompt={prompt}")
         return prompt
-
-    def _check_client(self):
-        """Ensure client is initialized."""
         if not self.client:
             if not self.api_key:
                 raise ValueError("No Claude API key provided")

@@ -223,7 +223,7 @@ Good choice for interactive applications, chatbots, and assistance tools
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
                 [prompt],
-                generation_config={"temperature": 0.7, "max_output_tokens": 2048}
+                generation_config={"temperature": 0.85, "max_output_tokens": 2048}
             )
             response_text = response.text if hasattr(response, 'text') else response['candidates'][0]['content']['parts'][0]['text']
             quiz_obj = self._parse_gemini_response(response_text, 'quiz')
@@ -335,15 +335,18 @@ Question to validate: {request.request.model_dump_json()}
     def _format_quiz_request(self, request: AIRequestQuestionModel) -> str:
         """
         Формує prompt для генерації лише питання (без відповідей/тестів) для Gemini.
+        Якщо у request.request.question є текст — він буде використаний як чернетка/натяк для формування фінального питання.
         """
         r = request.request
+        # If a draft question is provided, include it as a hint for the model
+        hint = f" Draft question (use as a base or inspiration): '{r.question}'." if getattr(r, 'question', None) else ""
         prompt = (
             f"Create a programming question for the topic '{r.topic}' on platform '{r.platform}'. "
-            f"Technology: '{r.technology}'. Tags: {r.tags}. "
+            f"Technology: '{r.technology}'. Tags: {r.tags}.{hint} "
             "Return ONLY the question, without any answers, answer levels, tests, or explanations. "
             "Format your response as a JSON object with fields: topic, question, tags. "
             "Example: {"
-            "\n  \"topic\": { \"name\": \"SwiftUI\", \"platform\": \"iOS\", \"technology\": \"Swift\" },"
+            "\n  \"topic\": {{ \"name\": \"SwiftUI\", \"platform\": \"iOS\", \"technology\": \"Swift\" }},"
             "\n  \"question\": \"Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.\"," 
             "\n  \"tags\": [\"SwiftUI\", \"List\", \"iOS\", \"Delete\", \"Swipe\"]"
             "\n}"
