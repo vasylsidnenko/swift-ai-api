@@ -551,19 +551,95 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Display generated question(s)
     function displayGenerationResult(data) {
-        // Assuming data is the generated question string or object
-        // This part needs to be adapted based on the actual structure of `result.data` from /api/generate
-        if (typeof data === 'string') {
-             resultDiv.innerHTML = formatResult({ questions: [data] }); // Wrap string in expected structure
-        } else if (data && typeof data === 'object'){
-             // Assuming data might be { question: "...", answer: "..." } or similar
-             // We need a consistent format from the backend.
-             // Let's assume for now data IS the question string.
-             // TODO: Adjust based on actual backend response structure for generation
-             resultDiv.innerHTML = formatResult({ questions: [JSON.stringify(data, null, 2)] });
-              console.warn('displayGenerationResult received object, structure might need adjustment:', data);
-        } else {
-             handleApiError('response_format_error', 'Received unexpected format for generated question.');
+        if (!data || typeof data !== 'object') {
+            handleApiError('response_format_error', 'Received unexpected format for generated question.');
+            return;
+        }
+        let html = '';
+        // 1. Question block (with code formatting)
+        // 1. Question + Tags block
+        const questionText = data.text || (data.question && data.question.text) || '';
+        const tags = data.tags || (data.question && data.question.tags) || [];
+        if (questionText) {
+            html += `<div class="mb-3 p-3 border rounded shadow-sm" style="background:#fff;">
+                <div style="font-size:1.16rem; font-weight:600; color:#23232b; line-height:1.25; margin-bottom:0.5rem;">${escapeHtml(questionText)}</div>
+                ${Array.isArray(tags) && tags.length > 0 ? `<div class="mt-2 p-1 rounded" style="background:#f7f7fa;"><span class="badge" style="background:#e3e3ee; color:#555; font-weight:400; margin-right:0.3em;">${tags.map(t=>escapeHtml(t)).join('</span> <span class="badge" style="background:#e3e3ee; color:#555; font-weight:400; margin-right:0.3em;">')}</span></div>` : ''}
+            </div>`;
+        }
+        // 3. Token usage
+        let tokens = '';
+        if (data.agent && data.agent.statistic && typeof data.agent.statistic.tokens === 'number') {
+            tokens = data.agent.statistic.tokens;
+        }
+        if (tokens) {
+            html += `<div class="mb-2 text-muted">Tokens used: <b>${tokens}</b></div>`;
+        }
+        // 4. Tabs for answer levels
+        const levels = data.answerLevels || (data.question && data.question.answerLevels) || {};
+        const tabOrder = ['beginner', 'intermediate', 'advanced'];
+        let tabs = '';
+        let tabContent = '';
+        let first = true;
+        const levelColors = {
+            beginner: {tab: 'text-success', border: 'border-success', bg: 'bg-success bg-opacity-10'},
+            intermediate: {tab: 'text-warning', border: 'border-warning', bg: 'bg-warning bg-opacity-10'},
+            advanced: {tab: 'text-danger', border: 'border-danger', bg: 'bg-danger bg-opacity-10'}
+        };
+        tabs += '<ul class="nav nav-tabs mb-2" id="answerLevelTabs" role="tablist">';
+        tabOrder.forEach(level => {
+            if (levels[level]) {
+                const colorClass = levelColors[level] ? levelColors[level].tab : '';
+                tabs += `<li class="nav-item" role="presentation">
+                    <button class="nav-link ${colorClass}${first ? ' active' : ''}" id="tab-${level}" data-bs-toggle="tab" data-bs-target="#level-${level}" type="button" role="tab" aria-controls="level-${level}" aria-selected="${first ? 'true' : 'false'}">${level.charAt(0).toUpperCase() + level.slice(1)}</button>
+                </li>`;
+                first = false;
+            }
+        });
+        tabs += '</ul>';
+        first = true;
+        tabOrder.forEach(level => {
+            const l = levels[level];
+            if (!l) return;
+            const borderClass = levelColors[level] ? levelColors[level].border : '';
+            const bgClass = levelColors[level] ? levelColors[level].bg : '';
+            tabContent += `<div class="tab-pane fade${first ? ' show active' : ''} ${borderClass} ${bgClass}" id="level-${level}" role="tabpanel" aria-labelledby="tab-${level}" style="border-width:2px; border-style:solid; border-radius:0 0 8px 8px; margin-bottom:1rem;">`;
+            tabContent += `<div class="mb-2"><b>${escapeHtml(l.name || level.charAt(0).toUpperCase() + level.slice(1))}</b></div>`;
+            tabContent += `<div class="mb-2">${formatSingleQuestion(l.answer || '')}</div>`;
+            // Тести
+            if (Array.isArray(l.tests) && l.tests.length > 0) {
+                l.tests.forEach((test, idx) => {
+                    tabContent += `<div class="card mb-2"><div class="card-body p-2">
+                        <div class="mb-1"><b>Test ${idx+1}:</b></div>
+                        <div class="mb-1">${formatSingleQuestion(test.snippet || '')}</div>`;
+                    if (Array.isArray(test.options)) {
+                        tabContent += '<ul class="list-group mb-1">';
+                        const answerIdx = (typeof test.answer === 'string' && /^\d+$/.test(test.answer)) ? (parseInt(test.answer, 10) - 1) : (typeof test.answer === 'number' ? test.answer : -1);
+                        test.options.forEach((opt, i) => {
+                            const isCorrect = i === answerIdx;
+                            tabContent += `<li class="list-group-item${isCorrect ? ' list-group-item-success' : ''}">${escapeHtml(opt)}</li>`;
+                        });
+                        tabContent += '</ul>';
+                    }
+                    tabContent += '</div></div>';
+                });
+            }
+            tabContent += '</div>';
+            first = false;
+        });
+        if (tabContent) {
+            html += `<div>${tabs}<div class="tab-content">${tabContent}</div></div>`;
+        }
+        resultDiv.innerHTML = html;
+        // Активувати bootstrap таби (якщо потрібно)
+        if (window.bootstrap && window.bootstrap.Tab) {
+            const tabEls = document.querySelectorAll('#answerLevelTabs button[data-bs-toggle="tab"]');
+            tabEls.forEach(tabEl => {
+                tabEl.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const tabTrigger = window.bootstrap.Tab.getOrCreateInstance(tabEl);
+                    tabTrigger.show();
+                });
+            });
         }
     }
 
@@ -655,7 +731,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     code = codeContent.substring(languageMatch[0].length); // Code without language hint
                 }
                 // Apply formatting and syntax highlighting (basic pre/code)
-                 formattedHtml += `<pre class="bg-dark text-light p-3 rounded mt-2 mb-2"><code class="language-${language}">${escapeHtml(code)}</code></pre>`;
+                 formattedHtml += `<pre class="bg-light text-dark p-3 rounded mt-2 mb-2" style="font-family: 'Fira Mono', 'Menlo', 'Consolas', monospace; font-size: 1em; overflow-x: auto;"><code class="language-${language}">${escapeHtml(code)}</code></pre>`;
                  // Note: For actual syntax highlighting, a library like Prism.js or highlight.js would be needed
                  // and integrated here, likely by adding classes and running the library's initialization.
             } else {
