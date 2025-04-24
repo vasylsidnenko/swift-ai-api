@@ -628,20 +628,41 @@ document.addEventListener('DOMContentLoaded', function() {
         tabOrder.forEach(level => {
             if (levels[level]) {
                 const colorClass = levelColors[level] ? levelColors[level].tab : '';
+                // border-top лише для активної вкладки (додається динамічно через js нижче)
                 tabs += `<li class="nav-item" role="presentation">
                     <button class="nav-link ${colorClass}${first ? ' active' : ''}" style="font-weight:600;" id="tab-${level}" data-bs-toggle="tab" data-bs-target="#level-${level}" type="button" role="tab" aria-controls="level-${level}" aria-selected="${first ? 'true' : 'false'}">${level.charAt(0).toUpperCase() + level.slice(1)}</button>
                 </li>`;
                 first = false;
             }
         });
+        // Функція для оновлення border-top лише у активної вкладки
+        function updateTabBorderTop() {
+            const tabs = document.querySelectorAll('#answerLevelTabs .nav-link');
+            tabs.forEach(tab => {
+                tab.style.borderTop = '';
+                if (tab.classList.contains('active')) {
+                    if (tab.id.includes('beginner')) tab.style.borderTop = '4px solid #28a745';
+                    if (tab.id.includes('intermediate')) tab.style.borderTop = '4px solid #ffc107';
+                    if (tab.id.includes('advanced')) tab.style.borderTop = '4px solid #dc3545';
+                }
+            });
+        }
+        setTimeout(updateTabBorderTop, 0);
+        // Перевішуємо стилізацію при кожному перемиканні вкладки
+        setTimeout(() => {
+            const tabs = document.querySelectorAll('#answerLevelTabs .nav-link');
+            tabs.forEach(tab => {
+                tab.addEventListener('shown.bs.tab', updateTabBorderTop);
+            });
+        }, 0);
         tabs += '</ul>';
         first = true;
         tabOrder.forEach(level => {
             const l = levels[level];
             if (!l) return;
             const borderClass = levelColors[level] ? levelColors[level].border : '';
-            const bgClass = levelColors[level] ? levelColors[level].bg : '';
-            tabContent += `<div class="tab-pane fade${first ? ' show active' : ''} ${borderClass} ${bgClass}" id="level-${level}" role="tabpanel" aria-labelledby="tab-${level}" style="border-width:2px; border-style:solid; border-radius:0 0 8px 8px; margin-bottom:1rem;">`;
+            // Лівий border відповідного кольору, без фону
+            tabContent += `<div class="tab-pane fade${first ? ' show active' : ''} ${borderClass}" id="level-${level}" role="tabpanel" aria-labelledby="tab-${level}" style="border-left-width:4px; border-left-style:solid; border-radius:0 0 8px 8px; margin-bottom:1rem; background:none;">`;
             tabContent += `<div class=\"mb-2\"></div>`;
             tabContent += `<div class="mb-2">${formatSingleQuestion(l.answer || '')}</div>`;
             // Тести
