@@ -1,3 +1,4 @@
+console.log('JS loaded', new Date().toLocaleString());
 // Returns a color for the quiz result header based on provider name
 function getProviderColor(provider) {
     switch ((provider || '').toLowerCase()) {
@@ -691,6 +692,10 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `<div>${tabs}<div class="tab-content">${tabContent}</div></div>`;
         }
         resultDiv.innerHTML = html;
+        // Ensure PrismJS highlights and adds line numbers
+        if (window.Prism && Prism.highlightAll) {
+            Prism.highlightAll();
+        }
         if (typeof highlightAllCodeBlocks === 'function') highlightAllCodeBlocks();
         // Активувати bootstrap таби (якщо потрібно)
         if (window.bootstrap && window.bootstrap.Tab) {
@@ -705,25 +710,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // ... (rest of the code remains the same)
     // Display validation result
     function displayValidationResult(data) {
-         // Assuming data contains validation feedback
-         // This part needs to be adapted based on the actual structure of `result.data` from /api/validate
+        // This part needs to be adapted based on the actual structure of `result.data` from /api/validate
         if (data && typeof data === 'object' && data.hasOwnProperty('is_valid')) {
             const isValid = data.is_valid;
             const feedback = data.feedback || 'No feedback provided.';
             const confidence = data.confidence !== undefined ? (data.confidence * 100).toFixed(1) + '%' : 'N/A';
 
-            resultDiv.innerHTML = `
+        resultDiv.innerHTML = `
                 <div class="alert ${isValid ? 'alert-success' : 'alert-warning'} mt-3" role="alert">
                     <h5 class="alert-heading"><i class="bi ${isValid ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'} me-2"></i>Validation Result</h5>
                     <p><strong>Is Valid:</strong> ${isValid ? 'Yes' : 'No'}</p>
                     <p><strong>Feedback:</strong></p>
-                    <pre class="bg-light p-2 rounded"><code>${escapeHtml(feedback)}</code></pre>
+                    <pre class="bg-light p-2 rounded line-numbers"><code class="language-plaintext">${escapeHtml(feedback)}</code></pre>
                     <p><strong>Confidence:</strong> ${confidence}</p>
-                    ${data.original_question ? `<hr><p><strong>Original Question:</strong></p><pre class="bg-light p-2 rounded"><code>${escapeHtml(data.original_question)}</code></pre>` : ''}
+                    ${data.original_question ? `<hr><p><strong>Original Question:</strong></p><pre class="bg-light p-2 rounded line-numbers"><code class="language-plaintext">${escapeHtml(data.original_question)}</code></pre>` : ''}
                 </div>
             `;
+        // Ensure PrismJS highlights and adds line numbers
+        setTimeout(function() {
+            document.querySelectorAll('pre.line-numbers code').forEach(function(code) {
+                if (![...code.classList].some(cls => cls.startsWith('language-'))) {
+                    code.classList.add('language-plaintext');
+                }
+            });
+            if (window.Prism && Prism.highlightAll) {
+                Prism.highlightAll();
+            }
+        }, 0);
+
+        // Ensure PrismJS highlights and adds line numbers
+        if (window.Prism && Prism.highlightAll) {
+            Prism.highlightAll();
+        }
+
         } else {
             handleApiError('response_format_error', 'Received unexpected format for validation result.', JSON.stringify(data));
         }
@@ -770,16 +792,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Formats a single question potentially containing code blocks
+    // Formats a single question potentially containing code blocks
     function formatSingleQuestion(questionText) {
         if (typeof questionText !== 'string') {
-             console.error("formatSingleQuestion expected a string, got:", questionText);
-             return '<div class="alert alert-danger">Error displaying question: Invalid format received.</div>';
+            console.error("formatSingleQuestion expected a string, got:", questionText);
+            return '<div class="alert alert-danger">Error displaying question: Invalid format received.</div>';
         }
-        console.log("Formatting single question:", questionText);
         // Split the text into code blocks and text parts
         const parts = questionText.split(/(```[\s\S]*?```)/g);
         let formattedHtml = '<div class="generated-question p-3 border rounded shadow-sm">';
-
         parts.forEach(part => {
             if (part.startsWith('```') && part.endsWith('```')) {
                 // It's a code block
@@ -792,19 +813,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     language = languageMatch[1];
                     code = codeContent.substring(languageMatch[0].length); // Code without language hint
                 }
-                // Apply formatting and syntax highlighting (basic pre/code)
-                 formattedHtml += `<pre class="bg-light text-dark p-3 rounded mt-2 mb-2" style="font-family: 'Fira Mono', 'Menlo', 'Consolas', monospace; font-size: 1em; overflow-x: auto;"><code class="language-${language}">${escapeHtml(code)}</code></pre>`;
-                 // Note: For actual syntax highlighting, a library like Prism.js or highlight.js would be needed
-                 // and integrated here, likely by adding classes and running the library's initialization.
+                // Add pre/code block with line-numbers and language class
+                formattedHtml += `<pre class="bg-light text-dark p-3 rounded mt-2 mb-2 line-numbers" style="font-family: 'Fira Mono', 'Menlo', 'Consolas', monospace; font-size: 1em; overflow-x: auto;"><code class="language-${language}">${escapeHtml(code)}</code></pre>`;
             } else {
                 // It's regular text, convert newlines to <br> and escape HTML
                 formattedHtml += `<p>${escapeHtml(part).replace(/\n/g, '<br>')}</p>`;
             }
         });
-
         formattedHtml += '</div>';
         return formattedHtml;
     }
+
 
     // Simple check if text likely contains a code block (used for styling)
     function hasCodeBlock(text) {

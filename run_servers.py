@@ -14,10 +14,24 @@ logger = logging.getLogger(__name__)
 MCP_SERVER_PORT = 10001
 APPLICATION_PORT = 10000
 
+def kill_process_on_port(port):
+    """Kill any process using the given port (macOS)."""
+    import subprocess
+    try:
+        result = subprocess.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True)
+        pids = result.stdout.strip().split("\n")
+        for pid in pids:
+            if pid:
+                logger.info(f"Killing process {pid} on port {port}...")
+                subprocess.run(["kill", "-9", pid])
+    except Exception as e:
+        logger.warning(f"Failed to kill process on port {port}: {e}")
+
 def check_ports():
-    """Check if ports are available."""
+    """Check if ports are available. If not, kill processes using them (macOS)."""
     import socket
     for port in [MCP_SERVER_PORT, APPLICATION_PORT]:
+        kill_process_on_port(port)  # Kill any process using the port
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             sock.bind(('localhost', port))

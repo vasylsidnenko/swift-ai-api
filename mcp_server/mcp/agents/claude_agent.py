@@ -86,7 +86,7 @@ class ClaudeAgent(AgentProtocol):
         """
         return [
             "claude-3-7-sonnet",
-            "claude-3-5-sonnet",
+            #"claude-3-5-sonnet",
             # "claude-3-5-haiku",
             # "claude-3-5-opus"
         ]
@@ -156,7 +156,6 @@ Most expensive to use
         model_name = request.model.model
         full_model_name = self._convert_model_name(model_name)
         logger.info(f"Claude model (short): {model_name}, (full): {full_model_name}")
-        self._check_client()
         start_time = time.time()
         try:
             if model_name not in self.supported_models():
@@ -167,7 +166,8 @@ Most expensive to use
                 model=full_model_name,
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=15000,
+                # Set max_tokens: 15000 for any 3-7 model, 8192 for any 3-5 model, default 8192
+                max_tokens=15000 if "3-7" in model_name else 8192,
                 temperature=0.7
             )
             response_text = response.content[0].text
@@ -200,7 +200,6 @@ Most expensive to use
         model_name = request.model.model
         full_model_name = self._convert_model_name(model_name)
         logger.info(f"Claude model (short): {model_name}, (full): {full_model_name}")
-        self._check_client()
         start_time = time.time()
         try:
             if model_name not in self.supported_models():
@@ -211,7 +210,7 @@ Most expensive to use
                 model=full_model_name,
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=10000,
+                max_tokens=15000 if "3-7" in model_name else 8192,
                 temperature=0
             )
             response_text = response.content[0].text
@@ -243,7 +242,6 @@ Most expensive to use
         model_name = request.model.model
         full_model_name = self._convert_model_name(model_name)
         logger.info(f"Claude model (short): {model_name}, (full): {full_model_name}")
-        self._check_client()
         start_time = time.time()
         try:
             prompt = self._format_quiz_request(request)
@@ -691,7 +689,6 @@ Return only the JSON without any other text or explanations.
         Returns:
             AIQuestionModel containing the generated question
         """
-        self._check_client()
         start_time = time.time()
         
         try:
@@ -736,7 +733,6 @@ Return only the JSON without any other text or explanations.
                 agent=agent_model,
                 question=question_obj
             )
-
             
         except Exception as e:
             logger.exception(f"Error generating question with Claude: {e}")
@@ -752,7 +748,6 @@ Return only the JSON without any other text or explanations.
         Returns:
             AIValidationModel containing the validation results
         """
-        self._check_client()
         start_time = time.time()
         
         try:
@@ -810,7 +805,6 @@ Return only the JSON without any other text or explanations.
         Returns:
             AICapabilitiesModel containing the model capabilities
         """
-        self._check_client()
         start_time = time.time()
         
         try:

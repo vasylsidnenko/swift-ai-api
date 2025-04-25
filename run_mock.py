@@ -44,14 +44,21 @@ kill_port(10001)
 # Set environment variables for both servers
 os.environ["PYTHONPATH"] = str(PROJECT_ROOT) + ":"
 
+# Determine python executable (prefer venv)
+venv_python = os.environ.get("VIRTUAL_ENV")
+if venv_python:
+    python_path = str(Path(venv_python) / "bin" / "python")
+else:
+    python_path = sys.executable
+
 # Commands for the servers
 # Use Flask's module:function syntax for correct discovery
 MOCK_MCP_CMD = [
-    sys.executable, "-m", "flask", "run",
+    python_path, "-m", "flask", "run",
     "--host=0.0.0.0", "--port=10001"
 ]
 APP_CMD = [
-    sys.executable, "-m", "flask", "run",
+    python_path, "-m", "flask", "run",
     "--host=0.0.0.0", "--port=10000"
 ]
 

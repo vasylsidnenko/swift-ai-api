@@ -72,8 +72,6 @@ class GeminiAgent(AgentProtocol):
         # Use full Gemini model names for API
         return [
             "gemini-1.5-pro-latest",
-            "gemini-1.5-pro",
-            "gemini-1.5-pro-002",
             "gemini-2.0-flash"
         ]
 

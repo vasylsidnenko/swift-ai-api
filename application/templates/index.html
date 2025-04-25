@@ -10,8 +10,8 @@
     <title>Programming Question Generator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ range(1, 10000) | random }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/field-label.css') }}?v={{ range(1, 10000) | random }}">
 </head>
@@ -147,5 +147,19 @@
     <script src="{{ url_for('static', filename='js/main.js') }}?v={{ range(1, 10000) | random }}"></script>
     <script src="{{ url_for('static', filename='js/ai-config-header.js') }}?v={{ range(1, 10000) | random }}"></script>
     <script src="{{ url_for('static', filename='js/field-highlight.js') }}?v={{ range(1, 10000) | random }}"></script>
+    <!-- Prism.js core -->
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <!-- Prism.js Swift language -->
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-swift.min.js"></script>
+    <!-- Prism.js line-numbers plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <!-- Prism.js CSS (already in <head>) -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.Prism && Prism.highlightAll) {
+          Prism.highlightAll();
+        }
+      });
+    </script>
 </body>
 </html>

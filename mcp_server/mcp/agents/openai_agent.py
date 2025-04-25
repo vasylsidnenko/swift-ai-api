@@ -181,15 +181,18 @@ Example output:
             start_time = time.time()
             messages = self._prepare_messages(request.request)
             prompt_tokens = self.count_tokens(request.model.model, messages)
-            max_tokens_param = self._get_max_tokens_param(request.model.model)
-            # Prepare arguments for OpenAI API
+            # Set correct tokens parameter for different OpenAI models
             openai_kwargs = {
                 "model": request.model.model,
                 "messages": messages
             }
             if self._is_temperature_supported_by_model(request.model.model):
                 openai_kwargs["temperature"] = 0.7
-            openai_kwargs[max_tokens_param] = 4000
+            # Use max_completion_tokens for o3/o4/gpt-4o, max_tokens for others
+            if any(x in request.model.model for x in ["o3", "o4", "gpt-4o"]):
+                openai_kwargs["max_completion_tokens"] = 4000
+            else:
+                openai_kwargs["max_tokens"] = 4000
             try:
                 response = self.client.chat.completions.create(**openai_kwargs)
             except Exception as e:
@@ -294,19 +297,19 @@ Example output:
     def _get_max_tokens_param(self, model_name: str) -> str:
         """
         Returns the correct max tokens parameter name for the given model.
-        For new models (o4-mini, gpt-4o, gpt-4o-mini), use 'max_completion_tokens'.
+        For new models (o4-mini, o3-mini, gpt-4o, gpt-4o-mini), use 'max_completion_tokens'.
         For all others, use 'max_tokens'.
         """
-        new_models = ['o4-mini', 'gpt-4o-mini', 'gpt-4o']
+        new_models = ['o4-mini', 'o3-mini', 'gpt-4o-mini', 'gpt-4o']
         if any(m in model_name.lower() for m in new_models):
             return 'max_completion_tokens'
         return 'max_tokens'
 
     def _is_temperature_supported_by_model(self, model_name: str) -> bool:
         """
-        Returns False for models that only support default temperature (1), e.g. o4-mini, gpt-4o, gpt-4o-mini.
+        Returns False for models that only support default temperature (1), e.g. o4-mini, o3-mini, gpt-4o, gpt-4o-mini.
         """
-        no_temp_models = ['o4-mini', 'gpt-4o-mini', 'gpt-4o']
+        no_temp_models = ['o4-mini', 'o3-mini', 'gpt-4o-mini', 'gpt-4o']
         return not any(m in model_name.lower() for m in no_temp_models)
 
     def quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
@@ -322,6 +325,7 @@ Example output:
             logger.info("OpenAI version=unknown")
         model_name = request.model.model
         logger.info(f"OpenAI model: {model_name}")
+        print(f"OpenAI model: {model_name}")
         start_time = time.time()
         try:
             prompt = self._format_quiz_request(request)
