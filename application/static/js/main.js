@@ -374,8 +374,8 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <div class='card-body'>
             <div><strong>Quiz Question:</strong></div>
-            <div class='mb-3'>
-                <textarea class='form-control' style='width:100%;resize:none;overflow:hidden' readonly>${escapeHtml(quizQ)}</textarea>
+            <div class='mb-3 quiz-question-block'>
+                ${formatSingleQuestion(quizQ)}
             </div>
             <button class='btn apply-quiz-btn' style='background-color:#6c757d !important;color:#fff !important;border:none !important;'>Apply</button>
         </div>
@@ -394,18 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 // Set provider color for header
                 quizResultBlock.querySelector('.card-header').style.setProperty('background-color', getProviderColor(selectedProvider), 'important');
-                // Make quiz question textarea auto-resize and no scroll
-                const quizTextarea = quizResultBlock.querySelector('textarea');
-                // Make textarea auto-expand to fit content, no scrollbars, min-height for usability
-                // Make textarea auto-expand to fit content, no scrollbars, min-height for usability
-                quizTextarea.style.overflow = 'hidden';
-                quizTextarea.style.height = 'auto';
-                quizTextarea.style.resize = 'none';
-                quizTextarea.style.minHeight = '80px'; // Ensures it's always at least 3 lines tall
-                autoResizeTA(quizTextarea);
-                quizTextarea.addEventListener('input', function() { autoResizeTA(this); });
-                autoResizeTA(quizTextarea);
-                quizTextarea.addEventListener('input', function() { autoResizeTA(this); });
+                // Quiz question now rendered as HTML block, no textarea/auto-resize needed
                 quizResultDiv.appendChild(quizResultBlock);
                 quizResultDiv.style.display = 'block';
             } catch (err) {
