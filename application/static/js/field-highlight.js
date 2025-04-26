@@ -9,6 +9,7 @@ function updateFieldHighlight(field) {
 
 document.addEventListener("DOMContentLoaded", function() {
   const highlightFields = [
+    document.getElementById("platform"),
     document.getElementById("keywords"),
     document.getElementById("questionContext"),
     document.getElementById("tech"),
