@@ -143,7 +143,7 @@ Good choice for interactive applications, chatbots, and assistance tools
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
                 [prompt],
-                generation_config={"temperature": 0.7, "max_output_tokens": 15000}
+                generation_config={"temperature": request.temperature, "max_output_tokens": 15000}
             )
             response_text = response.text if hasattr(response, 'text') else response['candidates'][0]['content']['parts'][0]['text']
             question_obj = self._parse_gemini_response(response_text, 'question')
@@ -182,7 +182,7 @@ Good choice for interactive applications, chatbots, and assistance tools
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
                 [prompt],
-                generation_config={"temperature": 0, "max_output_tokens": 15000}
+                generation_config={"temperature": request.temperature, "max_output_tokens": 15000}
             )
             response_text = response.text if hasattr(response, 'text') else response['candidates'][0]['content']['parts'][0]['text']
             validation_obj = self._parse_gemini_response(response_text, 'validation')
@@ -221,7 +221,7 @@ Good choice for interactive applications, chatbots, and assistance tools
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
                 [prompt],
-                generation_config={"temperature": 0.85, "max_output_tokens": 2048}
+                generation_config={"temperature": request.temperature, "max_output_tokens": 2048}
             )
             response_text = response.text if hasattr(response, 'text') else response['candidates'][0]['content']['parts'][0]['text']
             quiz_obj = self._parse_gemini_response(response_text, 'quiz')

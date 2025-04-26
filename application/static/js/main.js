@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 200);
 
-    // Add change event handler for provider select
+    // --- Provider select is now always visible in main form ---
     aiSelect.addEventListener('change', function() {
         const provider = this.value;
         populateModels(provider); // асинхронно оновить select і хедер
@@ -653,7 +653,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const borderClass = levelColors[level] ? levelColors[level].border : '';
             // Лівий border відповідного кольору, без фону
             tabContent += `<div class="tab-pane fade${first ? ' show active' : ''} ${borderClass}" id="level-${level}" role="tabpanel" aria-labelledby="tab-${level}" style="border-left-width:4px; border-left-style:solid; border-radius:0 0 8px 8px; margin-bottom:1rem; background:none;">`;
-            tabContent += `<div class=\"mb-2\"></div>`;
+            // Show evaluation criteria if present
+            if (l.evaluationCriteria && l.evaluationCriteria.trim() !== '') {
+                tabContent += `<div class="alert alert-info py-2 px-3 mb-2" style="font-size:0.98rem;"><b>Evaluation Criteria:</b><br>${escapeHtml(l.evaluationCriteria)}</div>`;
+            }
             tabContent += `<div class="mb-2">${formatSingleQuestion(l.answer || '')}</div>`;
             // Тести
             if (Array.isArray(l.tests) && l.tests.length > 0) {
@@ -916,6 +919,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Update form submission to include validation settings
 document.getElementById('questionForm').addEventListener('submit', function(e) {
     e.preventDefault();
+    // Always send 'ai' as the provider in the API request
     
     // Build context as required by backend
     const context = {

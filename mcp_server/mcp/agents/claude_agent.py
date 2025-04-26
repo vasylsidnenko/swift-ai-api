@@ -168,7 +168,7 @@ Most expensive to use
                 messages=[{"role": "user", "content": prompt}],
                 # Set max_tokens: 15000 for any 3-7 model, 8192 for any 3-5 model, default 8192
                 max_tokens=15000 if "3-7" in model_name else 8192,
-                temperature=0.7
+                temperature=request.temperature
             )
             response_text = response.content[0].text
             from mcp.agents.ai_models import QuestionModel
@@ -211,7 +211,7 @@ Most expensive to use
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=15000 if "3-7" in model_name else 8192,
-                temperature=0
+                temperature=request.temperature
             )
             response_text = response.content[0].text
             validation = self._parse_claude_response(response_text, QuestionValidation)
@@ -251,7 +251,7 @@ Most expensive to use
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=4000,
-                temperature=0.7
+                temperature=request.temperature
             )
             response_text = response.content[0].text
             from mcp.agents.ai_models import QuizModel
@@ -537,7 +537,7 @@ Your response MUST be a valid JSON object for the following schema (all fields a
       "evaluationCriteria": "string"
     }
   }
-}
+
 
 Example:
 {{ ... }}
@@ -711,7 +711,7 @@ Return only the JSON without any other text or explanations.
                     }
                 ],
                 max_tokens=15000,
-                temperature=0.7
+                temperature=request.temperature
             )
             
             # Extract content text from response
@@ -770,7 +770,7 @@ Return only the JSON without any other text or explanations.
                     }
                 ],
                 max_tokens=10000,
-                temperature=0
+                temperature=request.temperature
             )
             
             # Extract content text from response

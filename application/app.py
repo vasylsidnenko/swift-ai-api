@@ -144,7 +144,7 @@ def api_generate():
         response = requests.post(EXECUTE_ENDPOINT, json=mcp_payload, timeout=60)
         response.raise_for_status()
         mcp_response_data = response.json()
-        logger.info(f"Received response from MCP server: {mcp_response_data}")
+        # logger.info(f"Received response from MCP server: {mcp_response_data}")
         return jsonify(mcp_response_data), response.status_code
     except requests.exceptions.ConnectionError as e:
         logger.error(f"Could not connect to MCP server at {MCP_SERVER_URL}: {e}")

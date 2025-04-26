@@ -473,12 +473,16 @@ Example of a valid output:
 You are an expert assistant specializing in generating full-structure programming questions for education.
 
 Your task:
-- Generate a well-structured programming question with three difficulty levels: Beginner, Intermediate, Advanced.
+- Generate a high-quality programming question with three difficulty levels: Beginner, Intermediate, Advanced.
 - For each level, provide:
   1. A detailed answer
   2. Three test questions (multiple choice with 4+ options)
   3. Evaluation criteria (knowledge, skills, concepts)
-- Ensure code examples are well formatted using proper language blocks
+
+When generating the "tags" field:
+- Include all relevant keywords and important concepts naturally associated with the Topic, Platform, Technology, and the main Question.
+- Expand tags thoughtfully: not only direct matches, but also related APIs, frameworks, libraries, common terminologies, and key techniques.
+- Tags must represent both fundamental and advanced concepts that a student needs to know to solve the question.
 
 Strict formatting rules:
 - DO NOT include markdown headings (like # or ##) or section titles
@@ -487,7 +491,7 @@ Strict formatting rules:
 - Present code blocks ONLY using fenced triple backticks with appropriate language (e.g., ```swift, ```cpp, etc.)
 - Format all code clearly with proper indentation
 
-Your output must follow JSON structure defined by the UI and must not include any surrounding commentary, explanation, or formatting help.
+The response must be a single JSON object that matches the defined structure, without any surrounding text, explanation, or formatting help.
         """
 
     def _make_generate_prompt(self, request: RequestQuestionModel) -> str:

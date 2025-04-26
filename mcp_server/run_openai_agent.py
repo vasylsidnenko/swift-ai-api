@@ -44,8 +44,9 @@ def generate_question():
                 platform="iOS",
                 topic="SwiftUI",    
                 technology="Swift",
-                tags=["View", "State", "Binding"]
-            )
+                tags=["View", "State"]
+            ),
+            temperature=0.7
         )
         
         print("Generating question...")

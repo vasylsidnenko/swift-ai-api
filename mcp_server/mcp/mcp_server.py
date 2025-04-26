@@ -170,21 +170,21 @@ class AIResource:
             if context.request_type == 'generate':
                 if isinstance(context.payload, dict):
                     model = AIModel(provider=context.config.provider, model=context.config.model)
-                    payload_obj = AIRequestQuestionModel(model=model, request=context.payload)
+                    payload_obj = AIRequestQuestionModel(model=model, request=context.payload, temperature=0.7)
                     result_data = agent_instance.generate(payload_obj)
                 else:
                     result_data = agent_instance.generate(context.payload)
             elif context.request_type == 'validate':
                 if isinstance(context.payload, dict):
                     model = AIModel(provider=context.config.provider, model=context.config.model)
-                    payload_obj = AIRequestValidationModel(model=model, request=context.payload)
+                    payload_obj = AIRequestValidationModel(model=model, request=context.payload, temperature=0.0)
                     result_data = agent_instance.validate(payload_obj)
                 else:
                     result_data = agent_instance.validate(context.payload)
             elif context.request_type == 'quiz':
                 if isinstance(context.payload, dict):
                     model = AIModel(provider=context.config.provider, model=context.config.model)
-                    payload_obj = AIRequestQuestionModel(model=model, request=context.payload)
+                    payload_obj = AIRequestQuestionModel(model=model, request=context.payload, temperature=0.85)
                     result_data = agent_instance.quiz(payload_obj)
                 else:
                     result_data = agent_instance.quiz(context.payload)
