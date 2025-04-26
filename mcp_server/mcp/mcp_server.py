@@ -77,46 +77,78 @@ from fastapi.responses import JSONResponse
 async def execute_endpoint(body: dict = Body(...)):
     """
     Unified endpoint for executing agent actions (generate, validate, quiz).
-    Accepts both new and legacy MCP payload formats.
+    Accepts ONLY the new MCP payload format:
+    {
+        "operation": "generate",
+        "context": {...},
+        "ai": {
+            "provider": "...",
+            "model": "...",
+            "api_key": "..." (optional)
+        }
+    }
     """
     logger.info(f"[POST] /mcp/v1/execute | Incoming body: {body}")
     try:
-        # --- Legacy MCP format support ---
-        # If resource_id, operation_id, context, config present, map to new fields
-        if all(k in body for k in ("resource_id", "operation_id", "context", "config")):
-            provider = body["resource_id"]
-            request_type = body["operation_id"]
-            payload = body["context"]
-            config = body["config"]
-            model = config.get("model")
-            api_key = config.get("api_key")
-        else:
-            provider = body.get("provider")
-            model = body.get("model")
-            api_key = body.get("api_key")
-            request_type = body.get("request_type")
-            payload = body.get("payload")
-        # --- End legacy support ---
+        request_type = body.get("operation")
+        payload = body.get("context")
+        ai = body.get("ai", {})
+        provider = ai.get("provider")
+        model = ai.get("model")
+        api_key = ai.get("api_key")
+
+        # Validate operation type
+        allowed_operations = {"generate", "quiz", "validate"}
+        if request_type not in allowed_operations:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "success": False,
+                    "error": f"Unsupported operation '{request_type}'. Allowed: {', '.join(allowed_operations)}",
+                    "error_type": "operation_error"
+                }
+            )
         if not provider or not model or not request_type or payload is None:
-            return JSONResponse(status_code=422, content={"success": False, "error": "Missing required fields in request", "error_type": "value_error"})
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "success": False,
+                    "error": "Missing required fields in request",
+                    "error_type": "value_error"
+                }
+            )
         if provider not in loaded_agents:
-            return JSONResponse(status_code=422, content={"success": False, "error": f"Provider '{provider}' not found", "error_type": "configuration_error"})
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "success": False,
+                    "error": f"Provider '{provider}' not found",
+                    "error_type": "configuration_error"
+                }
+            )
+        # Prepare config and context for the requested operation
         agent_class = loaded_agents[provider]
         config = AIConfig(provider=provider, model=model, api_key=api_key)
         context = MCPContext(request_type=request_type, config=config, payload=payload)
         resource = AIResource()
         response = resource.execute(agent_class, context)
+
         logger.info(f"[POST] /mcp/v1/execute | Response: {response}")
         if response.success:
             return JSONResponse(status_code=200, content=response.dict())
         else:
-            # Log error details for debugging
             logger.error(f"[POST] /mcp/v1/execute | Error: {response.error_type} | {response.error}")
-            # Return error details to client
             return JSONResponse(status_code=400, content=response.dict())
     except Exception as e:
         logger.exception(f"[POST] /mcp/v1/execute | Server error: {e}")
-        return JSONResponse(status_code=500, content={"success": False, "error": str(e), "error_type": "server_error"})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": str(e),
+                "error_type": "server_error"
+            }
+        )
 
 class MCPResponse(BaseModel):
     """Standard MCP response format"""

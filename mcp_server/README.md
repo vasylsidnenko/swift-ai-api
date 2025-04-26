@@ -1,5 +1,51 @@
 # MCP Server
 
+## Unified API Request Format
+
+All main operations (`generate`, `quiz`, `validate`) are handled via the `/mcp/v1/execute` endpoint with the following payload format:
+
+```json
+{
+  "operation": "generate" | "quiz" | "validate",
+  "context": {
+    "platform": "iOS",
+    "technology": "Swift",
+    "topic": "Basic",
+    "question": "What is ARC in Swift?",
+    "tags": ["memory", "swift", "arc"]
+  },
+  "ai": {
+    "provider": "openai",
+    "model": "o3-mini",
+    "api_key": "...optional..."
+  }
+}
+```
+
+- `provider` and `model` must match supported values for the agent. Supported models can be queried via `/mcp/v1/models/<provider>`.
+- If an unsupported model is used, the server will return an error:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Model '3o-mini' is not supported by OpenAIAgent. Supported: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o4-mini']",
+  "error_type": "configuration_error"
+}
+```
+
+## Error Handling
+
+All responses have the structure:
+- `success`: boolean
+- `data`: main result (null on error)
+- `error`: error message (null if success)
+- `error_type`: string describing error type (null if success)
+
+## Legacy Support
+
+Legacy fields and formats are no longer supported. Always use the unified structure above.
+
 This directory contains the core server code for the MCP (Multi-Component Platform) server. The server is implemented in Python and orchestrates agent-based operations, likely for AI or automation workflows.
 
 ## Structure

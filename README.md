@@ -54,6 +54,48 @@ This project provides an API and web interface for generating programming questi
 
 ## Architecture
 
+### MCP Server Integration
+
+### Unified API Request Format
+
+#### Model & Provider Validation
+- The `provider` and `model` fields in the `ai` object must match the supported values for the selected agent. Supported models can be retrieved via the `/api/models/<provider>` endpoint (see MCP server docs).
+- If an unsupported model is specified, the server will return a configuration error with a list of supported models, for example:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Model '3o-mini' is not supported by OpenAIAgent. Supported: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o4-mini']",
+  "error_type": "configuration_error"
+}
+```
+
+All main endpoints (`/api/generate`, `/api/quiz`, `/api/validate`) use the unified `operation/context/ai` structure described above.
+
+All main endpoints (`/api/generate`, `/api/quiz`, `/api/validate`) now accept requests in the unified format:
+
+```
+{
+  "operation": "generate" | "quiz" | "validate",
+  "context": { ... },
+  "ai": {
+    "provider": <provider>,
+    "model": <model>,
+    "api_key": <apiKey>
+  }
+}
+```
+- The field `provider` can also be provided as `ai` for compatibility with frontend clients. If `provider` is missing but `ai` is present, its value will be used as the provider.
+- The `context` object supports both `tags` and `keywords` fields. If only `keywords` is provided, it will be normalized to `tags`.
+- Legacy payload formats and fields are no longer supported.
+
+### /api/validate Endpoint
+
+- The `/api/validate` endpoint now uses the same request structure as `/api/generate` and `/api/quiz`.
+- The backend will normalize tags/keywords and fallback to `ai` as provider if needed.
+- This change ensures a consistent API for all core MCP operations.
+
 ### MCP Server Architecture Update (2025-04-21)
 
 **Important Note:** This project uses concepts and naming inspired by the Model Context Protocol ([modelcontextprotocol.io](https://modelcontextprotocol.io/)), such as standardized context and response objects, to manage interactions with different AI agents. However, it is a **custom, simplified implementation** and does **not** fully adhere to the official MCP specification. Specifically, it does not implement the standard MCP server endpoints (e.g., `/mcp/v1/execute`) or resource discovery mechanisms as defined in the protocol. The primary API is handled directly by the Flask application (`app.py`).

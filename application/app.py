@@ -81,70 +81,52 @@ def api_generate():
     data = request.json
     logger.info(f"Received /api/generate request: {data}")
 
-    provider = data.get('provider')
-    model = data.get('model')
-    api_key = data.get('apiKey')
+    # Prepare context for MCP request
     context_data = data.get('context', {})
-
-    # Patch: If context is empty but platform/technology/topic/tags/question are in root, add them to context
     context_fields = ['platform', 'technology', 'topic', 'tags', 'question']
     for field in context_fields:
-        # Accept both 'tech' and 'technology' for compatibility
         if field == 'technology':
             val = data.get('technology') or data.get('tech')
         else:
             val = data.get(field)
-        # If not already in context, but present in data, add to context
         if val is not None and (field not in context_data or not context_data.get(field)):
             context_data[field] = val
-    # If there is no tags, but there are keywords, use keywords as tags
+    # Handle tags/keywords normalization
     if 'tags' not in context_data and 'keywords' in data:
         keywords_val = data.get('keywords')
         if isinstance(keywords_val, str):
             context_data['tags'] = [t.strip() for t in keywords_val.split(',') if t.strip()]
         elif isinstance(keywords_val, list):
             context_data['tags'] = [str(t).strip() for t in keywords_val if str(t).strip()]
-    # Ensure tags is always a list (even if single string)
     if 'tags' in context_data and isinstance(context_data['tags'], str):
         context_data['tags'] = [t.strip() for t in context_data['tags'].split(',') if t.strip()]
-    # If tags is missing, add empty list (required by backend)
     if 'tags' not in context_data:
         context_data['tags'] = []
-    # If tags is still empty but keywords is present, use keywords
     if not context_data['tags'] and 'keywords' in data:
         keywords_val = data.get('keywords')
         if isinstance(keywords_val, str):
             context_data['tags'] = [t.strip() for t in keywords_val.split(',') if t.strip()]
         elif isinstance(keywords_val, list):
             context_data['tags'] = [str(t).strip() for t in keywords_val if str(t).strip()]
-    # Now context_data['tags'] always contains tags if present in keywords or tags
 
-    if not provider or not model:
-        return jsonify({"success": False, "error": "Missing provider or model", "error_type": "request_error"}), 400
-
-    # Prepare payload for MCP server
-    mcp_payload = {
-        "resource_id": provider,
-        "operation_id": "generate",
+    # Prepare new MCP format request
+    mcp_request = {
+        "operation": data.get("operation") or "generate",  # Default to 'generate' if not specified
         "context": context_data,
-        "config": {
-            "model": model
+        "ai": {
+            "provider": data.get("provider") or data.get("ai") or data.get("resource_id"),
+            "model": data.get("model"),
+            "api_key": data.get("apiKey")
         }
     }
-    # Add API key if provided and not a placeholder
-    if api_key and api_key != "********":
-        mcp_payload["config"]["api_key"] = api_key
-    elif not api_key:
-        logger.info(f"No API key provided by user for {provider}, MCP server will check environment.")
-    elif api_key == "********":
-        logger.info(f"Using environment API key placeholder for {provider}, MCP server will use environment key.")
 
-    logger.info(f"Sending request to MCP server: {EXECUTE_ENDPOINT} with payload: {mcp_payload}")
+    logger.info(f"Sending request to MCP server: {mcp_request}")
+    # Send mcp_request to MCP server and return the result
     try:
-        response = requests.post(EXECUTE_ENDPOINT, json=mcp_payload, timeout=60)
+        response = requests.post(EXECUTE_ENDPOINT, json=mcp_request, timeout=60)
         response.raise_for_status()
         mcp_response_data = response.json()
-        # logger.info(f"Received response from MCP server: {mcp_response_data}")
+        logger.info(f"Received response from MCP server: {mcp_response_data}")
         return jsonify(mcp_response_data), response.status_code
     except requests.exceptions.ConnectionError as e:
         logger.error(f"Could not connect to MCP server at {MCP_SERVER_URL}: {e}")
@@ -165,39 +147,101 @@ def api_generate():
         else:
             return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
 
+
+    # if not provider or not model:
+    #     return jsonify({"success": False, "error": "Missing provider or model", "error_type": "request_error"}), 400
+
+    # # Prepare payload for MCP server
+    # mcp_payload = {
+    #     "resource_id": provider,
+    #     "operation_id": "generate",
+    #     "context": context_data,
+    #     "config": {
+    #         "model": model
+    #     }
+    # }
+    # # Add API key if provided and not a placeholder
+    # if api_key and api_key != "********":
+    #     mcp_payload["config"]["api_key"] = api_key
+    # elif not api_key:
+    #     logger.info(f"No API key provided by user for {provider}, MCP server will check environment.")
+    # elif api_key == "********":
+    #     logger.info(f"Using environment API key placeholder for {provider}, MCP server will use environment key.")
+
+    # logger.info(f"Sending request to MCP server: {EXECUTE_ENDPOINT} with payload: {mcp_payload}")
+    # try:
+    #     response = requests.post(EXECUTE_ENDPOINT, json=mcp_payload, timeout=60)
+    #     response.raise_for_status()
+    #     mcp_response_data = response.json()
+    #     # logger.info(f"Received response from MCP server: {mcp_response_data}")
+    #     return jsonify(mcp_response_data), response.status_code
+    # except requests.exceptions.ConnectionError as e:
+    #     logger.error(f"Could not connect to MCP server at {MCP_SERVER_URL}: {e}")
+    #     return jsonify({"success": False, "error": f"Could not connect to the AI service backend. Please ensure it's running.", "error_type": "connection_error"}), 503
+    # except requests.exceptions.Timeout:
+    #     logger.error(f"Request to MCP server timed out.")
+    #     return jsonify({"success": False, "error": "The request to the AI service timed out.", "error_type": "timeout_error"}), 504
+    # except requests.exceptions.RequestException as e:
+    #     logger.error(f"Error communicating with MCP server: {e}")
+    #     try:
+    #         error_detail = e.response.json() if e.response else str(e)
+    #         status_code = e.response.status_code if e.response else 500
+    #     except Exception:
+    #         error_detail = str(e)
+    #         status_code = 500
+    #     if isinstance(error_detail, dict) and 'success' in error_detail:
+    #         return jsonify(error_detail), status_code
+    #     else:
+    #         return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
+
 @app.route('/api/quiz', methods=['POST'])
 def api_quiz():
     """API endpoint to generate a quiz via MCP server."""
     data = request.json
     logger.info(f"Received /api/quiz request: {data}")
 
-    provider = data.get('provider')
-    model = data.get('model')
-    api_key = data.get('apiKey')
-    context_data = data.get('context', {})
+    # Prepare context for MCP request
+    context_data = data.get('context', {})  # Ensure context_data is defined
+    context_fields = ['platform', 'technology', 'topic', 'tags', 'question']
+    for field in context_fields:
+        if field == 'technology':
+            val = data.get('technology') or data.get('tech')
+        else:
+            val = data.get(field)
+        if val is not None and (field not in context_data or not context_data.get(field)):
+            context_data[field] = val
+    # Handle tags/keywords normalization
+    if 'tags' not in context_data and 'keywords' in data:
+        keywords_val = data.get('keywords')
+        if isinstance(keywords_val, str):
+            context_data['tags'] = [t.strip() for t in keywords_val.split(',') if t.strip()]
+        elif isinstance(keywords_val, list):
+            context_data['tags'] = [str(t).strip() for t in keywords_val if str(t).strip()]
+    if 'tags' in context_data and isinstance(context_data['tags'], str):
+        context_data['tags'] = [t.strip() for t in context_data['tags'].split(',') if t.strip()]
+    if 'tags' not in context_data:
+        context_data['tags'] = []
+    if not context_data['tags'] and 'keywords' in data:
+        keywords_val = data.get('keywords')
+        if isinstance(keywords_val, str):
+            context_data['tags'] = [t.strip() for t in keywords_val.split(',') if t.strip()]
+        elif isinstance(keywords_val, list):
+            context_data['tags'] = [str(t).strip() for t in keywords_val if str(t).strip()]
 
-    if not provider or not model:
-        return jsonify({"success": False, "error": "Missing provider or model", "error_type": "request_error"}), 400
-
-    mcp_payload = {
-        "resource_id": provider,
-        "operation_id": "quiz",
+    # Prepare new MCP format request for quiz
+    mcp_request = {
+        "operation": "quiz",
         "context": context_data,
-        "config": {
-            "model": model
+        "ai": {
+            "provider": data.get("provider") or data.get("ai") or data.get("resource_id"),
+            "model": data.get("model"),
+            "api_key": data.get("apiKey")
         }
     }
 
-    if api_key and api_key != "********":
-        mcp_payload["config"]["api_key"] = api_key
-    elif not api_key:
-        logger.info(f"No API key provided by user for {provider}, MCP server will check environment.")
-    elif api_key == "********":
-        logger.info(f"Using environment API key placeholder for {provider}, MCP server will use environment key.")
-
-    logger.info(f"Sending request to MCP server: {EXECUTE_ENDPOINT} with payload: {mcp_payload}")
+    logger.info(f"Sending request to MCP server: {EXECUTE_ENDPOINT} with payload: {mcp_request}")
     try:
-        response = requests.post(EXECUTE_ENDPOINT, json=mcp_payload, timeout=60)
+        response = requests.post(EXECUTE_ENDPOINT, json=mcp_request, timeout=60)
         response.raise_for_status()
         mcp_response_data = response.json()
         logger.info(f"Received response from MCP server: {mcp_response_data}")
@@ -227,47 +271,58 @@ def api_validate():
     data = request.json
     logger.info(f"Received /api/validate request: {data}")
 
-    provider = data.get('provider')
-    # PATCH: If provider is missing but 'ai' is present, use 'ai' as provider
-    if not provider and 'ai' in data:
-        provider = data.get('ai')
-    model = data.get('model')
-    api_key = data.get('apiKey') 
+    # Prepare context for MCP request
     context_data = data.get('context', {})
+    context_fields = ['platform', 'technology', 'topic', 'tags', 'question']
+    for field in context_fields:
+        if field == 'technology':
+            val = data.get('technology') or data.get('tech')
+        else:
+            val = data.get(field)
+        if val is not None and (field not in context_data or not context_data.get(field)):
+            context_data[field] = val
+    # Handle tags/keywords normalization
+    if 'tags' not in context_data and 'keywords' in data:
+        keywords_val = data.get('keywords')
+        if isinstance(keywords_val, str):
+            context_data['tags'] = [t.strip() for t in keywords_val.split(',') if t.strip()]
+        elif isinstance(keywords_val, list):
+            context_data['tags'] = [str(t).strip() for t in keywords_val if str(t).strip()]
+    if 'tags' in context_data and isinstance(context_data['tags'], str):
+        context_data['tags'] = [t.strip() for t in context_data['tags'].split(',') if t.strip()]
+    if 'tags' not in context_data:
+        context_data['tags'] = []
+    if not context_data['tags'] and 'keywords' in data:
+        keywords_val = data.get('keywords')
+        if isinstance(keywords_val, str):
+            context_data['tags'] = [t.strip() for t in keywords_val.split(',') if t.strip()]
+        elif isinstance(keywords_val, list):
+            context_data['tags'] = [str(t).strip() for t in keywords_val if str(t).strip()]
 
-    if not provider or not model:
-        return jsonify({"success": False, "error": "Missing provider or model", "error_type": "request_error"}), 400
-
-    mcp_payload = {
-        "resource_id": provider,
-        "operation_id": "validate", 
+    # Prepare new MCP format request for validate
+    mcp_request = {
+        "operation": "validate",
         "context": context_data,
-        "config": {
-            "model": model
+        "ai": {
+            "provider": data.get("provider") or data.get("ai") or data.get("resource_id"),
+            "model": data.get("model"),
+            "api_key": data.get("apiKey")
         }
     }
 
-    if api_key and api_key != "********":
-         mcp_payload["config"]["api_key"] = api_key
-    elif not api_key:
-        logger.info(f"No API key provided by user for {provider}, MCP server will check environment.")
-    elif api_key == "********":
-        logger.info(f"Using environment API key placeholder for {provider}, MCP server will use environment key.")
-
-    logger.info(f"Sending request to MCP server: {EXECUTE_ENDPOINT} with payload: {mcp_payload}")
+    logger.info(f"Sending request to MCP server: {EXECUTE_ENDPOINT} with payload: {mcp_request}")
     try:
-        response = requests.post(EXECUTE_ENDPOINT, json=mcp_payload, timeout=60)
+        response = requests.post(EXECUTE_ENDPOINT, json=mcp_request, timeout=60)
         response.raise_for_status()
         mcp_response_data = response.json()
         logger.info(f"Received response from MCP server: {mcp_response_data}")
         return jsonify(mcp_response_data), response.status_code
-
     except requests.exceptions.ConnectionError as e:
         logger.error(f"Could not connect to MCP server at {MCP_SERVER_URL}: {e}")
-        return jsonify({"success": False, "error": f"Could not connect to the AI service backend. Please ensure it's running.", "error_type": "connection_error"}), 503 
+        return jsonify({"success": False, "error": f"Could not connect to the AI service backend. Please ensure it's running.", "error_type": "connection_error"}), 503
     except requests.exceptions.Timeout:
-         logger.error(f"Request to MCP server timed out.")
-         return jsonify({"success": False, "error": "The request to the AI service timed out.", "error_type": "timeout_error"}), 504 
+        logger.error(f"Request to MCP server timed out.")
+        return jsonify({"success": False, "error": "The request to the AI service timed out.", "error_type": "timeout_error"}), 504
     except requests.exceptions.RequestException as e:
         logger.error(f"Error communicating with MCP server: {e}")
         try:
@@ -279,8 +334,9 @@ def api_validate():
         if isinstance(error_detail, dict) and 'success' in error_detail:
             return jsonify(error_detail), status_code
         else:
-             return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
+            return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
 
+# MCP Info 
 @app.route('/api/providers', methods=['GET'])
 def get_providers():
     """Get list of available providers from MCP server."""
@@ -291,8 +347,6 @@ def get_providers():
     except requests.exceptions.RequestException as e:
         logger.error(f"Error getting agents: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
-
-# MCP Info 
 
 @app.route('/api/models/<provider>', methods=['GET'])
 def get_models_for_provider(provider):
