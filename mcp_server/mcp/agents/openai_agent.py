@@ -139,10 +139,9 @@ Suitable for embedding in applications requiring quick responses
         if not self._is_support_model(request.model):
             raise ValueError(f"Unsupported model: {request.model.model}")
 
-        if not request.request.topic:
-            raise ValueError("Topic is required")
-        if not request.request.platform:
-            raise ValueError("Platform is required")
+        # Either both topic and platform must be provided, or the question field must be non-empty
+        if not ((request.request.topic and request.request.platform) or request.request.question):
+            raise ValueError("Either both 'topic' and 'platform' must be provided, or 'question' must be non-empty.")
 
         try:
             start_time = time.time()
@@ -196,10 +195,9 @@ Suitable for embedding in applications requiring quick responses
         if not self._is_support_model(request.model):
             raise ValueError(f"Unsupported model: {request.model.model}")
 
-        if not request.request.topic:
-            raise ValueError("Topic is required")
-        if not request.request.platform:
-            raise ValueError("Platform is required")
+        # Either both topic and platform must be provided, or the question field must be non-empty
+        if not ((request.request.topic and request.request.platform) or request.request.question):
+            raise ValueError("Either both 'topic' and 'platform' must be provided, or 'question' must be non-empty.")
 
         try:
             start_time = time.time()

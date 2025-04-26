@@ -34,18 +34,23 @@ def generate_question():
     try:
         agent = OpenAIAgent()
         
+        param_request = RequestQuestionModel(   
+            platform="iOS",
+            topic="SwiftUI",    
+            technology="Swift",
+            tags=["View", "State"]
+        )
+        raw_request = RequestQuestionModel(
+            question="What is ARC in Swift?"
+        )
+
         # Create test request
         generate_request = AIRequestQuestionModel(
             model=AIModel(
                 provider="openai",
                 model="o3-mini"
             ),
-            request=RequestQuestionModel(   
-                platform="iOS",
-                topic="SwiftUI",    
-                technology="Swift",
-                tags=["View", "State"]
-            ),
+            request=raw_request,
             temperature=0.7
         )
         
@@ -118,17 +123,23 @@ def quiz_question():
 
     try:
         agent = OpenAIAgent()
+
+        param_request = RequestQuestionModel(   
+            platform="iOS",
+            topic="SwiftUI",    
+            technology="Swift",
+            tags=["View", "State"]
+        )
+        raw_request = RequestQuestionModel(
+            question="What is ARC in Swift?"
+        )
+
         quiz_request = AIRequestQuestionModel(
             model=AIModel(provider="openai", model="gpt-4o"),
-            request=RequestQuestionModel(
-                platform="iOS",
-                topic="SwiftUI State Management",
-                technology="Swift",
-                tags=["SwiftUI", "State", "Binding", "iOS", "Swift"],
-                question="Something about state in stack of ViewControllers"
-            ),
+            request=raw_request,
             temperature=0.85
         )
+        
         quiz = agent.quiz(quiz_request)
         print(f"\nQuiz result: {json.dumps(quiz.model_dump(), indent=2, ensure_ascii=False)}")
     except Exception as e:

@@ -44,10 +44,10 @@ class AICapabilitiesModel(BaseModel):
 
 #MARK: Request
 class RequestQuestionModel(BaseModel):
-    platform: str = Field(description="Platform for which the topic is relevant (e.g., 'iOS', 'Apple')")
-    topic: str = Field(description="Topic name")
+    platform: str = Field(description="Platform for which the topic is relevant (e.g., 'iOS', 'Apple')", default="")
+    topic: str = Field(description="Topic name", default="")
     technology: str = Field(description="Specific technology stack (e.g. 'Kotlin' for Android)", default="")
-    tags: List[str] = Field(description="Keywords and tags related to the question within the context of the platform and the topic")
+    tags: List[str] = Field(description="Keywords and tags related to the question within the context of the platform and the topic", default_factory=list)
     question: str = Field(description="Question text", default="")
 
 class AIRequestQuestionModel(BaseModel):

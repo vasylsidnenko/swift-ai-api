@@ -1,0 +1,18 @@
+# Ignore Python cache, venv, and secrets
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+.env.*
+.DS_Store
+*.sqlite3
+instance/
+*.log
+# Ignore deployment configs
+windsurf_deployment.yaml
+netlify.toml
+# Ignore test and mock data
+mock_*.json

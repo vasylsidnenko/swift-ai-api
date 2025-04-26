@@ -72,17 +72,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     const quizBtnTop = document.getElementById('quizBtn');
 
+    // Either both topic and platform must be filled, or questionContext must be non-empty
+    // With Platform as a text field, listen to 'input' event for live validation
     function validateRequiredFields() {
-        const isValid = platformInput.value && techInput.value.trim() && topicInput.value.trim();
+        const topic = topicInput.value.trim();
+        const platform = platformInput.value.trim();
+        const questionContext = document.getElementById('questionContext').value.trim();
+        // At least (topic AND platform) OR questionContext must be filled
+        const isValid = (topic && platform) || questionContext;
         if (generateBtn) generateBtn.disabled = !isValid;
         if (quizBtnTop) quizBtnTop.disabled = !isValid;
     }
 
     // Initial validation
     validateRequiredFields();
-    platformInput.addEventListener('change', validateRequiredFields);
+    platformInput.addEventListener('input', validateRequiredFields);
     techInput.addEventListener('input', validateRequiredFields);
     topicInput.addEventListener('input', validateRequiredFields);
+    // Listen to changes in Question Context textarea as well
+    document.getElementById('questionContext').addEventListener('input', validateRequiredFields);
 
 
     // --- Helper Functions ---
