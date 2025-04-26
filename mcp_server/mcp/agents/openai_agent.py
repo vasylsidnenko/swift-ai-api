@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from ..agents.ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
                                 AIRequestQuestionModel, AIRequestValidationModel, 
-                                AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation, AIQuizModel)
+                                AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation, AIQuizModel, QuizModel)
 from ..agents.base_agent import AgentProtocol
 
 logger = logging.getLogger(__name__)
@@ -115,39 +115,6 @@ Suitable for embedding in applications requiring quick responses
             'quiz': self.quiz
         }
 
-    def _create_system_prompt(self, operation: str) -> str:
-        """
-        Create system prompt based on operation.
-        Args:
-            operation: The operation to perform (generate/validate/quiz)
-        Returns:
-            System prompt for OpenAI
-        """
-        if operation == "generate":
-            return "You are an expert programming question generator. Generate a high-quality programming question with detailed answers for different skill levels."
-        elif operation == "validate":
-            return "You are an expert programming question validator. Validate the provided programming question and provide structured feedback in JSON."
-        elif operation == "quiz":
-            return """You are an expert at creating programming quiz questions. Your task is to generate a single high-quality programming question for the given topic, platform, and tags.
-
-IMPORTANT:
-- Only generate the main question text (no answers, no tests, no answer levels, no explanations, no code tests).
-- Return your response as a flat JSON object matching the following schema:
-  - topic: { name: string, platform: string, technology: string (optional) }
-  - question: string (the main programming question text, may include code blocks)
-  - tags: array of strings
-- Do NOT include any answers, answer levels, tests, or evaluation criteria.
-- Your response MUST start with '{' and end with '}'. Do NOT add any text before or after the JSON object.
-
-Example output:
-{
-  "topic": { "name": "SwiftUI", "platform": "iOS", "technology": "Swift" },
-  "question": "Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.",
-  "tags": ["SwiftUI", "List", "iOS", "Delete", "Swipe"]
-}
-"""
-        else:
-            return "You are a helpful AI assistant. Respond to the question or task accurately and concisely."
 
     def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
         """
@@ -167,11 +134,11 @@ Example output:
 
         print(f"Python version={sys.version}")
         print(f"OpenAI version={openai.__version__}")
+        print(f"GENERATE: {request}")
 
         if not self._is_support_model(request.model):
             raise ValueError(f"Unsupported model: {request.model.model}")
 
-        # Validate request parameters
         if not request.request.topic:
             raise ValueError("Topic is required")
         if not request.request.platform:
@@ -179,29 +146,33 @@ Example output:
 
         try:
             start_time = time.time()
-            messages = self._prepare_messages(request.request)
-            prompt_tokens = self.count_tokens(request.model.model, messages)
-            # Set correct tokens parameter for different OpenAI models
+
             openai_kwargs = {
                 "model": request.model.model,
-                "messages": messages
+                "messages": [
+                    {"role": "system", "content": self._make_generate_system_prompt()},
+                    {"role": "user", "content": self._make_generate_prompt(request.request)}
+                ],
+                "response_format": QuestionModel
             }
+
             if self._is_temperature_supported_by_model(request.model.model):
-                openai_kwargs["temperature"] = 0.7
-            # Use max_completion_tokens for o3/o4/gpt-4o, max_tokens for others
-            if any(x in request.model.model for x in ["o3", "o4", "gpt-4o"]):
-                openai_kwargs["max_completion_tokens"] = 4000
-            else:
-                openai_kwargs["max_tokens"] = 4000
-            try:
-                response = self.client.chat.completions.create(**openai_kwargs)
-            except Exception as e:
-                logger.error(f"OpenAI API error: {str(e)}")
-                raise RuntimeError(f"OpenAI API error: {str(e)}")
+                openai_kwargs["temperature"] = request.temperature
+
+            if self._is_support_temperature(request.model.model):
+                max_tokens_param = self._get_max_tokens_param(request.model.model)
+                openai_kwargs[max_tokens_param] = self._get_max_tokens_value(request.model.model)
+
+            prompt_tokens = self._count_tokens(request.model.model, openai_kwargs["messages"])
+
+            # response = self.client.chat.completions.create(**openai_kwargs)
+            response = self.client.beta.chat.completions.parse(**openai_kwargs)
+        
             if not response.choices or not response.choices[0].message.content:
                 logger.error("Empty response from OpenAI")
                 raise RuntimeError("Empty response from OpenAI")
-            return self._process_generation_response(
+           
+            return self._process_generate_response(
                 model=request.model,
                 question=request.request,
                 response=response,
@@ -211,6 +182,63 @@ Example output:
         except Exception as e:
             logger.error(f"Generation failed: {str(e)}")
             raise
+
+
+    def quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+        """
+        Generate a programming question (without answers/tests) through OpenAI, according to the QuizModel/AIQuizModel.
+        """
+
+        print(f"Python version={sys.version}")
+        print(f"OpenAI version={openai.__version__}")
+        print(f"QUIZ: {request}")
+
+        if not self._is_support_model(request.model):
+            raise ValueError(f"Unsupported model: {request.model.model}")
+
+        if not request.request.topic:
+            raise ValueError("Topic is required")
+        if not request.request.platform:
+            raise ValueError("Platform is required")
+
+        try:
+            start_time = time.time()
+
+            openai_kwargs = {
+                "model": request.model.model,
+                "messages": [
+                    {"role": "system", "content": self._make_quiz_system_prompt()},
+                    {"role": "user", "content": self._make_quiz_prompt(request)}
+                ]
+            }
+            
+            if self._is_temperature_supported_by_model(request.model.model):
+                openai_kwargs["temperature"] = request.temperature
+
+            if self._is_support_temperature(request.model.model):
+                max_tokens_param = self._get_max_tokens_param(request.model.model)
+                openai_kwargs[max_tokens_param] = self._get_max_tokens_value(request.model.model)
+
+            prompt_tokens = self._count_tokens(request.model.model, openai_kwargs["messages"])
+
+            response = self.client.chat.completions.create(**openai_kwargs)
+
+            if not response.choices or not response.choices[0].message.content:
+                logger.error("Empty response from OpenAI")
+                raise RuntimeError("Empty response from OpenAI")
+           
+            return self._process_quiz_response(
+                model=request.model,
+                question=request.request,
+                response=response,
+                prompt_tokens=prompt_tokens,
+                start_time=start_time
+            )
+            
+        except Exception as e:
+            logger.exception(f"Error generating quiz with OpenAI: {e}")
+            raise
+
 
     def validate(self, request: AIRequestValidationModel) -> AIValidationModel:
         """
@@ -237,7 +265,7 @@ Example output:
         try:
             start_time = time.time()
             validation_prompt = self._build_validation_prompt(request.request)
-            prompt_tokens = self.count_tokens(request.model.model, validation_prompt)
+            prompt_tokens = self._count_tokens(request.model.model, validation_prompt)
             
             try:
                 if self._is_support_temperature(request.model):
@@ -294,6 +322,19 @@ Example output:
             logger.error(f"Validation failed: {str(e)}")
             raise RuntimeError(f"Validation error: {str(e)}")
         
+    # Private
+
+    def _is_support_model(self, model: AIModel) -> bool:
+        if model.provider.lower() != self.provider():
+            logger.error(f"Provider unknonw: {model.provider}")
+            return False
+        
+        if model.model.lower() not in [m.lower() for m in self.supported_models()]:
+            logger.error(f"Model unknonw: {model.model}")
+            return False
+        
+        return True
+
     def _get_max_tokens_param(self, model_name: str) -> str:
         """
         Returns the correct max tokens parameter name for the given model.
@@ -305,6 +346,26 @@ Example output:
             return 'max_completion_tokens'
         return 'max_tokens'
 
+    def _get_max_tokens_value(self, model_name: str) -> int:
+        """
+        Returns the maximum number of tokens for the given model.
+        For new models (o4-mini, o3-mini, gpt-4o, gpt-4o-mini), use 4000.
+        For all others, use 4000.
+        """
+        if model_name in ['o4-mini', 'o3-mini']:
+            return 6500
+        elif model_name == 'gpt-4o':
+            return 4096
+        elif model_name == 'gpt-4o-mini':
+            return 16000
+
+        return 4096
+
+    def _is_support_temperature(self, model_name: str) -> bool:
+        if model_name.lower() in ["o3-mini", "o4-mini"]:
+            return False
+        return True 
+
     def _is_temperature_supported_by_model(self, model_name: str) -> bool:
         """
         Returns False for models that only support default temperature (1), e.g. o4-mini, o3-mini, gpt-4o, gpt-4o-mini.
@@ -312,53 +373,31 @@ Example output:
         no_temp_models = ['o4-mini', 'o3-mini', 'gpt-4o-mini', 'gpt-4o']
         return not any(m in model_name.lower() for m in no_temp_models)
 
-    def quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
-        """
-        Generate a programming question (без відповідей/тестів) через OpenAI, згідно моделі QuizModel/AIQuizModel.
-        """
-        import sys
-        logger.info(f"Python version={sys.version}")
+    def _count_tokens(self, model: str, content) -> int:
+        """Count tokens in text/messages."""
         try:
-            import openai
-            logger.info(f"OpenAI version={getattr(openai, '__version__', 'unknown')}")
-        except Exception:
-            logger.info("OpenAI version=unknown")
-        model_name = request.model.model
-        logger.info(f"OpenAI model: {model_name}")
-        print(f"OpenAI model: {model_name}")
-        start_time = time.time()
-        try:
-            prompt = self._format_quiz_request(request)
-            system_prompt = self._create_system_prompt("quiz")
-            max_tokens_param = self._get_max_tokens_param(model_name)
-            # Prepare arguments for OpenAI API
-            openai_kwargs = {
-                "model": model_name,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
-                ]
-            }
-            if self._is_temperature_supported_by_model(model_name):
-                openai_kwargs["temperature"] = 0.7
-            openai_kwargs[max_tokens_param] = 4000
-            response = self.client.chat.completions.create(**openai_kwargs)
-            response_text = response.choices[0].message.content
-            from mcp.agents.ai_models import QuizModel
-            quiz_obj = self._parse_openai_response(response_text, QuizModel)
-            agent_model = self._create_agent_model(
-                request.model,
-                start_time,
-                response.usage.total_tokens if hasattr(response.usage, 'total_tokens') else None
-            )
-            from mcp.agents.ai_models import AIQuizModel
-            return AIQuizModel(
-                agent=agent_model,
-                quiz=quiz_obj
-            )
-        except Exception as e:
-            logger.exception(f"Error generating quiz with OpenAI: {e}")
-            raise
+            encoding = tiktoken.encoding_for_model(model)
+        except KeyError:
+            encoding = tiktoken.get_encoding("cl100k_base")
+        
+        if isinstance(content, str):
+            return len(encoding.encode(content))
+        elif isinstance(content, list) and all(isinstance(m, dict) and 'role' in m and 'content' in m for m in content):
+            num_tokens = 0
+            for message in content:
+                num_tokens += 4  # Tokens for <im_start> and <im_end>
+                
+                for key, value in message.items():
+                    num_tokens += len(encoding.encode(str(value)))
+                    if key == "name":  # If there is a name, the role is skipped
+                        num_tokens -= 1
+            
+            num_tokens += 2  # Each response starts with <im_start>assistant
+            return num_tokens
+        elif isinstance(content, dict):
+            return self._count_tokens(model, json.dumps(content))
+        else:
+            return self._count_tokens(model, str(content))
 
     def _create_agent_model(self, model: AIModel, start_time: float, tokens_used: Optional[int]) -> AgentModel:
         """
@@ -378,6 +417,99 @@ Example output:
             )
         )
 
+    def _make_quiz_system_prompt(self) -> str:
+        """
+        Returns the optimized system prompt for quiz generation.
+        """
+        return """
+You are an expert assistant specialized in generating structured programming quiz questions.
+
+Your task:
+- Create a high-quality programming question based on the provided topic, platform, and tags.
+- Only generate the main **question text**.
+- **DO NOT** generate any answers, explanations, answer levels, code tests, or evaluation criteria.
+
+Response format:
+Return exactly one JSON object with the following fields:
+- "topic": { "name": string, "platform": string, "technology": string (optional) }
+- "question": string (a clear programming question, may include code blocks)
+- "tags": array of strings (related tags)
+
+Strict rules:
+- The response MUST begin with '{' and end with '}' (a single JSON object only).
+- DO NOT include any text outside the JSON (no comments, no explanations, no formatting notes).
+
+Example of a valid output:
+{
+  "topic": { "name": "SwiftUI", "platform": "iOS", "technology": "Swift" },
+  "question": "Implement a SwiftUI view that displays a list of items and allows users to delete them using swipe gestures. The list should update automatically.",
+  "tags": ["SwiftUI", "List", "Swipe", "iOS"]
+}
+        """
+
+    def _make_quiz_prompt(self, request: AIRequestQuestionModel) -> str:
+        """
+        Forms a precise prompt to generate only the programming question (no answers/tests).
+        """
+        r = request.request
+        topic = r.topic
+        platform = r.platform
+        technology = r.technology or ""
+        tags = ', '.join(r.tags) if r.tags else 'None'
+        question_hint = r.question or "No specific hint provided."
+
+        return (
+            f"Generate a programming question for:\n"
+            f"- Topic: '{topic}'\n"
+            f"- Platform: '{platform}'\n"
+            f"- Technology: '{technology}'\n"
+            f"- Tags: [{tags}]\n"
+            f"- Hint: '{question_hint}'\n\n"
+            f"Only return a single JSON object following the required fields: topic, question, tags."
+        )
+
+    def _make_generate_system_prompt(self) -> str:
+        return """
+You are an expert assistant specializing in generating full-structure programming questions for education.
+
+Your task:
+- Generate a well-structured programming question with three difficulty levels: Beginner, Intermediate, Advanced.
+- For each level, provide:
+  1. A detailed answer
+  2. Three test questions (multiple choice with 4+ options)
+  3. Evaluation criteria (knowledge, skills, concepts)
+- Ensure code examples are well formatted using proper language blocks
+
+Strict formatting rules:
+- DO NOT include markdown headings (like # or ##) or section titles
+- DO NOT use labels such as 'Beginner Level', 'Advanced Level' — the UI will handle them
+- DO NOT include "**Answer:**", "**Question:**", or similar decorations
+- Present code blocks ONLY using fenced triple backticks with appropriate language (e.g., ```swift, ```cpp, etc.)
+- Format all code clearly with proper indentation
+
+Your output must follow JSON structure defined by the UI and must not include any surrounding commentary, explanation, or formatting help.
+        """
+
+    def _make_generate_prompt(self, request: RequestQuestionModel) -> str:
+        r = request
+        return (
+            f"Generate a programming question with detailed structure for:\n"
+            f"- Topic: '{r.topic}'\n"
+            f"- Platform: '{r.platform}'\n"
+            f"{f'- Technology: {r.technology}' if r.technology else ''}\n"
+            f"- Tags: {', '.join(r.tags) if r.tags else 'None'}\n"
+            f"- Prompt idea: '{r.question if r.question else 'None provided'}'\n\n"
+            f"The structure must include:\n"
+            f"1. A main programming question (clear and realistic)\n"
+            f"2. Three answer levels (Beginner, Intermediate, Advanced), each with:\n"
+            f"   - A detailed explanation\n"
+            f"   - 3 test questions (multiple choice with 4 options)\n"
+            f"   - Evaluation criteria (knowledge, skills, concepts)\n\n"
+            f"Use correct language tags in code blocks. Do not use any markdown or section titles. "
+            f"Return structured output in JSON format without surrounding text."
+        )
+
+
     def _parse_openai_response(self, response_text: str, schema_type):
         """
         Parse OpenAI's response text to extract and validate JSON.
@@ -396,123 +528,36 @@ Example output:
                 raise ValueError("Could not find JSON object in response.")
             json_str = response_text[start:end+1]
             data = json.loads(json_str)
+            return schema_type.model_validate(data)
+
         except Exception as e:
             logger.error(f"Failed to parse JSON from OpenAI response: {e}")
             logger.error(f"Content: {response_text}")
             raise ValueError(f"Could not parse JSON from OpenAI response: {e}")
-        try:
-            return schema_type.model_validate(data)
-        except Exception as e:
-            logger.error(f"Failed to validate parsed JSON against schema: {e}")
-            raise ValueError(f"OpenAI response does not match expected schema: {e}")
 
-        except Exception as e:
-            logger.exception(f"Error generating quiz with OpenAI: {e}")
-            raise
 
-    def _format_quiz_request(self, request: AIRequestQuestionModel) -> str:
-        """
-        Формує prompt для генерації лише питання (без відповідей/тестів) для OpenAI.
-        """
-        r = request.request
-        topic = r.topic
-        platform = r.platform
-        technology = r.technology or ""
-        tags = r.tags
-        prompt = (
-            f"Create a programming question for the topic '{topic}' on platform '{platform}'. "
-            f"Technology: '{technology}'. Tags: {tags}. "
-            f"Approximate or rough question/idea: '{r.question}'. "
-            "Return ONLY the question, without any answers, answer levels, tests, or explanations. "
-            "Format your response as a JSON object with fields: topic, question, tags. "
-            "Example: {\n  \"topic\": { \"name\": \"SwiftUI\", \"platform\": \"iOS\", \"technology\": \"Swift\" },\n  \"question\": \"Implement a SwiftUI view that displays a list of items and allows users to delete items with a swipe gesture. The list should update automatically when an item is deleted.\",\n  \"tags\": [\"SwiftUI\", \"List\", \"iOS\", \"Delete\", \"Swipe\"]\n}"
+    def _process_quiz_response(self, model: AIModel, question: RequestQuestionModel, response, prompt_tokens: int, start_time: float) -> AIQuizModel:
+        """Process OpenAI response for quiz generation."""
+        tokens_used = prompt_tokens 
+        
+        if hasattr(response, 'usage') and hasattr(response.usage, 'total_tokens'):
+            tokens_used += response.usage.total_tokens
+
+        response_text = response.choices[0].message.content    
+        quiz_obj = self._parse_openai_response(response_text, QuizModel)
+
+        agent_model = self._create_agent_model(
+            model,
+            start_time,
+            response.usage.total_tokens if hasattr(response.usage, 'total_tokens') else None
         )
-        print(f"OpenAi quiz prompt={prompt}")
-        return prompt
+            
+        return AIQuizModel(
+            agent=agent_model,
+            quiz=quiz_obj
+        )
 
-    def _is_support_model(self, model: AIModel) -> bool:
-        if model.provider.lower() != self.provider():
-            logger.error(f"Provider unknonw: {model.provider}")
-            return False
-        
-        if model.model.lower() not in [m.lower() for m in self.supported_models()]:
-            logger.error(f"Model unknonw: {model.model}")
-            return False
-        
-        return True
-
-    def _is_support_temperature(self, model: AIModel) -> bool:
-        if model.model.lower() in ["o3-mini", "o4-mini"]:
-            return False
-        return True
-
-    # Private helper methods
-    def _prepare_messages(self, question: RequestQuestionModel) -> List[Dict]:
-        """Prepare messages for OpenAI API from question."""
-        generation_prompt = f"""
-# Programming Question Generation Task
-
-## Topic Information
-- Main Topic: {question.topic}
-- Platform: {question.platform}
-{f'- Technology Stack: {question.technology}' if question.technology else ''}
-- Related Tags: {', '.join(question.tags) if question.tags else 'None provided'}
-- Approximate or rough question/idea: {question.question if question.question else 'None provided'}
-
-## Instructions
-Create a high-quality programming question that tests understanding of {question.topic} on the {question.platform} platform. The question should:
-
-1. Be clear, specific, and challenging (not just asking for definitions)
-2. Include code examples where appropriate with proper syntax highlighting
-3. Be relevant to real-world programming scenarios
-4. Include all required tags plus additional relevant keywords
-5. Have three distinct difficulty levels with appropriate complexity progression
-
-## Required Structure
-For each difficulty level (Beginner, Intermediate, Advanced):
-
-1. Provide a detailed answer appropriate for that level
-2. Include exactly 3 test questions with multiple-choice options (at least 4 options per test)
-3. Ensure code snippets are properly formatted with language highlighting using the correct format:
-   - For Swift code: ```swift [code here] ```
-   - For Objective-C code: ```objc [code here] ```
-   - For C/C++ code: ```cpp [code here] ```
-   - For Java code: ```java [code here] ```
-   - For Kotlin code: ```kotlin [code here] ```
-   - For any other language: use the appropriate language identifier (e.g., ```python, ```javascript, etc.)
-4. Include comprehensive evaluation criteria that describe:
-   - Knowledge requirements for this level
-   - Skills the student should demonstrate
-   - Concepts they should understand at this level
-
-## Important Formatting Rules
-1. DO NOT include markers like "**Question:**", "**Answer:**", "###Beginner Level", etc. in your response
-2. DO NOT use markdown headings (# or ##) in your answers - the UI already provides appropriate headings
-3. Present code blocks ONLY with the appropriate language tag (```swift, ```objc, etc.)
-4. Format all code properly with correct indentation and syntax
-5. For test questions, use simple numbered options (1, 2, 3, 4) without additional formatting
-6. Make sure all code examples are technically accurate and follow best practices
-7. Keep your text clean and direct without any section headers or unnecessary formatting
-
-## Examples of Good Evaluation Criteria
-
-### Beginner Level Example:
-'At the Beginner level, the student should understand basic syntax and fundamental concepts of {question.topic}. They should demonstrate the ability to read simple code examples, identify correct syntax, and understand basic programming patterns related to {question.topic} on {question.platform}.'
-
-### Intermediate Level Example:
-'At the Intermediate level, the student should understand more complex implementations and common design patterns related to {question.topic}. They should demonstrate the ability to analyze code, identify potential issues, and understand the practical applications of {question.topic} concepts in {question.platform} development.'
-
-### Advanced Level Example:
-'At the Advanced level, the student should demonstrate deep understanding of {question.topic} internals and optimization techniques. They should be able to evaluate complex implementations, understand performance implications, and apply advanced patterns related to {question.topic} in sophisticated {question.platform} applications.'
-"""
-        system_message = "You are an expert programming educator specializing in creating high-quality educational content. Your task is to generate challenging, well-structured programming questions with multiple difficulty levels. Each question should include detailed answers, appropriate test questions, and clear evaluation criteria that help assess student knowledge and skills. Ensure all code examples are properly formatted and technically accurate. IMPORTANT: Do not use any markdown headings or section titles in your responses. Do not include labels like 'Beginner Level' or 'Advanced Level' - these will be added by the UI. Keep your text clean and direct without any unnecessary formatting or section headers."
-        messages = [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": generation_prompt}
-        ]
-        return messages
-
-    def _process_generation_response(self, model: AIModel, question: RequestQuestionModel, response, prompt_tokens: int, start_time: float) -> AIQuestionModel:
+    def _process_generate_response(self, model: AIModel, question: RequestQuestionModel, response, prompt_tokens: int, start_time: float) -> AIQuestionModel:
         """Process OpenAI response for question generation."""
         tokens_used = prompt_tokens
         
@@ -520,48 +565,104 @@ For each difficulty level (Beginner, Intermediate, Advanced):
             tokens_used += response.usage.total_tokens
         else:
             if response.choices and response.choices[0].message.content:
-                completion_tokens = self.count_tokens(model, response.choices[0].message.content)
+                completion_tokens = self._count_tokens(model, response.choices[0].message.content)
                 tokens_used += completion_tokens
-        
-        time_taken = int((time.time() - start_time) * 1000)  # Convert to milliseconds
-        
-        agent = AgentModel(
-            model=model,
-            statistic=AIStatistic(
-                time=time_taken,
-                tokens=tokens_used
-            )
-        )
-        
-        # Get generated question from response
+                
         content = response.choices[0].message.content
-        try:
-            # Log the content for debugging
-            logger.debug(f"Generated content: {content}")
-            
-            # Try to parse as JSON first
-            try:
-                json_content = json.loads(content)
-                logger.debug(f"Parsed JSON: {json.dumps(json_content, indent=2)}")
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON format: {str(e)}")
-                raise ValueError(f"Invalid JSON format: {str(e)}")
-            
-            generated_question = QuestionModel.model_validate(json_content)
-        except Exception as e:
-            logger.error(f"Failed to parse generated question: {str(e)}")
-            logger.error(f"Content that failed validation: {content}")
-            raise ValueError(f"Invalid question format: {str(e)}")
+        question_obj = self._parse_openai_response(content, QuestionModel)
         
-        return AIQuestionModel(
-            question=generated_question,
-            agent=agent,
-            token_usage={
-                "total_tokens": tokens_used,
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": tokens_used - prompt_tokens
-            }
+        agent_model = self._create_agent_model(
+            model,
+            start_time,
+            response.usage.total_tokens if hasattr(response.usage, 'total_tokens') else None
         )
+
+        return AIQuestionModel(
+            agent=agent_model,
+            question=question_obj,
+        )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  # Private helper methods
+#     def _prepare_messages(self, question: RequestQuestionModel) -> List[Dict]:
+#         """Prepare messages for OpenAI API from question."""
+#         generation_prompt = f"""
+# # Programming Question Generation Task
+
+# ## Topic Information
+# - Main Topic: {question.topic}
+# - Platform: {question.platform}
+# {f'- Technology Stack: {question.technology}' if question.technology else ''}
+# - Related Tags: {', '.join(question.tags) if question.tags else 'None provided'}
+# - Approximate or rough question/idea: {question.question if question.question else 'None provided'}
+
+# ## Instructions
+# Create a high-quality programming question that tests understanding of {question.topic} on the {question.platform} platform. The question should:
+
+# 1. Be clear, specific, and challenging (not just asking for definitions)
+# 2. Include code examples where appropriate with proper syntax highlighting
+# 3. Be relevant to real-world programming scenarios
+# 4. Include all required tags plus additional relevant keywords
+# 5. Have three distinct difficulty levels with appropriate complexity progression
+
+# ## Required Structure
+# For each difficulty level (Beginner, Intermediate, Advanced):
+
+# 1. Provide a detailed answer appropriate for that level
+# 2. Include exactly 3 test questions with multiple-choice options (at least 4 options per test)
+# 3. Ensure code snippets are properly formatted with language highlighting using the correct format:
+#    - For Swift code: ```swift [code here] ```
+#    - For Objective-C code: ```objc [code here] ```
+#    - For C/C++ code: ```cpp [code here] ```
+#    - For Java code: ```java [code here] ```
+#    - For Kotlin code: ```kotlin [code here] ```
+#    - For any other language: use the appropriate language identifier (e.g., ```python, ```javascript, etc.)
+# 4. Include comprehensive evaluation criteria that describe:
+#    - Knowledge requirements for this level
+#    - Skills the student should demonstrate
+#    - Concepts they should understand at this level
+
+# ## Important Formatting Rules
+# 1. DO NOT include markers like "**Question:**", "**Answer:**", "###Beginner Level", etc. in your response
+# 2. DO NOT use markdown headings (# or ##) in your answers - the UI already provides appropriate headings
+# 3. Present code blocks ONLY with the appropriate language tag (```swift, ```objc, etc.)
+# 4. Format all code properly with correct indentation and syntax
+# 5. For test questions, use simple numbered options (1, 2, 3, 4) without additional formatting
+# 6. Make sure all code examples are technically accurate and follow best practices
+# 7. Keep your text clean and direct without any section headers or unnecessary formatting
+
+# ## Examples of Good Evaluation Criteria
+
+# ### Beginner Level Example:
+# 'At the Beginner level, the student should understand basic syntax and fundamental concepts of {question.topic}. They should demonstrate the ability to read simple code examples, identify correct syntax, and understand basic programming patterns related to {question.topic} on {question.platform}.'
+
+# ### Intermediate Level Example:
+# 'At the Intermediate level, the student should understand more complex implementations and common design patterns related to {question.topic}. They should demonstrate the ability to analyze code, identify potential issues, and understand the practical applications of {question.topic} concepts in {question.platform} development.'
+
+# ### Advanced Level Example:
+# 'At the Advanced level, the student should demonstrate deep understanding of {question.topic} internals and optimization techniques. They should be able to evaluate complex implementations, understand performance implications, and apply advanced patterns related to {question.topic} in sophisticated {question.platform} applications.'
+# """
+#         system_message = "You are an expert programming educator specializing in creating high-quality educational content. Your task is to generate challenging, well-structured programming questions with multiple difficulty levels. Each question should include detailed answers, appropriate test questions, and clear evaluation criteria that help assess student knowledge and skills. Ensure all code examples are properly formatted and technically accurate. IMPORTANT: Do not use any markdown headings or section titles in your responses. Do not include labels like 'Beginner Level' or 'Advanced Level' - these will be added by the UI. Keep your text clean and direct without any unnecessary formatting or section headers."
+#         messages = [
+#             {"role": "system", "content": system_message},
+#             {"role": "user", "content": generation_prompt}
+#         ]
+#         return messages
+
 
     def _build_validation_prompt(self, question: QuestionModel) -> List[Dict]:
         """Build validation prompt for OpenAI API."""
@@ -727,28 +828,4 @@ Your response should include:
             raise ValueError(f"Validation processing error: {str(e)}")
 
 
-    def count_tokens(self, model: str, content) -> int:
-        """Count tokens in text/messages."""
-        try:
-            encoding = tiktoken.encoding_for_model(model)
-        except KeyError:
-            encoding = tiktoken.get_encoding("cl100k_base")
-        
-        if isinstance(content, str):
-            return len(encoding.encode(content))
-        elif isinstance(content, list) and all(isinstance(m, dict) and 'role' in m and 'content' in m for m in content):
-            num_tokens = 0
-            for message in content:
-                num_tokens += 4  # Tokens for <im_start> and <im_end>
-                
-                for key, value in message.items():
-                    num_tokens += len(encoding.encode(str(value)))
-                    if key == "name":  # If there is a name, the role is skipped
-                        num_tokens -= 1
-            
-            num_tokens += 2  # Each response starts with <im_start>assistant
-            return num_tokens
-        elif isinstance(content, dict):
-            return self.count_tokens(model, json.dumps(content))
-        else:
-            return self.count_tokens(model, str(content))
+    

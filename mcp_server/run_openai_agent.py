@@ -38,7 +38,7 @@ def generate_question():
         generate_request = AIRequestQuestionModel(
             model=AIModel(
                 provider="openai",
-                model="o4-mini"
+                model="o3-mini"
             ),
             request=RequestQuestionModel(   
                 platform="iOS",
@@ -125,7 +125,8 @@ def quiz_question():
                 technology="Swift",
                 tags=["SwiftUI", "State", "Binding", "iOS", "Swift"],
                 question="Something about state in stack of ViewControllers"
-            )
+            ),
+            temperature=0.85
         )
         quiz = agent.quiz(quiz_request)
         print(f"\nQuiz result: {json.dumps(quiz.model_dump(), indent=2, ensure_ascii=False)}")

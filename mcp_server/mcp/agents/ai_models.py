@@ -53,6 +53,7 @@ class RequestQuestionModel(BaseModel):
 class AIRequestQuestionModel(BaseModel):
     model: AIModel = Field(description="AI model information")
     request: RequestQuestionModel = Field(description="Question request information")
+    temperature: float = Field(description="Temperature for the model", default=0.5)    
 
 #MARK: Response
 class TopicModel(BaseModel):
