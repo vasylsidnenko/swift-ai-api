@@ -40,24 +40,28 @@ def generate_question():
         generate_request = AIRequestQuestionModel(
             model=AIModel(
                 provider="claude",
-                model="claude-3-7-sonnet"
+                model="claude-3-5-sonnet"
             ),
             request=RequestQuestionModel(   
                 platform="iOS",
                 topic="SwiftUI",    
                 technology="Swift",
-                tags=["View", "State", "Binding"]
-            )
+                tags=["View", "State", 
+                ]
+            ),
+            temperature=0.7
         )
         
         print("Generating question...")
+
         question = agent.generate(request=generate_request)
+        
         print(f"\nGenerated question: {json.dumps(question.model_dump(), indent=2)}")
         
         # Save to file for validation
-        with open('mcp_server/test_data/claude_generated_question.json', 'w') as f:
-            f.write(json.dumps(question.model_dump(), indent=2))
-        print("\nQuestion saved to claude_generated_question.json")
+        # with open('mcp_server/test_data/claude_generated_question.json', 'w') as f:
+        #     f.write(json.dumps(question.model_dump(), indent=2))
+        # print("\nQuestion saved to claude_generated_question.json")
         
         return question
         
@@ -81,7 +85,8 @@ def validate_question(generated_model=None):
                     provider="claude",
                     model="claude-3-7-sonnet"
                 ),
-                request=QuestionModel(**question_data['question'])  # Convert to QuestionModel
+                request=QuestionModel(**question_data['question']),  # Convert to QuestionModel
+                temperature=0.7
             )
         else:
             agent = ClaudeAgent()
@@ -90,7 +95,8 @@ def validate_question(generated_model=None):
                     provider="claude",
                     model="claude-3-7-sonnet"
                 ),
-                request=generated_model.question  # Use only the question part from AIQuestionModel
+                request=generated_model.question,  # Use only the question part from AIQuestionModel
+                temperature=0.0
             )
         
         print("Validating question...")
@@ -120,14 +126,15 @@ def quiz_question():
     try:
         agent = ClaudeAgent()
         quiz_request = AIRequestQuestionModel(
-            model=AIModel(provider="claude", model="claude-3-7-sonnet"),
+            model=AIModel(provider="claude", model="claude-3-5-sonnet"),
             request=RequestQuestionModel(
                 platform="iOS",
                 topic="SwiftUI State Management",
                 technology="Swift",
-                tags=["SwiftUI", "State", "Binding", "iOS", "Swift"],
+                tags=["SwiftUI", "State"],
                 question="Something about state in stack of ViewControllers"
-            )
+            ),
+            temperature=0.85
         )
         quiz = agent.quiz(quiz_request)
         print(f"\nQuiz result: {json.dumps(quiz.model_dump(), indent=2, ensure_ascii=False)}")

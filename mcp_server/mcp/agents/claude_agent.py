@@ -7,6 +7,7 @@ and validate questions using the Claude language models.
 """
 
 import json
+import sys
 import os
 import logging
 import time
@@ -29,7 +30,8 @@ from mcp.agents.ai_models import (
     QuestionValidation,
     ModelCapabilities,
     AICapabilitiesModel,
-    AIQuizModel
+    AIQuizModel,
+    QuestionModel
 )
 
 logger = logging.getLogger(__name__)
@@ -86,7 +88,7 @@ class ClaudeAgent(AgentProtocol):
         """
         return [
             "claude-3-7-sonnet",
-            #"claude-3-5-sonnet",
+            "claude-3-5-sonnet",
             # "claude-3-5-haiku",
             # "claude-3-5-opus"
         ]
@@ -142,36 +144,46 @@ Most expensive to use
             """
         return "Unknown model"
 
+    def _max_tokens_for_model(self, model_name:str) -> int:
+        if model_name.lower() in ["claude-3-7-sonnet"]:
+            return 15000
+        if model_name.lower() in ["claude-3-5-sonnet", "claude-3-5-haiku", "claude-3-5-opus"]:
+            return 8192
+        return 4096
+
     def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
         """
         Generate a programming question using Claude.
         """
-        import sys
-        logger.info(f"Python version={sys.version}")
+       
+        print(f"Python version={sys.version}")
         try:
-            import anthropic
-            logger.info(f"Anthropic version={getattr(anthropic, '__version__', 'unknown')}")
+            print(f"Anthropic version={getattr(anthropic, '__version__', 'unknown')}")
         except Exception:
-            logger.info("Anthropic version=unknown")
+            print("Anthropic version=unknown")
+        print(f"GENERATE: {request}")
+
         model_name = request.model.model
         full_model_name = self._convert_model_name(model_name)
         logger.info(f"Claude model (short): {model_name}, (full): {full_model_name}")
         start_time = time.time()
+
         try:
             if model_name not in self.supported_models():
                 logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
+           
             prompt = self._format_question_request(request)
             system_prompt = self._create_system_prompt("generate")
+            
             response = self.client.messages.create(
                 model=full_model_name,
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
-                # Set max_tokens: 15000 for any 3-7 model, 8192 for any 3-5 model, default 8192
-                max_tokens=15000 if "3-7" in model_name else 8192,
+                max_tokens=self._max_tokens_for_model(model_name),
                 temperature=request.temperature
             )
             response_text = response.content[0].text
-            from mcp.agents.ai_models import QuestionModel
+           
             question_obj = self._parse_claude_response(response_text, QuestionModel)
             agent_model = self._create_agent_model(
                 request.model,
@@ -232,7 +244,7 @@ Most expensive to use
         """
         Generate a programming question (без відповідей/тестів) через Claude, згідно моделі QuizModel/AIQuizModel.
         """
-        import sys
+        
         logger.info(f"Python version={sys.version}")
         try:
             import anthropic
@@ -311,10 +323,6 @@ Most expensive to use
         # Log the prompt for debugging
         print(f"Claude quiz prompt={prompt}")
         return prompt
-        if not self.client:
-            if not self.api_key:
-                raise ValueError("No Claude API key provided")
-            self.client = anthropic.Anthropic(api_key=self.api_key)
     
     def _create_agent_model(self, ai_model: AIModel, start_time: float, token_count: Optional[int] = None) -> AgentModel:
         """
@@ -472,7 +480,7 @@ Example output:
         req_data = request.request
         
         # Create a prompt for Claude
-        prompt = f"""Generate a programming question about {req_data.topic} for {req_data.platform} platform"""
+        prompt = f"""Generate a theoretical programming question about {req_data.topic} for {req_data.platform} platform"""
         
         if req_data.technology:
             prompt += f" using {req_data.technology} technology"
@@ -679,121 +687,121 @@ Return only the JSON without any other text or explanations.
             logger.error(f"Failed to validate parsed JSON against schema: {e}")
             raise ValueError(f"Claude response does not match expected schema: {e}")
     
-    def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
-        """
-        Generate a programming question using Claude.
+    # def generate(self, request: AIRequestQuestionModel) -> AIQuestionModel:
+    #     """
+    #     Generate a programming question using Claude.
         
-        Args:
-            request: The question generation request
+    #     Args:
+    #         request: The question generation request
             
-        Returns:
-            AIQuestionModel containing the generated question
-        """
-        start_time = time.time()
+    #     Returns:
+    #         AIQuestionModel containing the generated question
+    #     """
+    #     start_time = time.time()
         
-        try:
-            model_name = request.model.model
-            if model_name not in self.supported_models():
-                logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
+    #     try:
+    #         model_name = request.model.model
+    #         if model_name not in self.supported_models():
+    #             logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
             
-            # Format the request for Claude
-            prompt = self._format_question_request(request)
-            system_prompt = self._create_system_prompt("generate")
+    #         # Format the request for Claude
+    #         prompt = self._format_question_request(request)
+    #         system_prompt = self._create_system_prompt("generate")
             
-            # Make request to Claude API
-            response = self.client.messages.create(
-                model=self._convert_model_name(model_name),
-                system=system_prompt,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                max_tokens=15000,
-                temperature=request.temperature
-            )
+    #         # Make request to Claude API
+    #         response = self.client.messages.create(
+    #             model=self._convert_model_name(model_name),
+    #             system=system_prompt,
+    #             messages=[
+    #                 {
+    #                     "role": "user",
+    #                     "content": prompt
+    #                 }
+    #             ],
+    #             max_tokens=15000,
+    #             temperature=request.temperature
+    #         )
             
-            # Extract content text from response
-            response_text = response.content[0].text
+    #         # Extract content text from response
+    #         response_text = response.content[0].text
             
-            # Parse the response into a QuestionModel (output schema)
-            from mcp.agents.ai_models import QuestionModel
-            question_obj = self._parse_claude_response(response_text, QuestionModel)
+    #         # Parse the response into a QuestionModel (output schema)
+    #         from mcp.agents.ai_models import QuestionModel
+    #         question_obj = self._parse_claude_response(response_text, QuestionModel)
 
-            # Create agent model (same as OpenAIAgent)
-            agent_model = self._create_agent_model(
-                request.model,
-                start_time,
-                response.usage.output_tokens + response.usage.input_tokens
-            )
+    #         # Create agent model (same as OpenAIAgent)
+    #         agent_model = self._create_agent_model(
+    #             request.model,
+    #             start_time,
+    #             response.usage.output_tokens + response.usage.input_tokens
+    #         )
 
-            # Return AIQuestionModel (same as OpenAIAgent)
-            return AIQuestionModel(
-                agent=agent_model,
-                question=question_obj
-            )
+    #         # Return AIQuestionModel (same as OpenAIAgent)
+    #         return AIQuestionModel(
+    #             agent=agent_model,
+    #             question=question_obj
+    #         )
             
-        except Exception as e:
-            logger.exception(f"Error generating question with Claude: {e}")
-            raise
+    #     except Exception as e:
+    #         logger.exception(f"Error generating question with Claude: {e}")
+    #         raise
     
-    def validate(self, request: AIRequestValidationModel) -> AIValidationModel:
-        """
-        Validate a programming question using Claude.
+    # def validate(self, request: AIRequestValidationModel) -> AIValidationModel:
+    #     """
+    #     Validate a programming question using Claude.
         
-        Args:
-            request: The validation request
+    #     Args:
+    #         request: The validation request
             
-        Returns:
-            AIValidationModel containing the validation results
-        """
-        start_time = time.time()
+    #     Returns:
+    #         AIValidationModel containing the validation results
+    #     """
+    #     start_time = time.time()
         
-        try:
-            model_name = request.model.model
-            if model_name not in self.supported_models():
-                logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
+    #     try:
+    #         model_name = request.model.model
+    #         if model_name not in self.supported_models():
+    #             logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
             
-            # Format the request for Claude
-            prompt = self._format_validation_request(request)
-            system_prompt = self._create_system_prompt("validate")
+    #         # Format the request for Claude
+    #         prompt = self._format_validation_request(request)
+    #         system_prompt = self._create_system_prompt("validate")
             
-            # Make request to Claude API
-            response = self.client.messages.create(
-                model=self._convert_model_name(model_name),
-                system=system_prompt,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                max_tokens=10000,
-                temperature=request.temperature
-            )
+    #         # Make request to Claude API
+    #         response = self.client.messages.create(
+    #             model=self._convert_model_name(model_name),
+    #             system=system_prompt,
+    #             messages=[
+    #                 {
+    #                     "role": "user",
+    #                     "content": prompt
+    #                 }
+    #             ],
+    #             max_tokens=10000,
+    #             temperature=request.temperature
+    #         )
             
-            # Extract content text from response
-            response_text = response.content[0].text
+    #         # Extract content text from response
+    #         response_text = response.content[0].text
             
-            # Parse the response into a QuestionValidation
-            validation = self._parse_claude_response(response_text, QuestionValidation)
+    #         # Parse the response into a QuestionValidation
+    #         validation = self._parse_claude_response(response_text, QuestionValidation)
             
-            # Create and return the AIValidationModel
-            agent_model = self._create_agent_model(
-                request.model, 
-                start_time,
-                response.usage.output_tokens + response.usage.input_tokens
-            )
+    #         # Create and return the AIValidationModel
+    #         agent_model = self._create_agent_model(
+    #             request.model, 
+    #             start_time,
+    #             response.usage.output_tokens + response.usage.input_tokens
+    #         )
             
-            return AIValidationModel(
-                agent=agent_model,
-                validation=validation
-            )
+    #         return AIValidationModel(
+    #             agent=agent_model,
+    #             validation=validation
+    #         )
             
-        except Exception as e:
-            logger.exception(f"Error validating question with Claude: {e}")
-            raise
+    #     except Exception as e:
+    #         logger.exception(f"Error validating question with Claude: {e}")
+    #         raise
     
     def test_capabilities(self, request: AIRequestQuestionModel) -> AICapabilitiesModel:
         """

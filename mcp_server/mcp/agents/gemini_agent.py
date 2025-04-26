@@ -10,6 +10,10 @@ import os
 import logging
 import time
 from typing import Dict, List, Optional, Callable, Any
+import demjson3
+from mcp.agents.ai_models import QuestionModel, QuizModel, QuestionValidation
+from mcp.agents.utils import remove_triple_backticks_from_outer_markdown, fix_unterminated_strings_in_json, escape_newlines_in_json_strings
+import demjson3, json, re
 
 # Correct import for google-generativeai
 import google.generativeai as genai
@@ -240,13 +244,12 @@ Good choice for interactive applications, chatbots, and assistance tools
 
     def _format_question_request(self, request: AIRequestQuestionModel) -> str:
         """
-        Формує prompt для генерації питання строго під QuestionModel
+        Forms a prompt for generating a question strictly following the QuestionModel schema.
         """
         # Gemini prompt for strict QuestionModel format
         req_data = request.request
         prompt = f"""
 You are an expert programming question generator. Generate a JSON object STRICTLY matching the following schema:
-
 - topic: object with fields name (string), platform (string), technology (string)
 - text: string (the main programming question, can contain code block with correct markdown formatting, e.g. ```swift)
 - tags: array of strings
@@ -265,7 +268,7 @@ STRICT FORMAT RULES:
 - Do not use multiline strings.
 - All field names must match exactly.
 
-Use the following parameters:
+Create a theoretical programming question using the following parameters:
 - topic: {req_data.topic}
 - platform: {req_data.platform}
 - technology: {req_data.technology or ''}
@@ -332,14 +335,14 @@ Question to validate: {request.request.model_dump_json()}
 
     def _format_quiz_request(self, request: AIRequestQuestionModel) -> str:
         """
-        Формує prompt для генерації лише питання (без відповідей/тестів) для Gemini.
-        Якщо у request.request.question є текст — він буде використаний як чернетка/натяк для формування фінального питання.
+        Forms a prompt for generating only the programming question (no answers/tests).
+        If request.request.question has text, it will be used as a draft/hint for the final question.
         """
         r = request.request
         # If a draft question is provided, include it as a hint for the model
         hint = f" Draft question (use as a base or inspiration): '{r.question}'." if getattr(r, 'question', None) else ""
         prompt = (
-            f"Create a programming question for the topic '{r.topic}' on platform '{r.platform}'. "
+            f"Create a theoretical programming question for the topic '{r.topic}' on platform '{r.platform}'. "
             f"Technology: '{r.technology}'. Tags: {r.tags}.{hint} "
             "Return ONLY the question, without any answers, answer levels, tests, or explanations. "
             "Format your response as a JSON object with fields: topic, question, tags. "
@@ -356,10 +359,7 @@ Question to validate: {request.request.model_dump_json()}
         """
         Parse Gemini's response text to extract and validate JSON.
         """
-        import demjson3
-        from mcp.agents.ai_models import QuestionModel, QuizModel, QuestionValidation
-        from mcp.agents.utils import remove_triple_backticks_from_outer_markdown, fix_unterminated_strings_in_json, escape_newlines_in_json_strings
-        import demjson3, json, re
+        
         # Claude-style tolerant JSON parser for Gemini
         try:
             # Try raw parse (json.loads first, then demjson3)
