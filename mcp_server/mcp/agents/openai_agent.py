@@ -456,16 +456,16 @@ Example of a valid output:
         platform = r.platform
         technology = r.technology or ""
         tags = ', '.join(r.tags) if r.tags else 'None'
-        question_hint = r.question or "No specific hint provided."
 
         return (
-            f"Generate a programming question for:\n"
+            f"Create a theoretical programming question about:\n"
             f"- Topic: '{topic}'\n"
             f"- Platform: '{platform}'\n"
             f"- Technology: '{technology}'\n"
             f"- Tags: [{tags}]\n"
-            f"- Hint: '{question_hint}'\n\n"
-            f"Only return a single JSON object following the required fields: topic, question, tags."
+            f"- Hint or context: '{r.question if r.question else 'None'}'\n\n"
+            f"The question should ask about concepts, differences, or mechanisms, not request code writing. "
+            f"Return only the question text, no JSON or extra formatting."
         )
 
     def _make_generate_system_prompt(self) -> str:
@@ -511,19 +511,6 @@ The response must be a single JSON object that matches the defined structure, wi
             f"Use correct language tags for code blocks if needed. Do not use any markdown section titles. "
             f"Return structured output as a single JSON object without any additional commentary."
         )
-
-    def _make_quick_question_prompt(self, request: RequestQuestionModel) -> str:
-        r = request
-        return (
-            f"Create a theoretical programming question about:\n"
-            f"- Topic: '{r.topic}'\n"
-            f"- Platform: '{r.platform}'\n"
-            f"{f'- Technology: {r.technology}' if r.technology else ''}\n"
-            f"- Hint or context: '{r.question if r.question else 'None'}'\n\n"
-            f"The question should ask about concepts, differences, or mechanisms, not request code writing. "
-            f"Return only the question text, no JSON or extra formatting."
-        )
-
 
     def _parse_openai_response(self, response_text: str, schema_type):
         """
