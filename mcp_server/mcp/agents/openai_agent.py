@@ -503,14 +503,25 @@ The response must be a single JSON object that matches the defined structure, wi
             f"{f'- Technology: {r.technology}' if r.technology else ''}\n"
             f"- Tags: {', '.join(r.tags) if r.tags else 'None'}\n"
             f"- Prompt idea: '{r.question if r.question else 'None provided'}'\n\n"
-            f"The structure must include:\n"
-            f"1. A main programming question (clear and realistic)\n"
-            f"2. Three answer levels (Beginner, Intermediate, Advanced), each with:\n"
-            f"   - A detailed explanation\n"
-            f"   - 3 test questions (multiple choice with 4 options)\n"
-            f"   - Evaluation criteria (knowledge, skills, concepts)\n\n"
-            f"Use correct language tags in code blocks. Do not use any markdown or section titles. "
-            f"Return structured output in JSON format without surrounding text."
+            f"The main programming question must be **theoretical** (e.g., explain concepts, differences, principles).\n"
+            f"The three answer levels (Beginner, Intermediate, Advanced) must each include:\n"
+            f"1. A detailed answer (theoretical or practical depending on the level)\n"
+            f"2. 3 multiple-choice test questions (more practical, involve coding or analysis)\n"
+            f"3. Evaluation criteria (knowledge, skills, concepts).\n\n"
+            f"Use correct language tags for code blocks if needed. Do not use any markdown section titles. "
+            f"Return structured output as a single JSON object without any additional commentary."
+        )
+
+    def _make_quick_question_prompt(self, request: RequestQuestionModel) -> str:
+        r = request
+        return (
+            f"Create a theoretical programming question about:\n"
+            f"- Topic: '{r.topic}'\n"
+            f"- Platform: '{r.platform}'\n"
+            f"{f'- Technology: {r.technology}' if r.technology else ''}\n"
+            f"- Hint or context: '{r.question if r.question else 'None'}'\n\n"
+            f"The question should ask about concepts, differences, or mechanisms, not request code writing. "
+            f"Return only the question text, no JSON or extra formatting."
         )
 
 

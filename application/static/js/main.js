@@ -793,6 +793,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // Split the text into code blocks and text parts
         const parts = questionText.split(/(```[\s\S]*?```)/g);
         let formattedHtml = '<div class="generated-question p-3 border rounded shadow-sm">';
+        // Language mapping for PrismJS compatibility
+        const langMap = {
+            objc: 'objectivec',
+            'obj-c': 'objectivec',
+            objectivec: 'objectivec',
+            c: 'c',
+            cpp: 'cpp',
+            'c++': 'cpp',
+            java: 'java',
+            swift: 'swift',
+            python: 'python',
+            dart: 'dart',
+            kotlin: 'kotlin',
+            glsl: 'glsl',
+            metal: 'cpp', // Use cpp as fallback for Metal
+            plaintext: 'plaintext'
+        };
         parts.forEach(part => {
             if (part.startsWith('```') && part.endsWith('```')) {
                 // It's a code block
@@ -802,7 +819,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 let language = 'plaintext'; // Default language
                 let code = codeContent;
                 if (languageMatch) {
-                    language = languageMatch[1];
+                    const originalLang = languageMatch[1].toLowerCase();
+                    language = langMap[originalLang] || originalLang;
                     code = codeContent.substring(languageMatch[0].length); // Code without language hint
                 }
                 // Add pre/code block with line-numbers and language class

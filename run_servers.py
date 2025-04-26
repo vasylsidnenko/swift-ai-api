@@ -116,10 +116,27 @@ def run_application():
     return app_process
 
 def main():
+    """
+    Main entry point for running both servers.
+    """
     logger.info("Starting server initialization...")
-    if not check_ports():
-        logger.error("Port check failed")
-        return
+
+    # Ensure all required ports are free before starting servers
+    import socket
+    ports_to_check = [MCP_SERVER_PORT, APPLICATION_PORT]
+    for port in ports_to_check:
+        kill_process_on_port(port)  # Try to kill any process using the port
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.bind(('localhost', port))
+            sock.close()
+        except socket.error:
+            # Port is still busy, print PIDs and exit
+            import subprocess
+            result = subprocess.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True)
+            pids = [pid for pid in result.stdout.strip().split("\n") if pid]
+            logger.error(f"Port {port} is still in use after attempting to kill. PIDs: {pids}")
+            sys.exit(1)
 
     # Start MCP server
     logger.info("Attempting to start MCP server...")
