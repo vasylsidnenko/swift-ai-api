@@ -43,11 +43,11 @@ def generate_question():
                 model="claude-3-5-sonnet"
             ),
             request=RequestQuestionModel(   
-                platform="iOS",
-                topic="SwiftUI",    
-                technology="Swift",
-                tags=["View", "State", 
-                ]
+                # platform="iOS",
+                # topic="SwiftUI",    
+                # technology="Swift",
+                # tags=["View", "State", "Binding"], 
+                question="Something about state in stack of ViewControllers in SwiftUI"
             ),
             temperature=0.7
         )
@@ -128,11 +128,11 @@ def quiz_question():
         quiz_request = AIRequestQuestionModel(
             model=AIModel(provider="claude", model="claude-3-5-sonnet"),
             request=RequestQuestionModel(
-                platform="iOS",
-                topic="SwiftUI State Management",
-                technology="Swift",
-                tags=["SwiftUI", "State"],
-                question="Something about state in stack of ViewControllers"
+                # platform="iOS",
+                # topic="SwiftUI State Management",
+                # technology="Swift",
+                # tags=["SwiftUI", "State"],
+                question="Something about state in stack of ViewControllers in SwiftUI"
             ),
             temperature=0.85
         )

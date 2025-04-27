@@ -39,13 +39,14 @@ def generate_question():
         generate_request = AIRequestQuestionModel(
             model=AIModel(
                 provider="gemini",
-                model="models/gemini-1.5-pro-latest"  # Gemini: use full model name
+                model="gemini-1.5-pro-latest" 
             ),
             request=RequestQuestionModel(   
-                platform="iOS",
-                topic="SwiftUI",    
-                technology="Swift",
-                tags=["View", "State", "Binding"]
+                # platform="iOS",
+                # topic="SwiftUI",    
+                # technology="Swift",
+                # tags=["View", "State", "Binding"],
+                question="Something about state in stack of ViewControllers in SwiftUI"
             )
         )
         print("Generating question...")
@@ -102,13 +103,13 @@ def quiz_question():
     try:
         agent = GeminiAgent()
         quiz_request = AIRequestQuestionModel(
-            model=AIModel(provider="gemini", model="models/gemini-1.5-pro-latest"),
+            model=AIModel(provider="gemini", model="gemini-2.0-flash"),   
             request=RequestQuestionModel(
-                platform="iOS",
-                topic="SwiftUI State Management",
-                technology="Swift",
-                tags=["SwiftUI", "State", "Binding", "iOS", "Swift"],
-                question="Something about state in stack of ViewControllers"
+                # platform="iOS",
+                # topic="SwiftUI State Management",
+                # technology="Swift",
+                # tags=["SwiftUI", "State", "Binding", "iOS", "Swift"],
+                question="Something about state in stack of ViewControllers in SwiftUI"
             )
         )
         quiz = agent.quiz(quiz_request)

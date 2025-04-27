@@ -370,7 +370,7 @@ Question to validate: {request.request.model_dump_json()}
             json_str = response_text[start:end+1]
             try:
                 data = json.loads(json_str)
-                logger.error("[GEMINI] Parsed RAW JSON with json.loads.")
+                logger.debug("[GEMINI] Parsed RAW JSON with json.loads.")
             except Exception as e_json:
                 data = demjson3.decode(json_str)
                 logger.error("[GEMINI] Parsed RAW JSON with demjson3.")

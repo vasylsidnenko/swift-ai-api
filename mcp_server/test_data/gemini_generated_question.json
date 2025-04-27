@@ -5,124 +5,126 @@
       "model": "models/gemini-1.5-pro-latest"
     },
     "statistic": {
-      "time": 15299,
+      "time": 38468,
       "tokens": null
     }
   },
   "question": {
     "topic": {
-      "name": "SwiftUI View Composition",
+      "name": "SwiftUI State Management",
       "platform": "iOS",
       "technology": "Swift"
     },
-    "text": "Create a SwiftUI view that displays a list of names, where each name is displayed in a rounded rectangle with a specific background color.  The background color should alternate between two colors for consecutive names.",
+    "text": "Describe how @State behaves when navigating through a stack of ViewControllers in SwiftUI, considering push and pop operations.  Provide an example of a scenario where data persistence is crucial across these transitions and how you would achieve it using @State and other relevant property wrappers.",
     "tags": [
-      "View",
+      "SwiftUI",
       "State",
-      "Binding"
+      "Navigation",
+      "Data Persistence",
+      "iOS"
     ],
     "answerLevels": {
       "beginner": {
         "name": "Beginner",
-        "answer": "Use a `ForEach` to iterate over the names and a conditional statement inside the `ForEach` to alternate the background color.",
+        "answer": "@State is a property wrapper that allows you to store and modify values within a view. When you navigate to a new view, the @State variables of the previous view are destroyed. When you navigate back, a new instance of the previous view is created, and its @State variables are initialized to their default values. This means @State does not persist data across navigation transitions.",
         "tests": [
           {
-            "snippet": "```swift\nlet names = [\"Alice\", \"Bob\", \"Charlie\"]\n// Implement the view here\n```",
+            "snippet": "What happens to a @State variable when you navigate away from a view?",
             "options": [
-              "1. A `List` with static views.",
-              "2. A `ForEach` with conditional background color.",
-              "3. A `VStack` with static views."
+              "1. It is saved to persistent storage.",
+              "2. It is destroyed.",
+              "3. It is passed to the next view."
             ],
             "answer": "2"
           },
           {
-            "snippet": "```swift\n// What is the purpose of the `id` parameter in `ForEach`?\n```",
+            "snippet": "When you navigate back to a view, what value does a @State variable have?",
             "options": [
-              "1. To identify the view type.",
-              "2. To uniquely identify each element in the collection.",
-              "3. To set the background color."
+              "1. Its previous value.",
+              "2. Its default value.",
+              "3. A random value."
             ],
             "answer": "2"
           },
           {
-            "snippet": "```swift\n// How can you make the rounded rectangle's corner radius larger?\n```",
+            "snippet": "Is @State suitable for persisting data across navigation transitions?",
             "options": [
-              "1. Use the `cornerRadius` modifier with a larger value.",
-              "2. Use the `frame` modifier.",
-              "3. Use the `padding` modifier."
+              "1. Yes",
+              "2. No",
+              "3. Sometimes"
             ],
-            "answer": "1"
+            "answer": "2"
           }
         ],
-        "evaluationCriteria": "Understands basic `ForEach` usage and conditional rendering."
+        "evaluationCriteria": "Understands the basic behavior of @State and its limitations regarding data persistence across navigation."
       },
       "intermediate": {
         "name": "Intermediate",
-        "answer": "Implement the alternating background color using a computed property that calculates the color based on the index of the name in the array.  Use a more complex layout, such as `LazyVGrid` or `LazyHGrid`, to arrange the names.",
+        "answer": "To persist data across navigation transitions, you should use alternative property wrappers like @EnvironmentObject or @ObservedObject. These allow you to share data between views. For simple data persistence within a single view hierarchy, you can also use @Binding to pass a mutable reference to a @State variable in a parent view.  However, for complex navigation scenarios, a more robust solution might involve using a data model class with @Published properties and observing changes in child views.",
         "tests": [
           {
-            "snippet": "```swift\n// Implement a computed property that returns a different color based on whether the index is even or odd.\n```",
+            "snippet": "Which property wrapper is suitable for sharing data between views?",
             "options": [
-              "1. Use the modulo operator (%) to check if the index is divisible by 2.",
-              "2. Use an if-else statement to check the index value.",
-              "3. Use a switch statement to check the index value."
+              "1. @State",
+              "2. @EnvironmentObject",
+              "3. @GestureState"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "How can you pass a mutable reference to a @State variable to a child view?",
+            "options": [
+              "1. Using @Binding",
+              "2. Using @State directly",
+              "3. Using @Environment"
             ],
             "answer": "1"
           },
           {
-            "snippet": "```swift\n// How can you display the names in a grid layout?\n```",
+            "snippet": "What is a good approach for complex navigation and data persistence in SwiftUI?",
             "options": [
-              "1. Use `LazyVGrid` or `LazyHGrid`.",
-              "2. Use `HStack` and `VStack`.",
-              "3. Use a custom layout."
+              "1. Relying solely on @State",
+              "2. Using a data model with @Published properties and observing changes",
+              "3. UsingUserDefaults"
             ],
-            "answer": "1"
-          },
-          {
-            "snippet": "```swift\n// How can you make the grid items take up equal width?\n```",
-            "options": [
-              "1. Use `GridItem(.flexible())`.",
-              "2. Use `GridItem(.fixed(width))`.",
-              "3. Use `GridItem(.adaptive(minimum: width))`."
-            ],
-            "answer": "1"
+            "answer": "2"
           }
         ],
-        "evaluationCriteria": "Can implement more complex layouts and use computed properties effectively."
+        "evaluationCriteria": "Understands how to use alternative property wrappers for data persistence and can choose the right approach based on complexity."
       },
       "advanced": {
         "name": "Advanced",
-        "answer": "Create a custom `ViewModifier` to encapsulate the rounded rectangle and background color logic.  Use a `Binding` to allow the parent view to control the selected name. Implement a smooth transition when the background color changes.",
+        "answer": "While @State is not designed for data persistence across navigation, you can leverage it in conjunction with other mechanisms like a shared data model or a custom solution using `onAppear` and `onDisappear` to manually save and restore state. For instance, you can store the @State value in a shared `ObservableObject` within `onDisappear` and retrieve it in `onAppear`.  Consider using a dedicated state management solution like Redux or TCA for more complex applications to manage state transitions and data persistence effectively.  This approach allows for a clear separation of concerns and predictable state management.",
         "tests": [
           {
-            "snippet": "```swift\n// Create a custom `ViewModifier` that applies the rounded rectangle and background color.\n```",
+            "snippet": "How can you manually save and restore a @State value during navigation transitions?",
             "options": [
-              "1. Create a struct conforming to the `ViewModifier` protocol.",
-              "2. Create a class inheriting from `View`.",
-              "3. Create a function that returns a `View`."
+              "1. By using UserDefaults",
+              "2. By using onAppear and onDisappear in conjunction with a shared data store",
+              "3. By directly modifying the @State variable in another view"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "What are some advanced state management solutions for complex SwiftUI applications?",
+            "options": [
+              "1. Redux, TCA",
+              "2. Solely relying on @State",
+              "3. Using only @EnvironmentObject"
             ],
             "answer": "1"
           },
           {
-            "snippet": "```swift\n// How can you use a `Binding` to allow the parent view to control the selected name?\n```",
+            "snippet": "Why is separating state management logic from view logic beneficial?",
             "options": [
-              "1. Pass a `Binding` property to the child view.",
-              "2. Use an `ObservableObject`.",
-              "3. Use a `State` property in the parent view."
-            ],
-            "answer": "1"
-          },
-          {
-            "snippet": "```swift\n// How can you add a smooth transition to the background color change?\n```",
-            "options": [
-              "1. Use the `animation` modifier.",
-              "2. Use the `withAnimation` function.",
-              "3. Use the `transition` modifier."
+              "1. Improves code readability and maintainability",
+              "2. Increases the complexity of the application",
+              "3. Has no significant impact"
             ],
             "answer": "1"
           }
         ],
-        "evaluationCriteria": "Understands advanced concepts like `ViewModifier`, `Binding`, and animations."
+        "evaluationCriteria": "Can integrate @State with other mechanisms for data persistence and understands advanced state management concepts and architectural patterns."
       }
     }
   }
