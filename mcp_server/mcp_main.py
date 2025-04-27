@@ -1,7 +1,9 @@
 import os
 
 if os.getenv("FLY_APP_NAME"):  # If FLY_APP_NAME environment variable exists (Fly.io automatically provides it)
+    print("Importing app from mcp.mcp_server...")
     from mcp.mcp_server import app
+    print("Successfully imported app.")
 else:
     from mcp.mcp_server import app
 
