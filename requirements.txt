@@ -1,8 +1,0 @@
-Flask
-gunicorn
-openai
-google-generativeai
-python-dotenv
-requests
-flask==3.0.2
-tiktoken

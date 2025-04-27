@@ -1,0 +1,19 @@
+/* Ensures quiz question block displays all content clearly */
+.quiz-question-block {
+    white-space: pre-line;
+    word-break: break-word;
+    font-size: 1.1em;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 1rem;
+    min-height: 60px;
+}
+
+.quiz-question-block p {
+    margin-bottom: 0.5em;
+}
+
+.quiz-question-block pre {
+    margin-bottom: 1em;
+}

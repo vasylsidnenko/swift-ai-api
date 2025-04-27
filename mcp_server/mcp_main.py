@@ -1,0 +1,8 @@
+import os
+from mcp.mcp_server import app
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("MCP_PORT", 10001))
+    host = os.environ.get("MCP_HOST", "0.0.0.0")
+    uvicorn.run("mcp.mcp_server:app", host=host, port=port, reload=True)

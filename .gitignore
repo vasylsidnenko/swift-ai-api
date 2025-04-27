@@ -1,2 +1,104 @@
-.venv/*
-*/__pycache__/*
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+.pyenv/
+pip-selfcheck.json
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# Pylint
+pylint-report.txt
+pylint-global.rc
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Mac OS
+.DS_Store
+
+# Secrets
+.env
+.env.*
+*.env
+
+# Logs
+*.log
+logs/
+
+# SQLite
+*.sqlite3
+*.db
+
+# Others
+*.bak
+*.swp
+*.tmp
+
+
+# Cursor IDE
+.cursor/
+
+# Windmill / WindSurf
+windmill/
+windmill-tests/
+.windmill/
+.wind/
+*.windmill.json
+windmill-report/
+.windmill-report/

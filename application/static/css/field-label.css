@@ -1,0 +1,44 @@
+.field-label, .form-label {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #171717;
+  letter-spacing: 0.01em;
+}
+.optional-label {
+  color: #888;
+  font-weight: normal;
+  font-size: 0.96em;
+  margin-left: 0.25em;
+}
+
+.form-control {
+  font-size: 1.09rem;
+  color: #222;
+  font-weight: 500;
+}
+
+.form-text.subdued-help {
+  font-size: 0.88em;
+  color: #b0b0b0 !important;
+}
+
+.enhanced-input:focus {
+  border-color: #0d6efd !important;
+  background: #eaf1fb !important;
+  box-shadow: 0 0 0 2px #b6d4fe44;
+  outline: none;
+}
+
+/* Smaller, lighter placeholder */
+.placeholder-small::placeholder {
+  color: #bfc5d0 !important;
+  font-size: 0.97em !important;
+  opacity: 1;
+}
+
+/* Highlight non-empty fields */
+.has-value {
+  border-color: #0d6efd !important;
+  background: #eaf1fb !important;
+  box-shadow: 0 0 0 2px #b6d4fe44;
+}

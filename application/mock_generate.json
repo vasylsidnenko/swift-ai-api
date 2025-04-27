@@ -1,0 +1,143 @@
+{
+  "agent": {
+    "model": {
+      "provider": "openai",
+      "model": "o4-mini"
+    },
+    "statistic": {
+      "time": 58534,
+      "tokens": 9476
+    }
+  },
+  "question": {
+    "topic": {
+      "name": "SwiftUI State and Binding",
+      "platform": "iOS",
+      "technology": "Swift"
+    },
+    "text": "Consider a parent view in SwiftUI that maintains a list of tasks and wants to pass this list to a child view. The child view should display the tasks in a list and allow toggling a Boolean property of each task (e.g. marking as completed). However, simply passing the array by value will not update the parent\u2019s state. Explain how to correctly design the parent and child views to allow the child view to update the parent\u2019s @State variable. Provide the modified code for both views and justify why the changes are necessary.",
+    "tags": [
+      "SwiftUI",
+      "View",
+      "State",
+      "Binding",
+      "Data Flow",
+      "iOS",
+      "Property Wrappers",
+      "List"
+    ],
+    "answerLevels": {
+      "beginner": {
+        "name": "Beginner",
+        "answer": "In SwiftUI, @State is used in a parent view to own mutable data. To allow a child to modify that data, the parent must pass a binding to the state by prefixing the state variable with $. In the child view, you declare a @Binding property instead of a plain property. For example:\n```swift\nstruct ParentView: View {\n    @State private var isOn: Bool = false\n\n    var body: some View {\n        ToggleView(isOn: $isOn)\n    }\n}\n\nstruct ToggleView: View {\n    @Binding var isOn: Bool\n\n    var body: some View {\n        Toggle(\"Switch\", isOn: $isOn)\n    }\n}\n```\nHere, $isOn in the parent passes a binding to the toggle\u2019s state. The child uses @Binding so toggling updates the parent\u2019s @State. This pattern ensures a two-way data flow between views.",
+        "tests": [
+          {
+            "snippet": "```swift\nstruct ToggleView: View {\n    var isOn: Bool\n    var body: some View {\n        Toggle(\"Enable\", isOn: $isOn)\n    }\n}\n``` What change in ToggleView will allow the toggle to update the parent's @State variable?",
+            "options": [
+              "var isOn: Bool",
+              "@Binding var isOn: Bool",
+              "@State var isOn: Bool",
+              "@ObservedObject var isOn: Bool"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "```swift\nstruct ParentView: View {\n    @State private var isOn = false\n    var body: some View {\n        ToggleView(isOn: $isOn)\n    }\n}\n``` Which line correctly passes the binding to the child view?",
+            "options": [
+              "ToggleView(isOn: isOn)",
+              "ToggleView(isOn: $isOn)",
+              "ToggleView(isOn: &isOn)",
+              "ToggleView(isOn: Binding(isOn))"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "```swift\nstruct ParentView: View {\n    @State private var flag: Bool = true\n    var body: some View {\n        ToggleView(isOn: $flag)\n    }\n}\nstruct ToggleView: View {\n    @Binding var isOn: Bool\n    var body: some View {\n        Text(isOn ? \"On\" : \"Off\")\n    }\n}\n``` What will be displayed when the toggle is switched off?",
+            "options": [
+              "\"On\"",
+              "\"Off\"",
+              "true",
+              "false"
+            ],
+            "answer": "2"
+          }
+        ],
+        "evaluationCriteria": "At the Beginner level, the student should understand basic SwiftUI property wrappers. They should demonstrate the ability to distinguish between @State and @Binding, pass bindings to child views, and follow two-way data flow patterns in simple view hierarchies."
+      },
+      "intermediate": {
+        "name": "Intermediate",
+        "answer": "When you have an array of custom structs in a parent view, you still use @State to own it and @Binding in the child view to mutate it. You pass $tasks to the child and then iterate over $tasks in a ForEach to get bindings to each element. Example:\n```swift\nstruct Task: Identifiable {\n    let id = UUID()\n    var title: String\n    var isCompleted: Bool\n}\n\nstruct ParentView: View {\n    @State private var tasks: [Task] = [\n        Task(title: \"Buy milk\", isCompleted: false),\n        Task(title: \"Walk dog\", isCompleted: false)\n    ]\n\n    var body: some View {\n        NavigationView {\n            TaskListView(tasks: $tasks)\n                .navigationBarTitle(\"Tasks\")\n                .navigationBarItems(editButton: EditButton())\n        }\n    }\n}\n\nstruct TaskListView: View {\n    @Binding var tasks: [Task]\n\n    var body: some View {\n        List {\n            ForEach($tasks) { $task in\n                HStack {\n                    Text(task.title)\n                    Spacer()\n                    Toggle(\"\", isOn: $task.isCompleted)\n                }\n            }\n            .onDelete { indices in\n                tasks.remove(atOffsets: indices)\n            }\n            .onMove { source, destination in\n                tasks.move(fromOffsets: source, toOffset: destination)\n            }\n        }\n    }\n}\n```\nPassing $tasks gives the child a binding to the parent\u2019s array. Using ForEach($tasks) produces a binding to each Task so toggles on individual items write back to the parent.",
+        "tests": [
+          {
+            "snippet": "Which ForEach initializer gives a Binding<Task> for each element to enable two-way updates in the row?",
+            "options": [
+              "ForEach(tasks) { task in \u2026 }",
+              "ForEach($tasks) { $task in \u2026 }",
+              "ForEach(tasks.indices) { idx in \u2026 }",
+              "ForEach($tasks.indices) { $binding in \u2026 }"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "```swift\nstruct ParentView: View {\n    @State private var tasks: [Task] = []\n    var body: some View {\n        TaskListView(tasks: tasks)\n    }\n}\n``` Why does toggling in TaskListView not affect the parent\u2019s tasks?",
+            "options": [
+              "tasks is constant because passed by value",
+              "@Binding automatically picks up changes",
+              "Child's tasks must be ObservableObject",
+              "Tasks array cannot be mutated in SwiftUI"
+            ],
+            "answer": "1"
+          },
+          {
+            "snippet": "```swift\nstruct TaskListView: View {\n    @Binding var tasks: [Task]\n    var body: some View {\n        ForEach($tasks) { $task in\n            Toggle(task.title, isOn: $task.isCompleted)\n        }\n        .onChange(of: tasks) { newValue in\n            print(\"Tasks changed\")\n        }\n    }\n}\n``` What is the purpose of onChange(of:) in this context?",
+            "options": [
+              "To detect changes in binding and perform side effects",
+              "To reload the view hierarchy",
+              "To revert binding changes",
+              "To animate view updates"
+            ],
+            "answer": "1"
+          }
+        ],
+        "evaluationCriteria": "At the Intermediate level, the student should understand how to pass bindings for collections of value types, use ForEach with bindings to individual elements, and handle list operations (delete, move). They should demonstrate the ability to analyze code, identify binding and mutation issues, and apply two-way binding patterns to real-world list scenarios."
+      },
+      "advanced": {
+        "name": "Advanced",
+        "answer": "For complex scenarios, you can optimize data flow by creating custom Bindings for nested properties, using @StateObject/@ObservedObject for large or reference-based models, and minimizing view invalidations. Example using a custom Binding to a property:\n```swift\nstruct TaskDetailView: View {\n    @Binding var task: Task\n\n    private var completedBinding: Binding<Bool> {\n        Binding(\n            get: { task.isCompleted },\n            set: { newValue in\n                task.isCompleted = newValue\n                // additional side effect, e.g. analytics\n            }\n        )\n    }\n\n    var body: some View {\n        Toggle(task.title, isOn: completedBinding)\n            .onChange(of: task.isCompleted) { _ in\n                print(\"Completed state changed for \\(task.title)\")\n            }\n    }\n}\n\n// Usage in parent:\nForEach($tasks) { $task in\n    TaskDetailView(task: $task)\n}\n```\nThis custom Binding allows you to intercept sets and perform side effects without recreating or passing the entire array. For very large or complex models, adopt ObservableObject and @StateObject in parent and @ObservedObject in children to avoid value-type overhead.",
+        "tests": [
+          {
+            "snippet": "```swift\nclass TaskModel: ObservableObject {\n    @Published var tasks: [Task]\n}\nstruct ParentView: View {\n    @StateObject private var model = TaskModel()\n    var body: some View {\n        TaskListView(model: model)\n    }\n}\n``` What property wrapper should TaskListView use to observe changes in TaskModel?",
+            "options": [
+              "@State var model: TaskModel",
+              "@ObservedObject var model: TaskModel",
+              "@Binding var model: TaskModel",
+              "@EnvironmentObject var model: TaskModel"
+            ],
+            "answer": "2"
+          },
+          {
+            "snippet": "What is the main benefit of creating a custom Binding with get/set, as shown below?\n```swift\nlet binding = Binding(\n    get: { task.isCompleted },\n    set: { task.isCompleted = $0 }\n)\n```",
+            "options": [
+              "It allows customizing views",
+              "It avoids passing the whole task struct to child views unnecessarily",
+              "It logs changes automatically",
+              "It creates a two-way binding for nested properties"
+            ],
+            "answer": "4"
+          },
+          {
+            "snippet": "```swift\n.onChange(of: model.tasks) { _ in\n    print(\"Tasks updated\")\n}\n``` Why might .onChange(of:) trigger too often and how can it be optimized?",
+            "options": [
+              "Because tasks is a value type and the closure runs on every view update",
+              "Because tasks is an ObservableObject",
+              "Because .onChange does not detect changes correctly",
+              "Because you need to use .onReceive instead"
+            ],
+            "answer": "1"
+          }
+        ],
+        "evaluationCriteria": "At the Advanced level, the student should demonstrate deep understanding of SwiftUI\u2019s state management internals and performance considerations. They should be able to craft custom Binding wrappers, use @StateObject and @ObservedObject appropriately, intercept set operations for side effects, and minimize unnecessary view updates in complex data-flow scenarios."
+      }
+    }
+  }
+}
