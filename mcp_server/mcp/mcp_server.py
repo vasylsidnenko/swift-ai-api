@@ -98,7 +98,7 @@ async def execute_endpoint(body: dict = Body(...)):
         api_key = ai.get("api_key")
 
         # Validate operation type
-        allowed_operations = {"generate", "quiz", "validate"}
+        allowed_operations = {"generate", "quiz", "validate", "user_quiz"}
         if request_type not in allowed_operations:
             return JSONResponse(
                 status_code=422,
