@@ -49,6 +49,8 @@ class RequestQuestionModel(BaseModel):
     technology: str = Field(description="Specific technology stack (e.g. 'Kotlin' for Android)", default="")
     tags: List[str] = Field(description="Keywords and tags related to the question within the context of the platform and the topic", default_factory=list)
     question: str = Field(description="Question text", default="")
+    style: str = Field(description="Style of the question.  Expand/Pitfall/Application/Compare", default="") # is used only in user_quiz
+
 
 class AIRequestQuestionModel(BaseModel):
     model: AIModel = Field(description="AI model information")

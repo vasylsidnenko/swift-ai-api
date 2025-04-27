@@ -49,6 +49,18 @@ class AgentProtocol(Protocol):
         """
         ...
 
+    def user_quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+        """
+        Generate programming user quiz.
+        
+        Args:
+            request: AIRequestQuestionModel containing model info and quiz parameters
+            
+        Returns:
+            AIQuizModel with generated content
+        """
+        ...
+
     @staticmethod
     def provider() -> str:
         """Returns the provider name for this agent."""

@@ -220,6 +220,14 @@ class AIResource:
                     result_data = agent_instance.quiz(payload_obj)
                 else:
                     result_data = agent_instance.quiz(context.payload)
+            elif context.request_type == 'user_quiz':
+                if isinstance(context.payload, dict):
+                    model = AIModel(provider=context.config.provider, model=context.config.model)
+                    payload_obj = AIRequestQuestionModel(model=model, request=context.payload, temperature=0.85)
+                    result_data = agent_instance.user_quiz(payload_obj)
+                else:
+                    result_data = agent_instance.user_quiz(context.payload)
+
             else:
                 return MCPResponse(success=False, error=f"Unsupported request type: {context.request_type}", error_type="value_error")
 

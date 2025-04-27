@@ -281,6 +281,20 @@ Most expensive to use
         except Exception as e:
             logger.exception(f"Error generating quiz with Claude: {e}")
             raise
+
+    def user_quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+        """
+        Generate a programming question (without answers/tests) through Claude, according to the QuizModel/AIQuizModel.
+        """
+
+        print(f"Python version={sys.version}")
+        print(f"Anthropic version={getattr(anthropic, '__version__', 'unknown')}")
+        print(f"USER QUIZ: {request}")
+
+        raise ValueError(f"Unsupported method: user_quiz")
+
+        
+
     def test_capabilities(self) -> ModelCapabilities:
         """
         Return supported capabilities for Claude agent.

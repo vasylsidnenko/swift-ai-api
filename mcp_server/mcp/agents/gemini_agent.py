@@ -242,6 +242,19 @@ Good choice for interactive applications, chatbots, and assistance tools
             logger.exception(f"Error generating quiz with Gemini: {e}")
             raise
 
+    def user_quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+        """
+        Generate a programming question (without answers/tests) through OpenAI, according to the QuizModel/AIQuizModel.
+        """
+
+        print(f"Python version={sys.version}")
+        print(f"OpenAI version={openai.__version__}")
+        print(f"USER QUIZ: {request}")
+
+        raise ValueError(f"Unsupported method: user_quiz")
+
+    
+
     def _format_question_request(self, request: AIRequestQuestionModel) -> str:
         """
         Forms a prompt for generating a question strictly following the QuestionModel schema.

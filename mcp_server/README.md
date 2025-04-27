@@ -2,23 +2,68 @@
 
 ## Unified API Request Format
 
-All main operations (`generate`, `quiz`, `validate`) are handled via the `/mcp/v1/execute` endpoint with the following payload format:
+All main operations (`generate`, `quiz`, `validate`, `user_quiz`) are handled via the `/mcp/v1/execute` endpoint with the following payload format:
 
 ```json
 {
-  "operation": "generate" | "quiz" | "validate",
+  "operation": "generate" | "quiz" | "validate" | "user_quiz",
   "context": {
     "platform": "iOS",
     "technology": "Swift",
     "topic": "Basic",
     "question": "What is ARC in Swift?",
-    "tags": ["memory", "swift", "arc"]
+    "tags": ["memory", "swift", "arc"],
+    "style": "pitfall" // Only for user_quiz: expand | pitfall | application | compare
   },
   "ai": {
     "provider": "openai",
     "model": "o3-mini",
     "api_key": "...optional..."
   }
+}
+```
+
+### `user_quiz` operation
+
+- The `user_quiz` operation generates a **follow-up programming question** based on a student's short answer or text, using the requested style.
+- The `style` field controls the type of follow-up:
+    - `expand`: deepen understanding or extend scope
+    - `pitfall`: highlight risks, mistakes, or tricky areas
+    - `application`: ask about real-world use cases
+    - `compare`: compare related concepts or tools
+- The response contains a single question and tags, following the same structure as the standard `quiz` operation, but is tailored to the student's text and style.
+- Not all providers support this operation. If unsupported, the server returns an error.
+
+**Example request:**
+```json
+{
+  "operation": "user_quiz",
+  "context": {
+    "platform": "iOS",
+    "technology": "Swift",
+    "topic": "Memory Management",
+    "question": "In Objective-C you have to manually manage memory using retain and release. It was tricky sometimes because forgetting to release objects could cause memory leaks.",
+    "style": "pitfall"
+  },
+  "ai": {
+    "provider": "openai",
+    "model": "gpt-4o"
+  }
+}
+```
+
+**Example response:**
+```json
+{
+  "success": true,
+  "data": {
+    "topic": { "name": "Memory Management", "platform": "iOS", "technology": "Swift" },
+    "question": "What are the potential risks of using `retain` and `release` manually in Objective-C, and how does ARC solve them?",
+    "tags": ["Memory Management", "retain", "release", "ARC", "Objective-C"],
+    "statistics": { ... }
+  },
+  "error": null,
+  "error_type": null
 }
 ```
 
@@ -62,6 +107,9 @@ This directory contains the core server code for the MCP (Multi-Component Platfo
 See [SCHEMA.md](./SCHEMA.md) for a detailed architecture diagram and request/response flow of the MCP server. Below is a summary:
 
 ## Changelog
+
+### 2025-04-27
+- Feature: Added `user_quiz` operation. This allows generating a follow-up programming question based on a student's answer and a requested style (expand, pitfall, application, compare). See API section for usage and payload details.
 
 ### 2025-04-24
 - Bugfix: The server now supports requests where only the 'ai' field is sent instead of 'provider' (for example, `{"ai": "openai"}`), using 'ai' as the provider if 'provider' is missing. This prevents 400 errors for frontend/backend integration and improves compatibility with various clients.

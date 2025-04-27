@@ -147,6 +147,45 @@ def quiz_question():
         print(f"Quiz generation failed: {str(e)}")
         import sys; sys.exit(1)
 
+
+def user_quiz_question():
+    """
+    Тестовий запуск OpenAIAgent.user_quiz: генерує лише питання (без відповідей/тестів)
+    """
+    from mcp.agents.openai_agent import OpenAIAgent
+    from mcp.agents.ai_models import AIModel, AIRequestQuestionModel, RequestQuestionModel
+    import json
+    import logging
+    logger = logging.getLogger("mcp.agents.openai_agent")
+
+    try:
+        agent = OpenAIAgent()
+
+        param_request = RequestQuestionModel(   
+            platform="iOS",
+            topic="SwiftUI",    
+            technology="Swift",
+            tags=["View", "State"]
+        )
+        raw_request = RequestQuestionModel(
+            style="pitfall",
+            question="In Objective-C you have to manually manage memory using retain and release. It was tricky sometimes because forgetting to release objects could cause memory leaks."
+        )
+
+        quiz_request = AIRequestQuestionModel(
+            model=AIModel(provider="openai", model="gpt-4o"),
+            request=raw_request,
+            temperature=0.85
+        )
+    
+        quiz = agent.user_quiz(quiz_request)
+        print(f"\nUser Quiz result: {json.dumps(quiz.model_dump(), indent=2, ensure_ascii=False)}")
+
+    except Exception as e:
+        logger.error(f"User Quiz generation failed: {str(e)}")
+        print(f"User Quiz generation failed: {str(e)}")
+        import sys; sys.exit(1)
+
 def main():
     # load_dotenv()
 
@@ -169,6 +208,8 @@ def main():
         validate_question()
     elif operation == "quiz":
         quiz_question()
+    elif operation == "user":
+        user_quiz_question()
     else:
         print("Invalid operation. Use 'generate' or 'validate', or run without arguments for generate-then-validate flow")
         sys.exit(1)

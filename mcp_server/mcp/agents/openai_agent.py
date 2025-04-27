@@ -237,6 +237,60 @@ Suitable for embedding in applications requiring quick responses
             logger.exception(f"Error generating quiz with OpenAI: {e}")
             raise
 
+    def user_quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+        """
+        Generate a programming question (without answers/tests) through OpenAI, according to the QuizModel/AIQuizModel.
+        """
+
+        print(f"Python version={sys.version}")
+        print(f"OpenAI version={openai.__version__}")
+        print(f"USER QUIZ: {request}")
+
+        if not self._is_support_model(request.model):
+            raise ValueError(f"Unsupported model: {request.model.model}")
+
+        # Either both topic and platform must be provided, or the question field must be non-empty
+        if not ((request.request.topic and request.request.platform) or request.request.question):
+            raise ValueError("Either both 'topic' and 'platform' must be provided, or 'question' must be non-empty.")
+
+        try:
+            start_time = time.time()
+
+            openai_kwargs = {
+                "model": request.model.model,
+                "messages": [
+                    {"role": "system", "content": self._make_quiz_from_student_answer_system_prompt()},
+                    {"role": "user", "content": self._make_quiz_from_student_answer_prompt(request.request)}
+                ]
+            }
+            
+            if self._is_temperature_supported_by_model(request.model.model):
+                openai_kwargs["temperature"] = request.temperature
+
+            if self._is_support_temperature(request.model.model):
+                max_tokens_param = self._get_max_tokens_param(request.model.model)
+                openai_kwargs[max_tokens_param] = self._get_max_tokens_value(request.model.model)
+
+            prompt_tokens = self._count_tokens(request.model.model, openai_kwargs["messages"])
+
+            response = self.client.chat.completions.create(**openai_kwargs)
+
+            if not response.choices or not response.choices[0].message.content:
+                logger.error("Empty response from OpenAI")
+                raise RuntimeError("Empty response from OpenAI")
+           
+            return self._process_quiz_response(
+                model=request.model,
+                question=request.request,
+                response=response,
+                prompt_tokens=prompt_tokens,
+                start_time=start_time
+            )
+            
+        except Exception as e:
+            logger.exception(f"Error generating quiz with OpenAI: {e}")
+            raise
+
 
     def validate(self, request: AIRequestValidationModel) -> AIValidationModel:
         """
@@ -509,6 +563,53 @@ The response must be a single JSON object that matches the defined structure, wi
             f"Use correct language tags for code blocks if needed. Do not use any markdown section titles. "
             f"Return structured output as a single JSON object without any additional commentary."
         )
+
+    def _make_quiz_from_student_answer_system_prompt(self) -> str:
+        return """
+You are an expert programming educator.
+
+Your task:
+- Read a short student's text/answer related to a programming topic.
+- Based on the student's content and the requested style, generate one high-quality follow-up question.
+
+Follow-up question must:
+- If style is "expand" ➔ deepen the understanding of the topic or extend its scope.
+- If style is "pitfall" ➔ point to risks, common mistakes, misconceptions, or tricky areas.
+- If style is "application" ➔ ask about real-world use cases or practical implications.
+- If style is "compare" ➔ ask to compare related concepts, tools, methods, or technologies.
+
+Quiz model structure:
+- topic: { name: string, platform: string, technology: optional string }
+- question: string (clear, focused, and challenging)
+- tags: list of important keywords from the text + extended topic context
+
+Important formatting rules:
+- Return exactly one JSON object matching the QuizModel structure.
+- DO NOT include explanations, prefaces, or additional comments.
+- Tags must include both main concepts and logically associated subtopics or hidden risks.
+
+Example output:
+{
+  "topic": { "name": "Memory Management", "platform": "Apple", "technology": "Objective-C" },
+  "question": "What are the potential risks of using `retain` and `release` manually in Objective-C, and how does ARC solve them?",
+  "tags": ["Memory Management", "retain", "release", "ARC", "Objective-C"]
+}
+"""
+
+    def _make_quiz_from_student_answer_prompt(self, request: RequestQuestionModel) -> str:
+        return (
+            f"Student's text about the topic:\n"
+            f"'''{request.question}'''\n\n"
+            f"Context for generation:\n"
+            f"- Topic: '{request.topic}'\n"
+            f"- Platform: '{request.platform}'\n"
+            f"{f'- Technology: {request.technology}' if request.technology else ''}\n"
+            f"- Question style: '{request.style}'\n\n"
+            f"Based on the student's text and the provided context, generate one follow-up question and meaningful tags, "
+            f"following the QuizModel JSON structure. "
+            f"The question must match the style: expand, pitfall, application, or compare."
+        )
+
 
     def _parse_openai_response(self, response_text: str, schema_type):
         """
