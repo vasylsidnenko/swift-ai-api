@@ -16,8 +16,8 @@ COPY mcp_server /app/mcp_server
 # Set environment variable to find modules
 ENV PYTHONPATH=/app/mcp_server
 
-# Open ports
+# Expose the port that Railway will use
 EXPOSE 10001
 
-# Command to run
-CMD ["uvicorn", "mcp_main:app", "--host", "0.0.0.0", "--port", "10001"]
+# Correct command to pick up Railway dynamic PORT
+CMD ["sh", "-c", "uvicorn mcp_main:app --host 0.0.0.0 --port $PORT"]
