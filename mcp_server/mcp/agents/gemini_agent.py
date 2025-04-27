@@ -244,11 +244,11 @@ Good choice for interactive applications, chatbots, and assistance tools
 
     def user_quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
         """
-        Generate a programming question (without answers/tests) through OpenAI, according to the QuizModel/AIQuizModel.
+        Generate a programming question (without answers/tests) through Gemini, according to the QuizModel/AIQuizModel.
         """
 
         print(f"Python version={sys.version}")
-        print(f"OpenAI version={openai.__version__}")
+        print(f"Gemini version={openai.__version__}")
         print(f"USER QUIZ: {request}")
 
         raise ValueError(f"Unsupported method: user_quiz")
