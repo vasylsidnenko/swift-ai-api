@@ -385,6 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class='mb-3 quiz-question-block'>
                 ${formatSingleQuestion(quizQ)}
             </div>
+            ${htmlQuizMetaBlock(quizData.quiz.topic)}
             <button class='btn apply-quiz-btn' style='background-color:#6c757d !important;color:#fff !important;border:none !important;'>Apply</button>
         </div>
     `;
@@ -576,24 +577,36 @@ document.addEventListener('DOMContentLoaded', function() {
         displayError(errorType, title, message, details);
     }
 
+    // Render meta info block (platform, technology, topic) for quiz/generate
+    // obj: expects { platform, technology, name/topic }
+    function htmlQuizMetaBlock(obj) {
+        if (!obj) return '';
+        const platform = obj.platform || '';
+        const technology = obj.technology || '';
+        const topic = obj.name || obj.topic || '';
+        if (!platform && !technology && !topic) return '';
+        // Meta block: align right, white background for badges
+        return `<div class='mb-2' style="text-align:right;">
+            <span class='badge' style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; margin-right:0.3em;">Platform: ${escapeHtml(platform)}</span>
+            <span class='badge' style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; margin-right:0.3em;">Technology: ${escapeHtml(technology)}</span>
+            <span class='badge' style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa;">Topic: ${escapeHtml(topic)}</span>
+        </div>`;
+    }
+
     // Display generated question(s)
     function displayGenerationResult(data) {
+        // Defensive: handle invalid/malformed data
         if (!data || typeof data !== 'object') {
             handleApiError('response_format_error', 'Received unexpected format for generated question.');
             return;
         }
         let html = '';
-        // 1. Question block (with code formatting)
-        // 1. Question + Tags block
+        // Extract question text, tags, topic/platform/technology
         const questionText = data.text || (data.question && data.question.text) || '';
         const tags = data.tags || (data.question && data.question.tags) || [];
-        if (questionText) {
-            html += `<div class="mb-3 p-3 border rounded shadow-sm" style="background:#fff;">
-                <div style="font-size:1.16rem; font-weight:600; color:#23232b; line-height:1.25; margin-bottom:0.5rem;">${escapeHtml(questionText)}</div>
-                ${Array.isArray(tags) && tags.length > 0 ? `<div class="mt-2"><span class="badge" style="background:#e3e3ee; color:#555; font-weight:400; margin-right:0.3em;">${tags.map(t=>escapeHtml(t)).join('</span> <span class="badge" style="background:#e3e3ee; color:#555; font-weight:400; margin-right:0.3em;">')}</span></div>` : ''}
-            </div>`;
-        }
-        // 3. Token usage and time
+        const topicObj = (data.question && data.question.topic) || data.topic || {};
+        // Token/time stats if present
+        let statLine = '';
         let tokens = '';
         let time = '';
         if (data.agent && data.agent.statistic) {
@@ -605,13 +618,23 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         if (tokens || time) {
-            let statLine = '';
             if (tokens) statLine += `Tokens used: <b>${tokens}</b>`;
             if (tokens && time) statLine += ' | ';
             if (time) statLine += `Time: <b>${time}s</b>`;
             html += `<div class="d-flex"><div class="flex-grow-1"></div><div class="mb-2 text-muted text-end" style="min-width:180px;">${statLine}</div></div>`;
         }
-        // 4. Tabs for answer levels
+        // Main question block
+        if (questionText) {
+            html += `<div class="mb-3 p-3 border rounded shadow-sm" style="background:#fff;">
+                <div style="font-size:1.16rem; font-weight:600; color:#23232b; line-height:1.25; margin-bottom:0.5rem;">${escapeHtml(questionText)}</div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                    ${Array.isArray(tags) && tags.length > 0 ? `<div class="mt-2" style="margin-bottom:0.25rem; text-align:right;"><span class="badge" style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; font-weight:400; margin-right:0.3em;">${tags.map(t=>escapeHtml(t)).join('</span> <span class=\"badge\" style=\"background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; font-weight:400; margin-right:0.3em;\">')}</span></div>` : ''}
+                    ${htmlQuizMetaBlock(topicObj)}
+                </div>
+            </div>`;
+        }
+
+        // Answer levels (tabs)
         const levels = data.answerLevels || (data.question && data.question.answerLevels) || {};
         const tabOrder = ['beginner', 'intermediate', 'advanced'];
         let tabs = '';
@@ -626,47 +649,25 @@ document.addEventListener('DOMContentLoaded', function() {
         tabOrder.forEach(level => {
             if (levels[level]) {
                 const colorClass = levelColors[level] ? levelColors[level].tab : '';
-                // border-top лише для активної вкладки (додається динамічно через js нижче)
                 tabs += `<li class="nav-item" role="presentation">
                     <button class="nav-link ${colorClass}${first ? ' active' : ''}" style="font-weight:600;" id="tab-${level}" data-bs-toggle="tab" data-bs-target="#level-${level}" type="button" role="tab" aria-controls="level-${level}" aria-selected="${first ? 'true' : 'false'}">${level.charAt(0).toUpperCase() + level.slice(1)}</button>
                 </li>`;
                 first = false;
             }
         });
-        // Функція для оновлення border-top лише у активної вкладки
-        function updateTabBorderTop() {
-            const tabs = document.querySelectorAll('#answerLevelTabs .nav-link');
-            tabs.forEach(tab => {
-                tab.style.borderTop = '';
-                if (tab.classList.contains('active')) {
-                    if (tab.id.includes('beginner')) tab.style.borderTop = '4px solid #28a745';
-                    if (tab.id.includes('intermediate')) tab.style.borderTop = '4px solid #ffc107';
-                    if (tab.id.includes('advanced')) tab.style.borderTop = '4px solid #dc3545';
-                }
-            });
-        }
-        setTimeout(updateTabBorderTop, 0);
-        // Перевішуємо стилізацію при кожному перемиканні вкладки
-        setTimeout(() => {
-            const tabs = document.querySelectorAll('#answerLevelTabs .nav-link');
-            tabs.forEach(tab => {
-                tab.addEventListener('shown.bs.tab', updateTabBorderTop);
-            });
-        }, 0);
         tabs += '</ul>';
         first = true;
         tabOrder.forEach(level => {
             const l = levels[level];
             if (!l) return;
             const borderClass = levelColors[level] ? levelColors[level].border : '';
-            // Лівий border відповідного кольору, без фону
             tabContent += `<div class="tab-pane fade${first ? ' show active' : ''} ${borderClass}" id="level-${level}" role="tabpanel" aria-labelledby="tab-${level}" style="border-left-width:4px; border-left-style:solid; border-radius:0 0 8px 8px; margin-bottom:1rem; background:none;">`;
-            // Show evaluation criteria if present
+            // Evaluation criteria
             if (l.evaluationCriteria && l.evaluationCriteria.trim() !== '') {
                 tabContent += `<div class="alert alert-info py-2 px-3 mb-2" style="font-size:0.98rem;"><b>Evaluation Criteria:</b><br>${escapeHtml(l.evaluationCriteria)}</div>`;
             }
             tabContent += `<div class="mb-2">${formatSingleQuestion(l.answer || '')}</div>`;
-            // Тести
+            // Tests
             if (Array.isArray(l.tests) && l.tests.length > 0) {
                 l.tests.forEach((test, idx) => {
                     tabContent += `<div class="card mb-2"><div class="card-body p-2">
@@ -692,12 +693,31 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `<div>${tabs}<div class="tab-content">${tabContent}</div></div>`;
         }
         resultDiv.innerHTML = html;
-        // Ensure PrismJS highlights and adds line numbers
+        // Highlight code blocks (PrismJS)
         if (window.Prism && Prism.highlightAll) {
             Prism.highlightAll();
         }
         if (typeof highlightAllCodeBlocks === 'function') highlightAllCodeBlocks();
-        // Активувати bootstrap таби (якщо потрібно)
+        // --- Custom tab styling: add colored border-top for active tab ---
+        function updateTabBorderTop() {
+            const tabBtns = document.querySelectorAll('#answerLevelTabs .nav-link');
+            tabBtns.forEach(tab => {
+                tab.style.borderTop = '';
+                if (tab.classList.contains('active')) {
+                    if (tab.id.includes('beginner')) tab.style.borderTop = '4px solid #28a745';
+                    if (tab.id.includes('intermediate')) tab.style.borderTop = '4px solid #ffc107';
+                    if (tab.id.includes('advanced')) tab.style.borderTop = '4px solid #dc3545';
+                }
+            });
+        }
+        setTimeout(updateTabBorderTop, 0);
+        setTimeout(() => {
+            const tabBtns = document.querySelectorAll('#answerLevelTabs .nav-link');
+            tabBtns.forEach(tab => {
+                tab.addEventListener('shown.bs.tab', updateTabBorderTop);
+            });
+        }, 0);
+        // Activate Bootstrap tabs
         if (window.bootstrap && window.bootstrap.Tab) {
             const tabEls = document.querySelectorAll('#answerLevelTabs button[data-bs-toggle="tab"]');
             tabEls.forEach(tabEl => {

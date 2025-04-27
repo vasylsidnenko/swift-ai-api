@@ -3,15 +3,21 @@ Mock MCP Server for local UI development.
 This mock intercepts MCP server requests and returns fake responses for /mcp/v1/execute and other endpoints.
 """
 from flask import Flask, Blueprint, request, jsonify
+import os, json
 
 mock_mcp = Blueprint('mock_mcp', __name__)
 
 @mock_mcp.route('/mcp/v1/execute', methods=['POST'])
 def mock_execute():
     body = request.json
+
+    print('MOCK EXECUTE for ', body)
+
     # Determine which mock response to return based on operation_id or request_type
-    operation = None
-    if 'operation_id' in body:
+    # Detect operation type from modern and legacy payloads
+    if 'operation' in body:
+        operation = body['operation']
+    elif 'operation_id' in body:
         operation = body['operation_id']
     elif 'request_type' in body:
         operation = body['request_type']
@@ -21,7 +27,8 @@ def mock_execute():
     # Simple mock responses for UI development
     if operation == 'generate':
         # Serve mock_generate.json as the response for generate
-        import os, json
+        print('MOCK GENERATE for ', body)
+        
         mock_path = os.path.join(os.path.dirname(__file__), 'mock_generate.json')
         with open(mock_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -29,24 +36,62 @@ def mock_execute():
 
     elif operation == 'quiz':
         # Return a mock AIQuizModel structure
+        print('MOCK QUIZ for ', body)
+        
         return jsonify({
             'success': True,
             'data': {
                 'agent': {
-                    'provider': 'openai',
-                    'model': 'gpt-4o'
+                    'model': {
+                        'provider': 'openai',
+                        'model': 'o3-mini'
+                    },
+                    'statistic': {
+                        'time': 6974,
+                        'tokens': 907
+                    }
                 },
                 'quiz': {
                     'topic': {
+                        'name': 'Basic',
                         'platform': 'iOS',
-                        'technology': 'Swift',
-                        'topic': 'Strings'
+                        'technology': 'Swift'
                     },
                     'question': 'MOCK:: Write a Swift function to reverse a string.',
-                    'tags': ['swift', 'string'],
+                    'tags': ['swift', 'string']
+                },
+                'statistics': {
+                    'duration_ms': 9007,
+                    'provider': 'openai',
+                    'model': 'o3-mini'
                 }
             }
-        }), 200  
+        }), 200
+
+
+
+        #     'data': {
+        #         "agent": {
+        #             "model": {
+        #                 "provider": "openai",
+        #                 "model": "o4-mini"
+        #             },
+        #             "statistic": {
+        #                 "time": 58534,
+        #                 "tokens": 9476
+        #             }
+        #         },
+        #         'quiz': {
+        #             'topic': {
+        #                 'platform': 'iOS',
+        #                 'technology': 'Swift',
+        #                 'name': 'Basic'
+        #             },
+        #             'question': 'MOCK:: Write a Swift function to reverse a string.',
+        #             'tags': ['swift', 'string'],
+        #         }
+        #     }
+        # }), 200  
 
     elif operation == 'validate':
         return jsonify({

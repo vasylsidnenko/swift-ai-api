@@ -27,6 +27,10 @@ This project provides an API and web interface for generating programming questi
 
 ## Features
 
+- Both quiz and generation results now display platform, technology, and topic information directly under the question text.
+- Added a simple helper function `htmlQuizMetaBlock` to render this contextual info for both flows.
+- Code is intentionally kept simple and readable, with minimal logic changes or refactoring.
+
 - ClaudeAgent now uses the `question` field from `AIRequestQuestionModel` as a hint (if provided) in the prompt for quiz question generation, similar to GeminiAgent and OpenAIAgent. This improves the contextual relevance of generated questions.
 
 ### [2024-xx-xx] UI Improvement: Quiz Question Textarea
