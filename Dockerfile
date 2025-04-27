@@ -1,13 +1,20 @@
-# Base image
-FROM python:3.9
+FROM python:3.11-slim
 
-# Install dependencies
+# Робоча директорія всередині контейнера
 WORKDIR /app
-COPY requirements.txt .
+
+# Копіюємо requirements.txt і встановлюємо залежності
+COPY mcp_server/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy API code
-COPY . .
+# Копіюємо весь проект
+COPY ./mcp_server /app/mcp_server
 
-# Run API
-CMD ["gunicorn", "-b", "0.0.0.0:10000", "app:app"]
+# Задаємо змінні середовища
+ENV PYTHONPATH=/app/mcp_server
+
+# Відкриваємо порт
+EXPOSE 10001
+
+# Команда запуску
+CMD ["uvicorn", "mcp_main:app", "--host", "0.0.0.0", "--port", "10001"]
