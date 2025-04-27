@@ -39,8 +39,8 @@ ENV_API_KEYS = {
 
 @app.route('/')
 def index():
-    """Render the main page."""
-    available_models = _get_available_models()
+    """Render the main page. Always fetch available models fresh on each reload."""
+    available_models = _get_available_models()  # Fetch models dynamically on each request
     return render_template('index.html', availableModels=available_models)
 
 # Keys API
@@ -147,52 +147,6 @@ def api_generate():
         else:
             return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
 
-
-    # if not provider or not model:
-    #     return jsonify({"success": False, "error": "Missing provider or model", "error_type": "request_error"}), 400
-
-    # # Prepare payload for MCP server
-    # mcp_payload = {
-    #     "resource_id": provider,
-    #     "operation_id": "generate",
-    #     "context": context_data,
-    #     "config": {
-    #         "model": model
-    #     }
-    # }
-    # # Add API key if provided and not a placeholder
-    # if api_key and api_key != "********":
-    #     mcp_payload["config"]["api_key"] = api_key
-    # elif not api_key:
-    #     logger.info(f"No API key provided by user for {provider}, MCP server will check environment.")
-    # elif api_key == "********":
-    #     logger.info(f"Using environment API key placeholder for {provider}, MCP server will use environment key.")
-
-    # logger.info(f"Sending request to MCP server: {EXECUTE_ENDPOINT} with payload: {mcp_payload}")
-    # try:
-    #     response = requests.post(EXECUTE_ENDPOINT, json=mcp_payload, timeout=60)
-    #     response.raise_for_status()
-    #     mcp_response_data = response.json()
-    #     # logger.info(f"Received response from MCP server: {mcp_response_data}")
-    #     return jsonify(mcp_response_data), response.status_code
-    # except requests.exceptions.ConnectionError as e:
-    #     logger.error(f"Could not connect to MCP server at {MCP_SERVER_URL}: {e}")
-    #     return jsonify({"success": False, "error": f"Could not connect to the AI service backend. Please ensure it's running.", "error_type": "connection_error"}), 503
-    # except requests.exceptions.Timeout:
-    #     logger.error(f"Request to MCP server timed out.")
-    #     return jsonify({"success": False, "error": "The request to the AI service timed out.", "error_type": "timeout_error"}), 504
-    # except requests.exceptions.RequestException as e:
-    #     logger.error(f"Error communicating with MCP server: {e}")
-    #     try:
-    #         error_detail = e.response.json() if e.response else str(e)
-    #         status_code = e.response.status_code if e.response else 500
-    #     except Exception:
-    #         error_detail = str(e)
-    #         status_code = 500
-    #     if isinstance(error_detail, dict) and 'success' in error_detail:
-    #         return jsonify(error_detail), status_code
-    #     else:
-    #         return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
 
 @app.route('/api/quiz', methods=['POST'])
 def api_quiz():
@@ -385,12 +339,9 @@ def api_model_description(provider, model):
 def _get_available_models():
     """
     Get available models from MCP server and format them for the frontend.
-    Uses get_agents() and get_models_for_provider(provider) to avoid code duplication.
-    Handles Flask Response and tuple (response, status_code) correctly in mock mode.
-    Returns mock if MOCK_MCP is set.
+    Returns a plain dict (not Flask Response) for internal use.
     """
     import os
-    from flask import jsonify, request
     available_models = {}
     try:
         mock_env = os.environ.get('MOCK_MCP', '0')
@@ -445,13 +396,20 @@ def _get_available_models():
                     logger.error(f"Model entry for provider {provider} has no 'id': {model}")
             available_models[provider] = ids
         print('[get_available_models] available_models:', available_models)
-        # Return as Flask JSON response for frontend compatibility
-        return jsonify(available_models), 200
+        # Return as plain dict for internal use (not Flask Response)
+        return available_models
     except Exception as e:
         logger.error(f"Error getting available models: {e}")
-        # Always return valid JSON response on error
-        return jsonify({}), 500
+        # Always return empty dict on error
+        return {}
 
+# API endpoint for available models (returns JSON for frontend requests)
+@app.route('/api/available-models')
+def api_available_models():
+    """API endpoint to get available models as JSON."""
+    return jsonify(_get_available_models())
+
+# ... (rest of the code remains the same)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000)) 
