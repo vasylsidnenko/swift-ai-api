@@ -1,147 +1,31 @@
 # Programming Question Generator
 
-## Updates
+## Overview
 
-- The prompt for question generation (for both OpenAI and Claude agents) now uses the `question` field from `AIRequestQuestionModel`. This field is included in the prompt as an "Approximate or rough question/idea" to better guide the model towards the desired question content. An English comment is added in the relevant code section.
+This project is designed to generate programming questions, answers, and quizzes of varying difficulty levels using modern AI models. It serves as an assistant for educators, technical interviewers, and anyone exploring AI-driven content generation for educational or assessment purposes.
 
-## Changelog
+### What does it generate?
+- **Programming Questions**: Given a topic, platform, technology, and keywords/tags, the system generates clear, structured programming questions tailored to the specified context and difficulty.
+- **Answers & Explanations**: For each generated question, the system can also provide a detailed answer and explanation.
+- **Quiz Questions**: Supports generation of multiple-choice or follow-up questions (user_quiz) to deepen understanding or check for common pitfalls.
+- **Tags & Metadata**: Each result includes tags, topic, and platform metadata for easy categorization.
 
-### 2025-04-24
-- UI/UX: Tab content and tab headers now have colored lines (green/yellow/red) that match the selected difficulty, with no colored background for a clean look.
-- UI/UX: Tokens used and execution time are now displayed together, right-aligned, with time shown in seconds.
-- UI/UX: Tags section background removed; only individual tags retain their badge background.
-- UI/UX: Syntax highlighting for code blocks is enabled using Prism.js (including Swift support).
-- UI/UX: AI Configuration section can be expanded/collapsed by clicking on the whole header (except the gear button), and the collapse logic is now smooth and non-redundant.
-- Bugfix: Frontend now sends 'provider' (or uses 'ai' as provider if 'provider' is missing) for /api/generate, preventing 400 errors due to missing provider field.
+The project is intended as a smart assistant for educators, technical trainers, and as a research/investigation tool for experimenting with AI-powered question/answer workflows.
 
-### 2025-04-22
-- When the user clicks the 'Apply' button on a Quiz Result, the corresponding Quiz Question is now inserted into the Question Context field and the Generate action is triggered automatically. This streamlines the workflow, allowing users to immediately generate a new question based on the quiz suggestion with a single click.
+This repository contains two main components:
 
-### 2025-04-21
-- Frontend (main.js) updated: now sends only 'provider' (not 'ai') in requests to /api/generate and /api/validate, fully matching the MCP server API specification. The 'ai' field is removed from the payload for strict compliance.
+1. **MCP Server** (`mcp_server/`)
+    - Python backend server (REST API) for agent-based AI operations (generation, validation, quizzes, follow-ups, etc).
+    - Supports multiple providers (OpenAI, Claude, Gemini).
+    - Handles all AI logic, orchestration, and API endpoints.
+    - See full backend/API documentation in [`mcp_server/README.md`](./mcp_server/README.md).
 
-### 2025-04-21
-- Fixed JavaScript error `Cannot redeclare block-scoped variable 'validationCheckbox'` in `application/static/js/main.js` by removing a duplicate `const validationCheckbox` declaration. Now the variable is declared only once and reused throughout the script.
+2. **Application** (`application/`)
+    - Flask-based frontend web application for interacting with the MCP server.
+    - Provides a user-friendly interface for generating, validating, and quizzing programming questions.
+    - See full frontend documentation in [`application/README.md`](./application/README.md).
 
-This project provides an API and web interface for generating programming questions, answers, and multiple-choice tests using various AI models. It supports multiple platforms (Apple, Android) and dynamically loads available AI providers (OpenAI, Google AI, DeepSeek AI, etc.) found in the `mcp/agents` directory.
-
-## Features
-
-- Both quiz and generation results now display platform, technology, and topic information directly under the question text.
-- Added a simple helper function `htmlQuizMetaBlock` to render this contextual info for both flows.
-- Code is intentionally kept simple and readable, with minimal logic changes or refactoring.
-
-- ClaudeAgent now uses the `question` field from `AIRequestQuestionModel` as a hint (if provided) in the prompt for quiz question generation, similar to GeminiAgent and OpenAIAgent. This improves the contextual relevance of generated questions.
-
-### [2024-xx-xx] UI Improvement: Quiz Question Textarea
-- The quiz question textarea in the quiz result block is now fully multiline, auto-expands to fit content, and has no scrollbars. This improves readability and usability for longer quiz questions.
-- Implementation: moved the `autoResizeTA` function to top-level JS scope, and ensured all quiz result textareas use it for dynamic resizing.
-- Modular architecture with a Model Context Protocol (MCP)-inspired abstraction for AI providers
-- **Dynamic loading** of AI agents and their supported models from the `mcp/agents` directory
-- Supports multiple AI providers (e.g., OpenAI, Google AI, DeepSeek AI) — only providers with working agents are shown
-- Generates programming questions (and optionally validates them)
-- Generates quiz questions (question-only, no answers/tests) via the `quiz` operation
-- Returns structured JSON responses ([MCPResponse](#mcpresponse-format))
-- Supports keyword-based question generation
-- Web interface with collapsible AI settings
-- Optional validation for generated questions to ensure quality
-- Checks for API keys in environment variables
-- Displays masked API key (********) if using environment variable
-- Token usage tracking (if provided by the agent)
-- Processing time measurement (if provided by the agent)
-
-## Gemini Agent Logging & Strict Validation
-
-- GeminiAgent logs Python version, Google GenerativeAI version, model name, and request type (generate/validate/quiz) at the start of each operation. This logging is consistent with Claude and OpenAI agents for easy debugging and transparency.
-- Prompts for Gemini agent (generation, validation, quiz) now strictly enforce the expected JSON schema. For validation, the prompt includes a full example of the required JSON structure, ensuring Gemini always returns all required fields for `QuestionValidation`. This eliminates validation errors due to missing fields.
-- No extra debug logs (such as GenerativeModel instance dumps) are present in production.
-
-## Architecture
-
-### MCP Server Integration
-
-### Unified API Request Format
-
-#### Model & Provider Validation
-- The `provider` and `model` fields in the `ai` object must match the supported values for the selected agent. Supported models can be retrieved via the `/api/models/<provider>` endpoint (see MCP server docs).
-- If an unsupported model is specified, the server will return a configuration error with a list of supported models, for example:
-
-```json
-{
-  "success": false,
-  "data": null,
-  "error": "Model '3o-mini' is not supported by OpenAIAgent. Supported: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o4-mini']",
-  "error_type": "configuration_error"
-}
-```
-
-All main endpoints (`/api/generate`, `/api/quiz`, `/api/validate`) use the unified `operation/context/ai` structure described above.
-
-All main endpoints (`/api/generate`, `/api/quiz`, `/api/validate`) now accept requests in the unified format:
-
-```
-{
-  "operation": "generate" | "quiz" | "validate",
-  "context": { ... },
-  "ai": {
-    "provider": <provider>,
-    "model": <model>,
-    "api_key": <apiKey>
-  }
-}
-```
-- The field `provider` can also be provided as `ai` for compatibility with frontend clients. If `provider` is missing but `ai` is present, its value will be used as the provider.
-- The `context` object supports both `tags` and `keywords` fields. If only `keywords` is provided, it will be normalized to `tags`.
-- Legacy payload formats and fields are no longer supported.
-
-### /api/validate Endpoint
-
-- The `/api/validate` endpoint now uses the same request structure as `/api/generate` and `/api/quiz`.
-- The backend will normalize tags/keywords and fallback to `ai` as provider if needed.
-- This change ensures a consistent API for all core MCP operations.
-
-### MCP Server Architecture Update (2025-04-21)
-
-**Important Note:** This project uses concepts and naming inspired by the Model Context Protocol ([modelcontextprotocol.io](https://modelcontextprotocol.io/)), such as standardized context and response objects, to manage interactions with different AI agents. However, it is a **custom, simplified implementation** and does **not** fully adhere to the official MCP specification. Specifically, it does not implement the standard MCP server endpoints (e.g., `/mcp/v1/execute`) or resource discovery mechanisms as defined in the protocol. The primary API is handled directly by the Flask application (`app.py`).
-
-The core components of this MCP-inspired architecture are:
-
-- **[app.py](app.py)**: The Flask application handling HTTP requests, dynamic agent/model loading at startup, and routing to API endpoints (`/api/generate`, `/api/validate`)
-- **[mcp/mcp_server.py](mcp/mcp_server.py)**: Contains the core logic classes inspired by MCP
-  - **AIResource**: Handles the execution logic, calling the appropriate methods on the agent class
-  - **MCPContext**: Context object containing necessary information for request processing (config, request data).
-  - **MCPResponse**: Standardized response format for API operations.
-  - **AgentProtocol**: Abstract base class that all AI agents must inherit from.
-- **[mcp/agents/](mcp/agents/)**: Directory containing specific agent implementations (e.g., `openai_agent.py`). Each agent defines `SUPPORTED_MODELS` and implements `generate` and `validate` methods.
-
-This architecture allows for:
-
-1. **Provider Agnosticism**: Works with any AI provider via a corresponding `AgentProtocol` implementation.
-2. **Unified API Interface**: All providers accessed through `/api/generate` and `/api/validate`.
-3. **Easy Extensibility**: New providers added by creating `*_agent.py` in `mcp/agents`.
-4. **Dynamic Model Availability**: Only active providers/models are shown.
-
-## MCP Server
-
-The `mcp_server` directory contains the core server code for the MCP (Multi-Component Platform) server. It includes main server logic, agent orchestration, and supporting scripts. See `mcp_server/README.md` for detailed usage, structure, and setup instructions.
-
-## Installation
-
-### Prerequisites
-- Python 3.8+
-- (Recommended) Create and activate a virtual environment for each server (MCP server and Flask Application have separate requirements.txt)
-
-#### MCP Server
-1. Install dependencies for MCP Server:
-   ```sh
-   pip install -r mcp_server/requirements.txt
-   ```
-
-#### Application (Flask frontend)
-1. Install dependencies for Flask Application:
-   ```sh
-   pip install -r application/requirements.txt
-   ```
+For installation, usage, and detailed configuration, please refer to the README files in each respective directory.
 
 ### Setting Up API Keys
 API keys are primarily managed through environment variables. The web interface allows overriding them.
@@ -151,13 +35,47 @@ API keys are primarily managed through environment variables. The web interface 
 - **Google Gemini**:
   - Get key: [Google AI Studio](https://aistudio.google.com/)
   - Set env var: `GOOGLE_API_KEY=your_google_key`
-- **DeepSeek AI**:
-  - Get key: [DeepSeek](https://platform.deepseek.ai/)
-  - Set env var: `DEEPSEEK_API_KEY=your_deepseek_key`
+- **Anthropic**:
+  - Get key: [Anthropic](https://console.anthropic.com/api-keys)
+  - Set env var: `ANTHROPIC_API_KEY=your_anthropic_key`
 
-## Mock MCP Server for UI Development
 
-To develop and test the UI without making real requests to AI models, you can enable a mock MCP server. This mock server intercepts all `/mcp/v1/execute`, `/mcp/v1/agents`, `/mcp/v1/models`, and `/mcp/v1/model-description/<provider>/<model>` requests and returns fake data suitable for frontend development.
+
+## Running the Application
+
+You can run both backend (MCP server) and frontend (Flask app) together for local development, or just the frontend with a mock MCP for UI testing.
+
+### 1. Run Both Servers (Full Local Debug)
+
+Use the provided script to start both the MCP server and the Application frontend:
+
+```sh
+python run_servers.py
+```
+
+- MCP server will run on port 10001
+- Frontend (Flask app) will run on port 10000
+
+This is the recommended mode for full local development and debugging.
+
+### 2. Run Only Frontend with Mock MCP (UI/UX Testing)
+
+If you only want to test the frontend UI (without real AI providers), use:
+
+```sh
+python run_mock.py
+```
+
+- Only the Flask app will run (with mock MCP endpoints enabled)
+- No backend or real AI API calls are made
+
+This is useful for rapid UI development and testing without API keys or backend dependencies.
+
+---
+
+### Mock MCP Server for UI Development
+
+To develop and test the UI without making real requests to AI models, you can enable a mock MCP server. This mock server intercepts all `/mcp/v1/execute`, `/mcp/v1/providers`, and `/mcp/v1/model-description/<provider>/<model>` requests and returns fake data suitable for frontend development.
 
 ### How to Enable Mock MCP
 
@@ -170,125 +88,6 @@ python application/app.py
 
 When enabled, the Flask app will automatically attach the mock MCP server. You will see a log message: `Mock MCP server is enabled!`
 
-### What the Mock Server Returns
-- **/mcp/v1/execute**: Returns fake quiz, generate, and validate responses with sample data for UI rendering.
-- **/mcp/v1/agents**: Returns a static list of mock agents.
-- **/mcp/v1/models**: Returns a static list of mock models for each provider.
-- **/mcp/v1/model-description/<provider>/<model>**: Returns a mock description string.
-
 This allows you to work on and verify the UI logic, question/answer rendering, and error handling without needing access to real AI APIs or models.
 
----
-
-## Running the Application
-
-1. Start the Flask application:
-   ```sh
-   python app.py
-   ```
-2. The application will run on `http://localhost:10000`
-
-## API Usage
-
-All API endpoints expect `Content-Type: application/json` for POST requests and return JSON responses.
-
-### **Generate a Programming Question**
-Generates a question based on the provided context.
-
-- **Endpoint**: `POST /api/generate`
-- **Request Body** ([GenerateRequest Pydantic Model](app.py)):
-  ```json
-  {
-      "topic": "Memory Management",
-      "platform": "Apple",
-      "tech": "Swift",
-      "keywords": ["ARC", "Retain Cycle"],
-      "ai": "openai",         // Provider key (e.g., 'openai', 'google')
-      "model": "gpt-4o",      // Model supported by the provider
-      "validation": false,    // Set to true to perform validation after generation
-      "questionContext": "Focus on strong reference cycles."
-  }
-  ```
-- **Headers**: `Authorization: Bearer YOUR_API_KEY` (Optional - overrides environment variable if provided and not `********`)
-- **Response**: [MCPResponse](#mcpresponse-format) with `success=true` and `data` containing the generated question (structure depends on the agent), or `success=false` with error details.
-
-### **Validate a Programming Question**
-Validates an existing question using the specified AI model.
-
-- **Endpoint**: `POST /api/validate`
-- **Request Body** ([ValidateRequest Pydantic Model](app.py)):
-  ```json
-  {
-      "ai": "openai",
-      "model": "gpt-4o",
-      "questionContext": "Validate the following Swift question about ARC: ...your question here..."
-  }
-  ```
-- **Headers**: `Authorization: Bearer YOUR_API_KEY` (Optional)
-- **Response**: [MCPResponse](#mcpresponse-format) with `success=true` and `data` containing validation results (e.g., `{"is_valid": true, "feedback": "..."}`), or `success=false` with error details.
-
-### **Check Environment API Key**
-Checks if an API key for the specified provider exists as an environment variable.
-
-- **Endpoint**: `GET /api/check-env-key/{provider}`
-- **Example**: `GET /api/check-env-key/openai`
-- **Response**:
-  ```json
-  {
-      "exists": true 
-  }
-  ```
-  or
-  ```json
-  {
-      "exists": false
-  }
-  ```
-
-### **MCPResponse Format**
-All API endpoints (`/api/generate`, `/api/validate`) return a standardized JSON object:
-
-```json
-{
-    "success": true, // boolean: Indicates if the operation was successful
-    "data": { ... },   // object | string | null: The result data if success is true (structure depends on endpoint and agent)
-    "error": null,     // string | null: Error message if success is false
-    "error_type": null // string | null: Type of error (e.g., 'api_key', 'validation_error', 'model_not_supported', 'server_error', 'network_error') if success is false
-}
-```
-
-## Web Interface
-
-Access the web interface by navigating to `http://localhost:10000` in your browser after starting the application.
-
-The interface allows you to:
-- Select an AI provider (dynamically populated).
-- Select a model supported by the chosen provider.
-- Enter an API key (overrides environment variable if not `********`).
-- Input topic, platform, technology, and keywords.
-- Provide additional context for question generation or the question text for validation.
-- Choose whether to generate or validate.
-- View the generated/validated result.
-- See messages indicating if an environment API key is being used.
-
-## Testing Individual Agents
-
-You can test the core logic of individual agents directly (useful for debugging):
-
-```sh
-# Example for OpenAI agent (modify as needed for others)
-python mcp/agents/openai_agent.py
-```
-*Note: Direct agent tests might require setting environment variables or modifying the script to pass API keys.* 
-
-## Performance Considerations
-
-- **Validation**: The `validation` flag in the `/api/generate` request controls whether an additional validation step is performed after generation. Setting it to `false` can speed up the response time if quality assurance is handled separately.
-- **Agent Implementation**: The performance (latency, token usage) heavily depends on the specific AI model chosen and the implementation within the corresponding agent file.
-
-## Evaluation Criteria & Other Features
-
-*(This section remains largely the same as previous versions, detailing evaluation criteria concepts, but note that the specific implementation of returning detailed criteria, tests per level, etc., now depends entirely on how each agent formats its output in the `data` field of the successful `MCPResponse`.)*
-
----
 *Credit Vasil_OK ☕* 

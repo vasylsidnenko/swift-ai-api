@@ -93,11 +93,44 @@ Legacy fields and formats are no longer supported. Always use the unified struct
 
 This directory contains the core server code for the MCP (Multi-Component Platform) server. The server is implemented in Python and orchestrates agent-based operations, likely for AI or automation workflows.
 
+## Supported Providers
+
+The MCP server currently supports the following AI agent providers:
+
+- **OpenAI** (provider id: `openai`)
+- **Anthropic Claude** (provider id: `claude`)
+- **Google Gemini** (provider id: `gemini`)
+
+You can query the list of available providers via:
+
+```http
+GET /mcp/v1/providers
+```
+
+To get the list of models for a specific provider:
+
+```http
+GET /mcp/v1/models/<provider>
+```
+
+For example, to get models for OpenAI:
+
+```
+GET /mcp/v1/models/openai
+```
+
 ## Structure
 
 - `mcp_main.py` — Main entry point for the MCP server. Handles server startup and core logic.
 - `run_openai_agent.py` — Script to run an OpenAI-based agent within the MCP server context.
+- `run_claude_agent.py` — Script to run a Claude-based agent.
+- `run_gemini_agent.py` — Script to run a Gemini-based agent.
 - `mcp/` — Module directory containing core components and utilities for the MCP server.
+
+## Changelog
+
+- **2025-04-28**: Added documentation for supported providers (OpenAI, Claude, Gemini) and clarified how to query them via API. Updated for `user_quiz` operation.
+- **2025-04-27**: Added `user_quiz` operation for generating follow-up questions based on user input.
 - `test_data/` — Directory for test datasets and related files.
 - `__init__.py` — Marks this directory as a Python package.
 - `__main__.py` — Allows running the package directly with `python -m mcp_server`.
