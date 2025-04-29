@@ -1,24 +1,19 @@
-# fly.toml app configuration file generated for qanda on 2025-04-27T14:47:09Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
-app = 'qanda'
-primary_region = 'fra'
+app = "qanda"  # or use the exact name of your app from Fly.io!
 
 [build]
-dockerfile = "Dockerfile"
+  dockerfile = "Dockerfile"
 
-[http_service]
+[env]
+  PORT = "10001"
+
+[[services]]
   internal_port = 10001
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
+  protocol = "tcp"
 
-[[vm]]
-  memory = '256mb'
-  cpu_kind = 'shared'
-  cpus = 1
-  memory_mb = 256
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
