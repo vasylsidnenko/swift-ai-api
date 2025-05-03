@@ -666,7 +666,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const updateContent = () => {
             if (isJsonView) {
                 // In JSON view, show the complete data structure
-                contentDiv.innerHTML = `<pre class='bg-light p-2 rounded line-numbers' style='margin-bottom:0'><code class='language-json'>${escapeHtml(JSON.stringify(data, null, 2))}</code></pre>`;
+                contentDiv.innerHTML = `<pre class='bg-light p-2 rounded line-numbers language-json' style='margin-bottom:0'><code class='language-json'>${escapeHtml(JSON.stringify(data, null, 2))}</code></pre>`;
                 // Ensure PrismJS highlights and adds line numbers
                 setTimeout(() => {
                     const preElement = contentDiv.querySelector('pre');
