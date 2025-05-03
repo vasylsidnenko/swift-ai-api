@@ -942,13 +942,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (platform || technology || topic) {
                 metaHtml = `<div class="text-end mb-2">`;
                 if (topic) {
-                    metaHtml += `<span class="badge" style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; margin-right:0.3em;">Topic: ${escapeHtml(topic)}</span>`;
+                    metaHtml += `<span class="badge" style="background:#007bff; color:white; border:none; margin-right:0.3em;">Topic: ${escapeHtml(topic)}</span>`;
                 }
                 if (platform) {
-                    metaHtml += `<span class="badge" style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; margin-right:0.3em;">Platform: ${escapeHtml(platform)}</span>`;
+                    metaHtml += `<span class="badge" style="background:#6610f2; color:white; border:none; margin-right:0.3em;">Platform: ${escapeHtml(platform)}</span>`;
                 }
                 if (technology) {
-                    metaHtml += `<span class="badge" style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; margin-right:0.3em;">Technology: ${escapeHtml(technology)}</span>`;
+                    metaHtml += `<span class="badge" style="background:#6f42c1; color:white; border:none; margin-right:0.3em;">Technology: ${escapeHtml(technology)}</span>`;
                 }
                 metaHtml += '</div>';
             }
