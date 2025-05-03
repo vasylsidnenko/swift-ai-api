@@ -680,7 +680,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Create pre and code elements
                 const pre = document.createElement('pre');
-                pre.className = 'bg-light p-2 rounded line-numbers language-json';
+                pre.className = 'p-2 rounded line-numbers language-json';
                 pre.style.marginBottom = '0';
                 pre.style.whiteSpace = 'pre-wrap';
                 pre.style.wordWrap = 'break-word';
