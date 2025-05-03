@@ -595,44 +595,148 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Display generated question(s)
     function displayGenerationResult(data) {
+        const resultDiv = document.getElementById('result');
+        if (!resultDiv) return;
+
         // Defensive: handle invalid/malformed data
         if (!data || typeof data !== 'object') {
             handleApiError('response_format_error', 'Received unexpected format for generated question.');
             return;
         }
-        let html = '';
-        // Extract question text, tags, topic/platform/technology
-        const questionText = data.text || (data.question && data.question.text) || '';
-        const tags = data.tags || (data.question && data.question.tags) || [];
-        const topicObj = (data.question && data.question.topic) || data.topic || {};
-        // Token/time stats if present
-        let statLine = '';
-        let tokens = '';
-        let time = '';
+
+        // Clear result div
+        resultDiv.textContent = '';
+
+        // Create main container with flex layout
+        const mainContainer = document.createElement('div');
+        mainContainer.className = 'd-flex flex-column';
+        resultDiv.appendChild(mainContainer);
+
+        // Create toolbar container with flex layout
+        const toolbarContainer = document.createElement('div');
+        toolbarContainer.className = 'd-flex justify-content-between align-items-center mb-2';
+        mainContainer.appendChild(toolbarContainer);
+
+        // Create left toolbar section for toggle button
+        const leftToolbar = document.createElement('div');
+        leftToolbar.className = 'd-flex align-items-center';
+
+        // Create output format toggle button
+        const formatToggleBtn = document.createElement('button');
+        formatToggleBtn.id = 'resultFormatToggle';
+        formatToggleBtn.className = 'btn btn-outline-secondary btn-sm';
+        formatToggleBtn.innerHTML = '<i class="bi bi-list-task"></i>'; // Formatted view icon
+        formatToggleBtn.title = 'Toggle result format';
+        leftToolbar.appendChild(formatToggleBtn);
+
+        // Create right toolbar section for stats
+        const rightToolbar = document.createElement('div');
+        rightToolbar.className = 'text-muted text-end';
+        rightToolbar.style.minWidth = '180px';
+
+        // Add stats if available
         if (data.agent && data.agent.statistic) {
-            if (typeof data.agent.statistic.tokens === 'number') {
-                tokens = data.agent.statistic.tokens;
+            const { tokens, time } = data.agent.statistic;
+            let statLine = '';
+            if (typeof tokens === 'number') {
+                statLine += `Tokens used: <b>${tokens}</b>`;
             }
-            if (typeof data.agent.statistic.time === 'number') {
-                time = (data.agent.statistic.time / 1000).toFixed(2);
+            if (typeof time === 'number') {
+                if (statLine) statLine += ' | ';
+                statLine += `Time: <b>${(time / 1000).toFixed(2)}s</b>`;
+            }
+            if (statLine) {
+                rightToolbar.innerHTML = statLine;
             }
         }
-        if (tokens || time) {
-            if (tokens) statLine += `Tokens used: <b>${tokens}</b>`;
-            if (tokens && time) statLine += ' | ';
-            if (time) statLine += `Time: <b>${time}s</b>`;
-            html += `<div class="d-flex"><div class="flex-grow-1"></div><div class="mb-2 text-muted text-end" style="min-width:180px;">${statLine}</div></div>`;
-        }
-        // Main question block
-        if (questionText) {
-            html += `<div class="mb-3 p-3 border rounded shadow-sm" style="background:#fff;">
-                <div style="font-size:1.16rem; font-weight:600; color:#23232b; line-height:1.25; margin-bottom:0.5rem;">${escapeHtml(questionText)}</div>
-                <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                    ${Array.isArray(tags) && tags.length > 0 ? `<div class="mt-2" style="margin-bottom:0.25rem; text-align:right;"><span class="badge" style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; font-weight:400; margin-right:0.3em;">${tags.map(t=>escapeHtml(t)).join('</span> <span class=\"badge\" style=\"background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; font-weight:400; margin-right:0.3em;\">')}</span></div>` : ''}
-                    ${htmlQuizMetaBlock(topicObj)}
-                </div>
-            </div>`;
-        }
+
+        // Add toolbar sections to toolbar container
+        toolbarContainer.appendChild(leftToolbar);
+        toolbarContainer.appendChild(rightToolbar);
+
+        // Create content container with border
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'result-content border rounded p-3';
+        mainContainer.appendChild(contentDiv);
+
+        // Track current display mode
+        let isJsonView = false;
+
+        // Function to update content based on view mode
+        const updateContent = () => {
+            if (isJsonView) {
+                // In JSON view, show the complete data structure
+                contentDiv.innerHTML = `<pre class='bg-light p-2 rounded line-numbers' style='margin-bottom:0'><code class='language-json'>${escapeHtml(JSON.stringify(data, null, 2))}</code></pre>`;
+                // Ensure PrismJS highlights and adds line numbers
+                setTimeout(() => {
+                    const preElement = contentDiv.querySelector('pre');
+                    if (preElement) {
+                        if (!preElement.hasAttribute('data-prism-highlighted')) {
+                            preElement.setAttribute('data-prism-highlighted', 'true');
+                            if (window.Prism) {
+                                // Ensure the language class is properly set
+                                const codeElement = preElement.querySelector('code');
+                                if (codeElement && !codeElement.classList.contains('language-json')) {
+                                    codeElement.classList.add('language-json');
+                                }
+                                // Apply highlighting
+                                Prism.highlightElement(preElement);
+                            }
+                        }
+                    }
+                }, 0);
+            } else {
+                // In formatted view, show the formatted content with tabs
+                let formattedContent = '';
+                
+                // Add answer levels (tabs) if present
+                const levels = data.answerLevels || (data.question && data.question.answerLevels) || {};
+                if (Object.keys(levels).length > 0) {
+                    formattedContent = formatResult(data);
+                } else {
+                    // If no answer levels, format the question directly
+                    const questionText = data.question ? 
+                        (typeof data.question === 'string' ? data.question : data.question.text) : 
+                        (data.questions && data.questions.length > 0 ? data.questions[0] : null);
+                    
+                    if (questionText) {
+                        formattedContent = formatSingleQuestion(questionText);
+                    } else {
+                        formattedContent = '<div class="alert alert-warning">No question content found.</div>';
+                    }
+                }
+                
+                contentDiv.innerHTML = formattedContent;
+                
+                // Highlight code blocks in formatted view
+                setTimeout(() => {
+                    const codeBlocks = contentDiv.querySelectorAll('pre code');
+                    codeBlocks.forEach(block => {
+                        if (!block.closest('[data-prism-highlighted]')) {
+                            const preElement = block.closest('pre');
+                            if (preElement) {
+                                preElement.setAttribute('data-prism-highlighted', 'true');
+                                if (window.Prism) {
+                                    Prism.highlightElement(block);
+                                }
+                            }
+                        }
+                    });
+                }, 0);
+            }
+        };
+
+        // Add click handler for toggle button
+        formatToggleBtn.addEventListener('click', () => {
+            isJsonView = !isJsonView;
+            formatToggleBtn.innerHTML = isJsonView 
+                ? '<i class="bi bi-code-slash"></i>' 
+                : '<i class="bi bi-list-task"></i>';
+            updateContent();
+        });
+
+        // Show initial content
+        updateContent();
 
         // Answer levels (tabs)
         const levels = data.answerLevels || (data.question && data.question.answerLevels) || {};
@@ -645,88 +749,101 @@ document.addEventListener('DOMContentLoaded', function() {
             intermediate: {tab: 'text-warning', border: 'border-warning', bg: 'bg-warning bg-opacity-10'},
             advanced: {tab: 'text-danger', border: 'border-danger', bg: 'bg-danger bg-opacity-10'}
         };
-        tabs += '<ul class="nav nav-tabs mb-2" id="answerLevelTabs" role="tablist">';
-        tabOrder.forEach(level => {
-            if (levels[level]) {
-                const colorClass = levelColors[level] ? levelColors[level].tab : '';
-                tabs += `<li class="nav-item" role="presentation">
-                    <button class="nav-link ${colorClass}${first ? ' active' : ''}" style="font-weight:600;" id="tab-${level}" data-bs-toggle="tab" data-bs-target="#level-${level}" type="button" role="tab" aria-controls="level-${level}" aria-selected="${first ? 'true' : 'false'}">${level.charAt(0).toUpperCase() + level.slice(1)}</button>
-                </li>`;
-                first = false;
-            }
-        });
-        tabs += '</ul>';
-        first = true;
-        tabOrder.forEach(level => {
-            const l = levels[level];
-            if (!l) return;
-            const borderClass = levelColors[level] ? levelColors[level].border : '';
-            tabContent += `<div class="tab-pane fade${first ? ' show active' : ''} ${borderClass}" id="level-${level}" role="tabpanel" aria-labelledby="tab-${level}" style="border-left-width:4px; border-left-style:solid; border-radius:0 0 8px 8px; margin-bottom:1rem; background:none;">`;
-            // Evaluation criteria
-            if (l.evaluationCriteria && l.evaluationCriteria.trim() !== '') {
-                tabContent += `<div class="alert alert-info py-2 px-3 mb-2" style="font-size:0.98rem;"><b>Evaluation Criteria:</b><br>${escapeHtml(l.evaluationCriteria)}</div>`;
-            }
-            tabContent += `<div class="mb-2">${formatSingleQuestion(l.answer || '')}</div>`;
-            // Tests
-            if (Array.isArray(l.tests) && l.tests.length > 0) {
-                l.tests.forEach((test, idx) => {
-                    tabContent += `<div class="card mb-2"><div class="card-body p-2">
-                        <div class="mb-1"><b>Test ${idx+1}:</b></div>
-                        <div class="mb-1">${formatSingleQuestion(test.snippet || '')}</div>`;
-                    if (Array.isArray(test.options)) {
-                        tabContent += '<ul class="list-group mb-1">';
-                        const answerIdx = (typeof test.answer === 'string' && /^\d+$/.test(test.answer)) ? (parseInt(test.answer, 10) - 1) : (typeof test.answer === 'number' ? test.answer : -1);
-                        const correctClass = level === 'beginner' ? 'list-group-item-success' : (level === 'intermediate' ? 'list-group-item-warning' : (level === 'advanced' ? 'list-group-item-danger' : 'list-group-item-success'));
-                        test.options.forEach((opt, i) => {
-                            const isCorrect = i === answerIdx;
-                            tabContent += `<li class=\"list-group-item${isCorrect ? ' ' + correctClass : ''}\">${escapeHtml(opt)}</li>`;
-                        });
-                        tabContent += '</ul>';
-                    }
-                    tabContent += '</div></div>';
-                });
-            }
-            tabContent += '</div>';
-            first = false;
-        });
-        if (tabContent) {
-            html += `<div>${tabs}<div class="tab-content">${tabContent}</div></div>`;
-        }
-        resultDiv.innerHTML = html;
-        // Highlight code blocks (PrismJS)
-        if (window.Prism && Prism.highlightAll) {
-            Prism.highlightAll();
-        }
-        if (typeof highlightAllCodeBlocks === 'function') highlightAllCodeBlocks();
-        // --- Custom tab styling: add colored border-top for active tab ---
-        function updateTabBorderTop() {
-            const tabBtns = document.querySelectorAll('#answerLevelTabs .nav-link');
-            tabBtns.forEach(tab => {
-                tab.style.borderTop = '';
-                if (tab.classList.contains('active')) {
-                    if (tab.id.includes('beginner')) tab.style.borderTop = '4px solid #28a745';
-                    if (tab.id.includes('intermediate')) tab.style.borderTop = '4px solid #ffc107';
-                    if (tab.id.includes('advanced')) tab.style.borderTop = '4px solid #dc3545';
+
+        // Only proceed with tabs if we have answer levels
+        if (Object.keys(levels).length > 0) {
+            tabs = '<ul class="nav nav-tabs mb-2" id="answerLevelTabs" role="tablist">';
+            tabOrder.forEach(level => {
+                if (levels[level]) {
+                    const colorClass = levelColors[level] ? levelColors[level].tab : '';
+                    tabs += `<li class="nav-item" role="presentation">
+                        <button class="nav-link ${colorClass}${first ? ' active' : ''}" style="font-weight:600;" id="tab-${level}" data-bs-toggle="tab" data-bs-target="#level-${level}" type="button" role="tab" aria-controls="level-${level}" aria-selected="${first ? 'true' : 'false'}">${level.charAt(0).toUpperCase() + level.slice(1)}</button>
+                    </li>`;
+                    first = false;
                 }
             });
-        }
-        setTimeout(updateTabBorderTop, 0);
-        setTimeout(() => {
-            const tabBtns = document.querySelectorAll('#answerLevelTabs .nav-link');
-            tabBtns.forEach(tab => {
-                tab.addEventListener('shown.bs.tab', updateTabBorderTop);
+            tabs += '</ul>';
+
+            // Reset first flag for tab content
+            first = true;
+            tabOrder.forEach(level => {
+                const l = levels[level];
+                if (!l) return;
+                const borderClass = levelColors[level] ? levelColors[level].border : '';
+                tabContent += `<div class="tab-pane fade${first ? ' show active' : ''} ${borderClass}" id="level-${level}" role="tabpanel" aria-labelledby="tab-${level}" style="border-left-width:4px; border-left-style:solid; border-radius:0 0 8px 8px; margin-bottom:1rem; background:none;">`;
+                
+                // Evaluation criteria
+                if (l.evaluationCriteria && l.evaluationCriteria.trim() !== '') {
+                    tabContent += `<div class="alert alert-info py-2 px-3 mb-2" style="font-size:0.98rem;"><b>Evaluation Criteria:</b><br>${escapeHtml(l.evaluationCriteria)}</div>`;
+                }
+                
+                // Answer
+                tabContent += `<div class="mb-2">${formatSingleQuestion(l.answer || '')}</div>`;
+                
+                // Tests
+                if (Array.isArray(l.tests) && l.tests.length > 0) {
+                    l.tests.forEach((test, idx) => {
+                        tabContent += `<div class="card mb-2"><div class="card-body p-2">
+                            <div class="mb-1"><b>Test ${idx+1}:</b></div>
+                            <div class="mb-1">${formatSingleQuestion(test.snippet || '')}</div>`;
+                        if (Array.isArray(test.options)) {
+                            tabContent += '<ul class="list-group mb-1">';
+                            const answerIdx = (typeof test.answer === 'string' && /^\d+$/.test(test.answer)) ? (parseInt(test.answer, 10) - 1) : (typeof test.answer === 'number' ? test.answer : -1);
+                            const correctClass = level === 'beginner' ? 'list-group-item-success' : (level === 'intermediate' ? 'list-group-item-warning' : (level === 'advanced' ? 'list-group-item-danger' : 'list-group-item-success'));
+                            test.options.forEach((opt, i) => {
+                                const isCorrect = i === answerIdx;
+                                tabContent += `<li class=\"list-group-item${isCorrect ? ' ' + correctClass : ''}\">${escapeHtml(opt)}</li>`;
+                            });
+                            tabContent += '</ul>';
+                        }
+                        tabContent += '</div></div>';
+                    });
+                }
+                tabContent += '</div>';
+                first = false;
             });
-        }, 0);
-        // Activate Bootstrap tabs
-        if (window.bootstrap && window.bootstrap.Tab) {
-            const tabEls = document.querySelectorAll('#answerLevelTabs button[data-bs-toggle="tab"]');
-            tabEls.forEach(tabEl => {
-                tabEl.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const tabTrigger = window.bootstrap.Tab.getOrCreateInstance(tabEl);
-                    tabTrigger.show();
-                });
-            });
+
+            // Add tabs and content to the container
+            if (tabContent) {
+                contentDiv.innerHTML += `<div>${tabs}<div class="tab-content">${tabContent}</div></div>`;
+
+                // Setup tab functionality
+                setTimeout(() => {
+                    // Custom tab styling
+                    const updateTabBorderTop = () => {
+                        const tabBtns = document.querySelectorAll('#answerLevelTabs .nav-link');
+                        tabBtns.forEach(tab => {
+                            tab.style.borderTop = '';
+                            if (tab.classList.contains('active')) {
+                                if (tab.id.includes('beginner')) tab.style.borderTop = '4px solid #28a745';
+                                if (tab.id.includes('intermediate')) tab.style.borderTop = '4px solid #ffc107';
+                                if (tab.id.includes('advanced')) tab.style.borderTop = '4px solid #dc3545';
+                            }
+                        });
+                    };
+
+                    // Initial border update
+                    updateTabBorderTop();
+
+                    // Add listeners for tab changes
+                    const tabBtns = document.querySelectorAll('#answerLevelTabs .nav-link');
+                    tabBtns.forEach(tab => {
+                        tab.addEventListener('shown.bs.tab', updateTabBorderTop);
+                    });
+
+                    // Activate Bootstrap tabs
+                    if (window.bootstrap && window.bootstrap.Tab) {
+                        const tabEls = document.querySelectorAll('#answerLevelTabs button[data-bs-toggle="tab"]');
+                        tabEls.forEach(tabEl => {
+                            tabEl.addEventListener('click', function (e) {
+                                e.preventDefault();
+                                const tabTrigger = window.bootstrap.Tab.getOrCreateInstance(tabEl);
+                                tabTrigger.show();
+                            });
+                        });
+                    }
+                }, 0);
+            }
         }
     }
 
@@ -792,23 +909,159 @@ document.addEventListener('DOMContentLoaded', function() {
     // Helper function to display formatted results from API
     function formatResult(result) {
         console.log("Formatting result:", result);
-        if (!result || !result.questions || result.questions.length === 0) {
-            return '<div class="alert alert-warning">No questions were generated.</div>';
+        if (!result) {
+            return '<div class="alert alert-warning">No result received.</div>';
         }
 
-        // Check if it's a single question or multiple (though API currently generates one)
-        if (result.questions.length === 1) {
-             // For single question, use detailed formatting
-             return formatSingleQuestion(result.questions[0]);
-        } else {
-            // Fallback for multiple questions (basic list for now)
-            let html = '<ul class="list-group">';
-            result.questions.forEach((q, index) => {
-                html += `<li class="list-group-item"><strong>Question ${index + 1}:</strong><br>${escapeHtml(q)}</li>`;
-            });
-            html += '</ul>';
-            return html;
+        // Get the question object and its properties
+        const questionObj = result.question || {};
+        const questionText = questionObj.text || '';
+        const tags = questionObj.tags || [];
+        const topicObj = questionObj.topic || {};
+        const platform = topicObj.platform || '';
+        const technology = topicObj.technology || '';
+        const topic = topicObj.name || '';
+
+        // Start building the output HTML
+        let outputHtml = '';
+
+        // Add the question section if we have a question
+        if (questionText) {
+            // Format tags if they exist
+            let tagsHtml = '';
+            if (Array.isArray(tags) && tags.length > 0) {
+                tagsHtml = '<div class="text-end mb-2">' + 
+                    tags.map(tag => 
+                        `<span class="badge" style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; margin-right:0.3em;">${escapeHtml(tag)}</span>`
+                    ).join('') + 
+                    '</div>';
+            }
+
+            // Format metadata (platform, technology, topic)
+            let metaHtml = '';
+            if (platform || technology || topic) {
+                metaHtml = `<div class="text-end mb-2">`;
+                if (topic) {
+                    metaHtml += `<span class="badge" style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; margin-right:0.3em;">Topic: ${escapeHtml(topic)}</span>`;
+                }
+                if (platform) {
+                    metaHtml += `<span class="badge" style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; margin-right:0.3em;">Platform: ${escapeHtml(platform)}</span>`;
+                }
+                if (technology) {
+                    metaHtml += `<span class="badge" style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; margin-right:0.3em;">Technology: ${escapeHtml(technology)}</span>`;
+                }
+                metaHtml += '</div>';
+            }
+
+            outputHtml += `
+                <div class="mb-3">
+                    <div class="mb-3"><strong>${escapeHtml(questionText)}</strong></div>
+                    ${tagsHtml}
+                    ${metaHtml}
+                </div>
+            `;
         }
+
+        // Initialize variables for tabs
+        const tabOrder = ['beginner', 'intermediate', 'advanced'];
+        let tabs = '';
+        let tabContent = '';
+        let first = true;
+
+        // Get answer levels
+        const levels = questionObj.answerLevels || {};
+        const levelColors = {
+            beginner: {tab: 'text-success', border: 'border-success', bg: 'bg-success bg-opacity-10'},
+            intermediate: {tab: 'text-warning', border: 'border-warning', bg: 'bg-warning bg-opacity-10'},
+            advanced: {tab: 'text-danger', border: 'border-danger', bg: 'bg-danger bg-opacity-10'}
+        };
+
+        if (Object.keys(levels).length > 0) {
+            // Create tabs
+            tabs = '<ul class="nav nav-tabs mb-2" id="answerLevelTabs" role="tablist">';
+            tabOrder.forEach(level => {
+                if (levels[level]) {
+                    const colorClass = levelColors[level] ? levelColors[level].tab : '';
+                    tabs += `<li class="nav-item" role="presentation">
+                        <button class="nav-link ${colorClass}${first ? ' active' : ''}" 
+                                style="font-weight:600;" 
+                                id="tab-${level}" 
+                                data-bs-toggle="tab" 
+                                data-bs-target="#level-${level}" 
+                                type="button" 
+                                role="tab" 
+                                aria-controls="level-${level}" 
+                                aria-selected="${first ? 'true' : 'false'}">
+                            ${level.charAt(0).toUpperCase() + level.slice(1)}
+                        </button>
+                    </li>`;
+                    first = false;
+                }
+            });
+            tabs += '</ul>';
+
+            // Create tab content
+            first = true;
+            tabOrder.forEach(level => {
+                const l = levels[level];
+                if (!l) return;
+
+                const borderClass = levelColors[level] ? levelColors[level].border : '';
+                tabContent += `<div class="tab-pane fade${first ? ' show active' : ''} ${borderClass}" 
+                                   id="level-${level}" 
+                                   role="tabpanel" 
+                                   aria-labelledby="tab-${level}" 
+                                   style="border-left-width:4px; border-left-style:solid; border-radius:0 0 8px 8px; margin-bottom:1rem; background:none;">`;
+
+                // Evaluation criteria
+                if (l.evaluationCriteria && l.evaluationCriteria.trim() !== '') {
+                    tabContent += `<div class="alert alert-info py-2 px-3 mb-2" style="font-size:0.98rem;">
+                        <b>Evaluation Criteria:</b><br>${escapeHtml(l.evaluationCriteria)}
+                    </div>`;
+                }
+
+                // Answer
+                tabContent += `<div class="mb-2">${formatSingleQuestion(l.answer || '')}</div>`;
+
+                // Tests
+                if (Array.isArray(l.tests) && l.tests.length > 0) {
+                    l.tests.forEach((test, idx) => {
+                        tabContent += `<div class="card mb-2"><div class="card-body p-2">
+                            <div class="mb-1"><b>Test ${idx + 1}:</b></div>
+                            <div class="mb-1">${formatSingleQuestion(test.snippet || '')}</div>`;
+
+                        if (Array.isArray(test.options)) {
+                            tabContent += '<ul class="list-group mb-1">';
+                            const answerIdx = (typeof test.answer === 'string' && /^\d+$/.test(test.answer)) ? 
+                                (parseInt(test.answer, 10) - 1) : 
+                                (typeof test.answer === 'number' ? test.answer : -1);
+
+                            const correctClass = level === 'beginner' ? 'list-group-item-success' : 
+                                (level === 'intermediate' ? 'list-group-item-warning' : 
+                                (level === 'advanced' ? 'list-group-item-danger' : 'list-group-item-success'));
+
+                            test.options.forEach((opt, i) => {
+                                const isCorrect = i === answerIdx;
+                                tabContent += `<li class="list-group-item${isCorrect ? ' ' + correctClass : ''}">${escapeHtml(opt)}</li>`;
+                            });
+                            tabContent += '</ul>';
+                        }
+                        tabContent += '</div></div>';
+                    });
+                }
+                tabContent += '</div>';
+                first = false;
+            });
+
+            outputHtml += `<div>${tabs}<div class="tab-content">${tabContent}</div></div>`;
+        }
+
+        // Return the built HTML if we have any content
+        if (outputHtml || questionText) {
+            return outputHtml;
+        }
+
+        return '<div class="alert alert-warning">No questions were generated.</div>';
     }
 
     // Formats a single question potentially containing code blocks
