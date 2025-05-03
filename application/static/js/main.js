@@ -666,7 +666,35 @@ document.addEventListener('DOMContentLoaded', function() {
         const updateContent = () => {
             if (isJsonView) {
                 // In JSON view, show the complete data structure
-                contentDiv.innerHTML = `<pre class='bg-light p-2 rounded line-numbers language-json' style='margin-bottom:0'><code class='language-json'>${escapeHtml(JSON.stringify(data, null, 2))}</code></pre>`;
+                const jsonStr = JSON.stringify(data, null, 2);
+                // Create container
+                const container = document.createElement('div');
+                container.className = 'position-relative';
+                
+                // Create copy button
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2';
+                copyBtn.style.zIndex = '1';
+                copyBtn.innerHTML = '<i class="bi bi-clipboard"></i> Copy';
+                copyBtn.addEventListener('click', () => copyToClipboard(copyBtn, jsonStr));
+                
+                // Create pre and code elements
+                const pre = document.createElement('pre');
+                pre.className = 'bg-light p-2 rounded line-numbers language-json';
+                pre.style.marginBottom = '0';
+                pre.style.whiteSpace = 'pre-wrap';
+                pre.style.wordWrap = 'break-word';
+                
+                const code = document.createElement('code');
+                code.className = 'language-json';
+                code.textContent = jsonStr;
+                
+                // Assemble elements
+                pre.appendChild(code);
+                container.appendChild(copyBtn);
+                container.appendChild(pre);
+                contentDiv.innerHTML = '';
+                contentDiv.appendChild(container);
                 // Ensure PrismJS highlights and adds line numbers
                 setTimeout(() => {
                     const preElement = contentDiv.querySelector('pre');
@@ -888,6 +916,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Helper function to copy text to clipboard
+    function copyToClipboard(button, text) {
+        navigator.clipboard.writeText(text).then(() => {
+            const originalHtml = button.innerHTML;
+            button.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+            button.classList.remove('btn-outline-secondary');
+            button.classList.add('btn-success');
+            
+            setTimeout(() => {
+                button.innerHTML = originalHtml;
+                button.classList.remove('btn-success');
+                button.classList.add('btn-outline-secondary');
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text:', err);
+            button.innerHTML = '<i class="bi bi-x-circle"></i> Error';
+            button.classList.remove('btn-outline-secondary');
+            button.classList.add('btn-danger');
+            
+            setTimeout(() => {
+                button.innerHTML = '<i class="bi bi-clipboard"></i> Copy';
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-outline-secondary');
+            }, 2000);
+        });
+    }
+
+    // Helper function to escape HTML
     function escapeHtml(unsafe) {
         if (typeof unsafe !== 'string') return '';
         return unsafe
