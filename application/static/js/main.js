@@ -607,15 +607,50 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear result div
         resultDiv.textContent = '';
 
-        // Create main container with flex layout
+        // Get provider and model info
+        const provider = data.agent?.model?.provider || 'unknown';
+        const model = data.agent?.model?.model || 'unknown';
+
+        // Create main container
         const mainContainer = document.createElement('div');
-        mainContainer.className = 'd-flex flex-column';
+        mainContainer.className = 'card border-info mb-3';
         resultDiv.appendChild(mainContainer);
+
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'card-header d-flex justify-content-between align-items-center';
+        header.style.setProperty('background-color', getProviderColor(provider), 'important');
+        
+        // Add title
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'text-white';
+        titleDiv.textContent = 'Generate Result';
+        header.appendChild(titleDiv);
+
+        // Add provider and model info
+        const providerInfo = document.createElement('div');
+        providerInfo.className = 'text-white text-center flex-grow-1';
+        providerInfo.innerHTML = `Provider: ${provider} | Model: ${model}`;
+        header.appendChild(providerInfo);
+        
+        // Add close button
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'btn-close btn-close-white';
+        closeBtn.setAttribute('aria-label', 'Close');
+        closeBtn.onclick = () => resultDiv.innerHTML = '';
+        header.appendChild(closeBtn);
+        
+        mainContainer.appendChild(header);
+
+        // Create content container
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'card-body';
+        mainContainer.appendChild(contentContainer);
 
         // Create toolbar container with flex layout
         const toolbarContainer = document.createElement('div');
         toolbarContainer.className = 'd-flex justify-content-between align-items-center mb-2';
-        mainContainer.appendChild(toolbarContainer);
+        contentContainer.appendChild(toolbarContainer);
 
         // Create left toolbar section for toggle button
         const leftToolbar = document.createElement('div');
@@ -656,8 +691,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Create content container with border
         const contentDiv = document.createElement('div');
-        contentDiv.className = 'result-content border rounded p-3';
-        mainContainer.appendChild(contentDiv);
+        contentDiv.className = 'result-content';
+        contentContainer.appendChild(contentDiv);
 
         // Track current display mode
         let isJsonView = false;
@@ -1025,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let first = true;
 
         // Get answer levels
-        const levels = questionObj.answerLevels || {};
+        const levels = result.answerLevels || {};
         const levelColors = {
             beginner: {tab: 'text-success', border: 'border-success', bg: 'bg-success bg-opacity-10'},
             intermediate: {tab: 'text-warning', border: 'border-warning', bg: 'bg-warning bg-opacity-10'},
@@ -1298,5 +1333,31 @@ document.getElementById('questionForm').addEventListener('submit', function(e) {
         formData.validationModel = document.getElementById('validationModel').value;
         formData.validationApiKey = document.getElementById('validationApiKey').value;
     }
-    // Rest of the submission logic...
+    // Show loading indicator
+    showLoadingIndicator();
+
+    // Send request to backend
+    fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('API response:', data);
+        if (data.success) {
+            displayGenerationResult(data);
+        } else {
+            handleApiError('API Error', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        handleApiError('Network Error', error.message);
+    })
+    .finally(() => {
+        document.getElementById('loadingIndicator').style.display = 'none';
+    });
 }); 
