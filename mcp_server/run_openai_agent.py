@@ -168,8 +168,8 @@ def user_quiz_question():
             tags=["View", "State"]
         )
         raw_request = RequestQuestionModel(
-            style="pitfall",
-            question="In Objective-C you have to manually manage memory using retain and release. It was tricky sometimes because forgetting to release objects could cause memory leaks."
+            # style="pitfall",
+            question="In Objective-C you have to manually manage memory using retain and release. Also you can use Garbage Collection is you want. It was tricky sometimes because forgetting to release objects could cause memory leaks."
         )
 
         quiz_request = AIRequestQuestionModel(

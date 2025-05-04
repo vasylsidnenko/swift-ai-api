@@ -112,6 +112,17 @@ class AIQuizModel(BaseModel):
     quiz: QuizModel = Field(description="Quiz information")
 
 
+class UserQuizModel(BaseModel):
+    topic: TopicModel = Field(description="Topic and platform information")
+    question: str = Field(description="The main programming question text. If text contains code block,it must be highlighted with appropriate formatting (for example: ```swift )")
+    tags: List[str] = Field(description="Keywords and tags related to the question within the context of the platform and the topic", default_factory=list)
+    result: Dict[str, str] = Field(description="Dictionary where key is style (Expand/Pitfall/Application/Comparee/Mistake) and value is explanation")
+    
+class AIUserQuizModel(BaseModel):
+    agent: AgentModel = Field(description="Agent model information")
+    quiz: UserQuizModel = Field(description="User quiz information")
+
+
 # MARK: Validation models
 
 # Request

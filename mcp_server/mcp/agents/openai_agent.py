@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from ..agents.ai_models import (QuestionModel, AIQuestionModel, AIValidationModel, 
                                 AIRequestQuestionModel, AIRequestValidationModel, 
-                                AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation, AIQuizModel, QuizModel)
+                                AIModel, AIStatistic, AgentModel, RequestQuestionModel, QuestionValidation, AIQuizModel, UserQuizModel, AIUserQuizModel)
 from ..agents.base_agent import AgentProtocol
 
 logger = logging.getLogger(__name__)
@@ -237,7 +237,7 @@ Suitable for embedding in applications requiring quick responses
             logger.exception(f"Error generating quiz with OpenAI: {e}")
             raise
 
-    def user_quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+    def user_quiz(self, request: AIRequestQuestionModel) -> AIUserQuizModel:
         """
         Generate a programming question (without answers/tests) through OpenAI, according to the QuizModel/AIQuizModel.
         """
@@ -376,99 +376,6 @@ Suitable for embedding in applications requiring quick responses
         
     # Private
 
-    def _is_support_model(self, model: AIModel) -> bool:
-        if model.provider.lower() != self.provider():
-            logger.error(f"Provider unknonw: {model.provider}")
-            return False
-        
-        if model.model.lower() not in [m.lower() for m in self.supported_models()]:
-            logger.error(f"Model unknonw: {model.model}")
-            return False
-        
-        return True
-
-    def _get_max_tokens_param(self, model_name: str) -> str:
-        """
-        Returns the correct max tokens parameter name for the given model.
-        For new models (o4-mini, o3-mini, gpt-4o, gpt-4o-mini), use 'max_completion_tokens'.
-        For all others, use 'max_tokens'.
-        """
-        new_models = ['o4-mini', 'o3-mini', 'gpt-4o-mini', 'gpt-4o']
-        if any(m in model_name.lower() for m in new_models):
-            return 'max_completion_tokens'
-        return 'max_tokens'
-
-    def _get_max_tokens_value(self, model_name: str) -> int:
-        """
-        Returns the maximum number of tokens for the given model.
-        For new models (o4-mini, o3-mini, gpt-4o, gpt-4o-mini), use 4000.
-        For all others, use 4000.
-        """
-        if model_name in ['o4-mini', 'o3-mini']:
-            return 6500
-        elif model_name == 'gpt-4o':
-            return 4096
-        elif model_name == 'gpt-4o-mini':
-            return 16000
-
-        return 4096
-
-    def _is_support_temperature(self, model_name: str) -> bool:
-        if model_name.lower() in ["o3-mini", "o4-mini"]:
-            return False
-        return True 
-
-    def _is_temperature_supported_by_model(self, model_name: str) -> bool:
-        """
-        Returns False for models that only support default temperature (1), e.g. o4-mini, o3-mini, gpt-4o, gpt-4o-mini.
-        """
-        no_temp_models = ['o4-mini', 'o3-mini', 'gpt-4o-mini', 'gpt-4o']
-        return not any(m in model_name.lower() for m in no_temp_models)
-
-    def _count_tokens(self, model: str, content) -> int:
-        """Count tokens in text/messages."""
-        try:
-            encoding = tiktoken.encoding_for_model(model)
-        except KeyError:
-            encoding = tiktoken.get_encoding("cl100k_base")
-        
-        if isinstance(content, str):
-            return len(encoding.encode(content))
-        elif isinstance(content, list) and all(isinstance(m, dict) and 'role' in m and 'content' in m for m in content):
-            num_tokens = 0
-            for message in content:
-                num_tokens += 4  # Tokens for <im_start> and <im_end>
-                
-                for key, value in message.items():
-                    num_tokens += len(encoding.encode(str(value)))
-                    if key == "name":  # If there is a name, the role is skipped
-                        num_tokens -= 1
-            
-            num_tokens += 2  # Each response starts with <im_start>assistant
-            return num_tokens
-        elif isinstance(content, dict):
-            return self._count_tokens(model, json.dumps(content))
-        else:
-            return self._count_tokens(model, str(content))
-
-    def _create_agent_model(self, model: AIModel, start_time: float, tokens_used: Optional[int]) -> AgentModel:
-        """
-        Create an AgentModel instance from the provided parameters.
-        Args:
-            model: AIModel instance containing model details
-            start_time: Start time of the operation
-            tokens_used: Number of tokens used (optional)
-        Returns:
-            AgentModel instance
-        """
-        return AgentModel(
-            model=model,
-            statistic=AIStatistic(
-                time=int((time.time() - start_time) * 1000),  # Convert to milliseconds
-                tokens=tokens_used
-            )
-        )
-
     def _make_quiz_system_prompt(self) -> str:
         """
         Returns the optimized system prompt for quiz generation.
@@ -577,11 +484,13 @@ Follow-up question must:
 - If style is "pitfall" ➔ point to risks, common mistakes, misconceptions, or tricky areas.
 - If style is "application" ➔ ask about real-world use cases or practical implications.
 - If style is "compare" ➔ ask to compare related concepts, tools, methods, or technologies.
+- If style is "mistake" ➔ check mistakes in the student's text.
 
 Quiz model structure:
-- topic: { name: string, platform: string, technology: optional string }
+- topic: { name: string, platform: string, technology: optional string }   
 - question: string (clear, focused, and challenging)
 - tags: list of important keywords from the text + extended topic context
+- result: dictionary where key is style (Expand/Pitfall/Application/Compare/Mistake) and value is explanation
 
 Important formatting rules:
 - Return exactly one JSON object matching the QuizModel structure.
@@ -592,7 +501,8 @@ Example output:
 {
   "topic": { "name": "Memory Management", "platform": "Apple", "technology": "Objective-C" },
   "question": "What are the potential risks of using `retain` and `release` manually in Objective-C, and how does ARC solve them?",
-  "tags": ["Memory Management", "retain", "release", "ARC", "Objective-C"]
+  "tags": ["Memory Management", "retain", "release", "ARC", "Objective-C"],
+  "result": { "Pitfall": "Manual memory management with retain/release can lead to memory leaks and crashes if not balanced properly, while ARC automates this process to prevent these issues.", "Mistake": "Manual memory management with retain/release can lead to memory leaks and crashes if not balanced properly, while ARC automates this process to prevent these issues." }
 }
 """
 
@@ -607,9 +517,104 @@ Example output:
             f"- Question style: '{request.style}'\n\n"
             f"Based on the student's text and the provided context, generate one follow-up question and meaningful tags, "
             f"following the QuizModel JSON structure. "
-            f"The question must match the style: expand, pitfall, application, or compare."
+            f"The question must match the style: expand, pitfall, application, compare or mistake.\n\n"
+            f"For the 'result' field:\n"
+            f"- If style is specified (not empty), include only one key-value pair in the result dictionary with that style.\n"
+            f"- If style is empty, include all five key-value pairs: Expand, Pitfall, Application, Compare and Mistake."
         )
 
+    def _is_support_model(self, model: AIModel) -> bool:
+        if model.provider.lower() != self.provider():
+            logger.error(f"Provider unknonw: {model.provider}")
+            return False
+        
+        if model.model.lower() not in [m.lower() for m in self.supported_models()]:
+            logger.error(f"Model unknonw: {model.model}")
+            return False
+        
+        return True
+
+    def _get_max_tokens_param(self, model_name: str) -> str:
+        """
+        Returns the correct max tokens parameter name for the given model.
+        For new models (o4-mini, o3-mini, gpt-4o, gpt-4o-mini), use 'max_completion_tokens'.
+        For all others, use 'max_tokens'.
+        """
+        new_models = ['o4-mini', 'o3-mini', 'gpt-4o-mini', 'gpt-4o']
+        if any(m in model_name.lower() for m in new_models):
+            return 'max_completion_tokens'
+        return 'max_tokens'
+
+    def _get_max_tokens_value(self, model_name: str) -> int:
+        """
+        Returns the maximum number of tokens for the given model.
+        For new models (o4-mini, o3-mini, gpt-4o, gpt-4o-mini), use 4000.
+        For all others, use 4000.
+        """
+        if model_name in ['o4-mini', 'o3-mini']:
+            return 6500
+        elif model_name == 'gpt-4o':
+            return 4096
+        elif model_name == 'gpt-4o-mini':
+            return 16000
+
+        return 4096
+
+    def _is_support_temperature(self, model_name: str) -> bool:
+        if model_name.lower() in ["o3-mini", "o4-mini"]:
+            return False
+        return True 
+
+    def _is_temperature_supported_by_model(self, model_name: str) -> bool:
+        """
+        Returns False for models that only support default temperature (1), e.g. o4-mini, o3-mini, gpt-4o, gpt-4o-mini.
+        """
+        no_temp_models = ['o4-mini', 'o3-mini', 'gpt-4o-mini', 'gpt-4o']
+        return not any(m in model_name.lower() for m in no_temp_models)
+
+    def _count_tokens(self, model: str, content) -> int:
+        """Count tokens in text/messages."""
+        try:
+            encoding = tiktoken.encoding_for_model(model)
+        except KeyError:
+            encoding = tiktoken.get_encoding("cl100k_base")
+        
+        if isinstance(content, str):
+            return len(encoding.encode(content))
+        elif isinstance(content, list) and all(isinstance(m, dict) and 'role' in m and 'content' in m for m in content):
+            num_tokens = 0
+            for message in content:
+                num_tokens += 4  # Tokens for <im_start> and <im_end>
+                
+                for key, value in message.items():
+                    num_tokens += len(encoding.encode(str(value)))
+                    if key == "name":  # If there is a name, the role is skipped
+                        num_tokens -= 1
+            
+            num_tokens += 2  # Each response starts with <im_start>assistant
+            return num_tokens
+        elif isinstance(content, dict):
+            return self._count_tokens(model, json.dumps(content))
+        else:
+            return self._count_tokens(model, str(content))
+
+    def _create_agent_model(self, model: AIModel, start_time: float, tokens_used: Optional[int]) -> AgentModel:
+        """
+        Create an AgentModel instance from the provided parameters.
+        Args:
+            model: AIModel instance containing model details
+            start_time: Start time of the operation
+            tokens_used: Number of tokens used (optional)
+        Returns:
+            AgentModel instance
+        """
+        return AgentModel(
+            model=model,
+            statistic=AIStatistic(
+                time=int((time.time() - start_time) * 1000),  # Convert to milliseconds
+                tokens=tokens_used
+            )
+        )
 
     def _parse_openai_response(self, response_text: str, schema_type):
         """
@@ -637,7 +642,7 @@ Example output:
             raise ValueError(f"Could not parse JSON from OpenAI response: {e}")
 
 
-    def _process_quiz_response(self, model: AIModel, question: RequestQuestionModel, response, prompt_tokens: int, start_time: float) -> AIQuizModel:
+    def _process_quiz_response(self, model: AIModel, question: RequestQuestionModel, response, prompt_tokens: int, start_time: float) -> AIUserQuizModel:
         """Process OpenAI response for quiz generation."""
         tokens_used = prompt_tokens 
         
@@ -645,7 +650,7 @@ Example output:
             tokens_used += response.usage.total_tokens
 
         response_text = response.choices[0].message.content    
-        quiz_obj = self._parse_openai_response(response_text, QuizModel)
+        quiz_obj = self._parse_openai_response(response_text, UserQuizModel)
 
         agent_model = self._create_agent_model(
             model,
@@ -653,7 +658,7 @@ Example output:
             response.usage.total_tokens if hasattr(response.usage, 'total_tokens') else None
         )
             
-        return AIQuizModel(
+        return AIUserQuizModel(
             agent=agent_model,
             quiz=quiz_obj
         )
