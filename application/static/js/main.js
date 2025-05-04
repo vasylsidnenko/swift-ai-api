@@ -82,6 +82,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const isValid = (topic && platform) || questionContext;
         if (generateBtn) generateBtn.disabled = !isValid;
         if (quizBtnTop) quizBtnTop.disabled = !isValid;
+        // Also control the Check User button
+        const checkUserBtn = document.getElementById('checkUserBtn');
+        if (checkUserBtn) checkUserBtn.disabled = !isValid;
     }
 
     // Initial validation
@@ -389,27 +392,124 @@ document.addEventListener('DOMContentLoaded', function() {
             <button class='btn apply-quiz-btn' style='background-color:#6c757d !important;color:#fff !important;border:none !important;'>Apply</button>
         </div>
     `;
-                // Close logic
-                quizResultBlock.querySelector('button[title="Close"]').onclick = function() {
-                    quizResultBlock.remove();
-                };
-                // Apply logic
-                // When Apply is clicked, insert the quiz question and trigger Generate automatically
-                quizResultBlock.querySelector('.apply-quiz-btn').onclick = function() {
-                    document.getElementById('questionContext').value = quizQ;
-                    window.scrollTo({top: document.getElementById('questionContext').offsetTop - 80, behavior: 'smooth'});
-                    // Trigger the form submission as if user clicked Generate
-                    form.requestSubmit(); // Modern browsers support requestSubmit for native submit
-                };
-                // Set provider color for header
-                quizResultBlock.querySelector('.card-header').style.setProperty('background-color', getProviderColor(selectedProvider), 'important');
-                // Quiz question now rendered as HTML block, no textarea/auto-resize needed
-                quizResultDiv.appendChild(quizResultBlock);
-                quizResultDiv.style.display = 'block';
-            } catch (err) {
+            } catch (error) {
+                console.error('Quiz error:', error);
                 quizBtn.disabled = false;
                 quizBtn.innerHTML = 'Try Quiz';
-                quizResultDiv.innerHTML = `<div class='alert alert-danger'>Quiz error: ${err.message}</div>`;
+                quizResultDiv.innerHTML = `<div class='alert alert-danger'>Quiz error: ${error.message || 'Unknown error'}</div>`;
+                quizResultDiv.style.display = 'block';
+            }
+        });
+    }
+
+    // Check User button handler
+    const checkUserBtn = document.getElementById('checkUserBtn');
+    if (checkUserBtn) {
+        checkUserBtn.addEventListener('click', async function() {
+            // Build a unique key for the context (topic, platform, tech, tags, question)
+            const topic = document.getElementById('topic').value.trim();
+            const platform = document.getElementById('platform').value.trim();
+            const tech = document.getElementById('tech').value.trim();
+            const tags = document.getElementById('keywords').value.trim();
+            const questionContext = document.getElementById('questionContext').value.trim();
+            const selectedProvider = aiSelect.value;
+            const selectedModel = modelSelect.value;
+            const apiKey = apiKeyInput.value;
+            
+            // Do not hide previous quiz results during request
+            resultDiv.innerHTML = '';
+
+            // Prepare payload
+            const context = {
+                platform: platform,
+                technology: tech,
+                topic: topic,
+                tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+                question: questionContext,
+                style: "" // Empty style to get all styles in result
+            };
+            const payload = {
+                provider: selectedProvider,
+                model: selectedModel,
+                apiKey: apiKey,
+                context: context
+            };
+            
+            checkUserBtn.disabled = true;
+            checkUserBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Checking User...';
+            
+            try {
+                const resp = await fetch('/api/user-quiz', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await resp.json();
+                checkUserBtn.disabled = false;
+                checkUserBtn.innerHTML = 'Check User';
+                
+                if (!resp.ok || !data.data || !data.data.quiz) {
+                    quizResultDiv.innerHTML = `<div class='alert alert-danger'>Check User error: ${data.error || 'Unknown error'}</div>`;
+                    quizResultDiv.style.display = 'block';
+                    return;
+                }
+                
+                // Display user check results
+                const quizData = data.data;
+                const quizResultBlock = document.createElement('div');
+                quizResultBlock.className = 'card border-secondary mb-3';
+                
+                // Get result dictionary
+                const resultDict = quizData.quiz.result || {};
+                let resultHtml = '';
+                
+                // Create HTML for each style in the result dictionary
+                for (const style in resultDict) {
+                    resultHtml += `
+                        <div class="mb-3">
+                            <h5>${escapeHtml(style)}</h5>
+                            <p>${formatSingleQuestion(resultDict[style])}</p>
+                        </div>
+                    `;
+                }
+                
+                quizResultBlock.innerHTML = `
+                    <div class='card-header text-white d-flex justify-content-between align-items-center'>
+                        <span>User Check Result</span>
+                        <span class='ms-2 small'>Provider: <b>${escapeHtml(selectedProvider)}</b> | Model: <b>${escapeHtml(selectedModel)}</b></span>
+                        <button type='button' class='btn btn-sm btn-outline-light ms-3' title='Close' style='padding:2px 10px;'>&times;</button>
+                    </div>
+                    <div class='card-body'>
+                        <div><strong>User Input:</strong></div>
+                        <div class='mb-3 quiz-question-block'>
+                            ${formatSingleQuestion(questionContext)}
+                        </div>
+                        <div><strong>Analysis by Styles:</strong></div>
+                        ${resultHtml}
+                        ${htmlQuizMetaBlock(quizData.quiz.topic)}
+                    </div>
+                `;
+                
+                // Set provider color for header
+                quizResultBlock.querySelector('.card-header').style.setProperty('background-color', getProviderColor(selectedProvider), 'important');
+                
+                // Add close button functionality
+                quizResultBlock.querySelector('button[title="Close"]').addEventListener('click', function() {
+                    quizResultDiv.innerHTML = '';
+                    quizResultDiv.style.display = 'none';
+                });
+                
+                // Clear previous results and show new ones
+                quizResultDiv.innerHTML = '';
+                quizResultDiv.appendChild(quizResultBlock);
+                quizResultDiv.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Check User error:', error);
+                checkUserBtn.disabled = false;
+                checkUserBtn.innerHTML = 'Check User';
+                quizResultDiv.innerHTML = `<div class='alert alert-danger'>Check User error: ${error.message || 'Unknown error'}</div>`;
                 quizResultDiv.style.display = 'block';
             }
         });

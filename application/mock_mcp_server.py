@@ -68,6 +68,49 @@ def mock_execute():
             }
         }), 200
 
+    elif operation == 'user_quiz':
+        # Return a mock AIQuizModel structure
+        print('MOCK USER QUIZ for ', body)
+        
+        return jsonify({
+            'success': True,
+            'data': {   
+                "agent": {
+                    "model": {
+                        "provider": "openai",
+                        "model": "gpt-4o"
+                    },
+                    "statistic": {
+                        "time": 4159,
+                        "tokens": 869
+                    }
+                },
+                "quiz": {
+                    "topic": {
+                        "name": "Memory Management",
+                        "platform": "Apple",
+                        "technology": "Objective-C" 
+                    },
+                    "question": "What changes did Apple's transition from manual memory management and Garbage Collection to Automatic Reference Counting (ARC) bring, and how do they impact application performance and developer experience?",
+                    "tags": [
+                        "Memory Management",
+                        "retain",
+                        "release",
+                        "Garbage Collection",
+                        "ARC",
+                        "Objective-C",
+                        "memory leaks"
+                    ],
+                    "result": {
+                        "Expand": "Explore the differences in performance, reliability, and developer experience between using manual memory management, Garbage Collection, and ARC in Objective-C.",
+                        "Pitfall": "Manually managing memory with retain/release or relying on Garbage Collection can lead to memory leaks and crashes if not handled correctly, while ARC simplifies this process.",
+                        "Application": "Discuss how ARC affects real-world application development, particularly in terms of efficiency and resource management.",
+                        "Compare": "Compare the advantages and disadvantages of using manual memory management, Garbage Collection, and ARC in Objective-C development.",
+                        "Mistake": "Objective-C does not use traditional Garbage Collection; instead, it uses ARC, which automates memory management, making the statement about opting for Garbage Collection incorrect."
+                    }    
+                }
+            }
+        }), 200 
 
 
         #     'data': {

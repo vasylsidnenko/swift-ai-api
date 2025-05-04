@@ -219,6 +219,78 @@ def api_quiz():
         else:
             return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
 
+
+@app.route('/api/user-quiz', methods=['POST'])
+def api_user_quiz():
+    """API endpoint to generate a user quiz via MCP server."""
+    data = request.json
+    logger.info(f"Received /api/user-quiz request: {data}")
+
+    # Prepare context for MCP request
+    context_data = data.get('context', {})  # Ensure context_data is defined
+    context_fields = ['platform', 'technology', 'topic', 'tags', 'question', 'style']
+    for field in context_fields:
+        if field == 'technology':
+            val = data.get('technology') or data.get('tech')
+        else:
+            val = data.get(field)
+        if val is not None and (field not in context_data or not context_data.get(field)):
+            context_data[field] = val
+    # Handle tags/keywords normalization
+    if 'tags' not in context_data and 'keywords' in data:
+        keywords_val = data.get('keywords')
+        if isinstance(keywords_val, str):
+            context_data['tags'] = [t.strip() for t in keywords_val.split(',') if t.strip()]
+        elif isinstance(keywords_val, list):
+            context_data['tags'] = [str(t).strip() for t in keywords_val if str(t).strip()]
+    if 'tags' in context_data and isinstance(context_data['tags'], str):
+        context_data['tags'] = [t.strip() for t in context_data['tags'].split(',') if t.strip()]
+    if 'tags' not in context_data:
+        context_data['tags'] = []
+    if not context_data['tags'] and 'keywords' in data:
+        keywords_val = data.get('keywords')
+        if isinstance(keywords_val, str):
+            context_data['tags'] = [t.strip() for t in keywords_val.split(',') if t.strip()]
+        elif isinstance(keywords_val, list):
+            context_data['tags'] = [str(t).strip() for t in keywords_val if str(t).strip()]
+
+    # Prepare new MCP format request for user quiz
+    mcp_request = {
+        "operation": "user_quiz",
+        "context": context_data,
+        "ai": {
+            "provider": data.get("provider") or data.get("ai") or data.get("resource_id"),
+            "model": data.get("model"),
+            "api_key": data.get("apiKey")
+        }
+    }
+
+    logger.info(f"Sending request to MCP server: {EXECUTE_ENDPOINT} with payload: {mcp_request}")
+    try:
+        response = requests.post(EXECUTE_ENDPOINT, json=mcp_request, timeout=60)
+        response.raise_for_status()
+        mcp_response_data = response.json()
+        logger.info(f"Received response from MCP server: {mcp_response_data}")
+        return jsonify(mcp_response_data), response.status_code
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Could not connect to MCP server at {MCP_SERVER_URL}: {e}")
+        return jsonify({"success": False, "error": f"Could not connect to the AI service backend. Please ensure it's running.", "error_type": "connection_error"}), 503
+    except requests.exceptions.Timeout:
+        logger.error(f"Request to MCP server timed out.")
+        return jsonify({"success": False, "error": "The request to the AI service timed out.", "error_type": "timeout_error"}), 504
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error communicating with MCP server: {e}")
+        try:
+            error_detail = e.response.json() if e.response else str(e)
+            status_code = e.response.status_code if e.response else 500
+        except Exception:
+            error_detail = str(e)
+            status_code = 500
+        if isinstance(error_detail, dict) and 'success' in error_detail:
+            return jsonify(error_detail), status_code
+        else:
+            return jsonify({"success": False, "error": f"An error occurred: {error_detail}", "error_type": "mcp_error"}), status_code
+
 @app.route('/api/validate', methods=['POST'])
 def api_validate():
     """API endpoint to validate content via MCP server."""
