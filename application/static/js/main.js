@@ -436,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             
             checkUserBtn.disabled = true;
-            checkUserBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Checking User...';
+            checkUserBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Checking Context...';
             
             try {
                 const resp = await fetch('/api/user-quiz', {
@@ -447,10 +447,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const data = await resp.json();
                 checkUserBtn.disabled = false;
-                checkUserBtn.innerHTML = 'Check User';
+                checkUserBtn.innerHTML = 'Check Context';
                 
                 if (!resp.ok || !data.data || !data.data.quiz) {
-                    quizResultDiv.innerHTML = `<div class='alert alert-danger'>Check User error: ${data.error || 'Unknown error'}</div>`;
+                    quizResultDiv.innerHTML = `<div class='alert alert-danger'>Check Context error: ${data.error || 'Unknown error'}</div>`;
                     quizResultDiv.style.display = 'block';
                     return;
                 }
