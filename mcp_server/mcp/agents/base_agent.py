@@ -1,5 +1,5 @@
 from typing import Protocol, Dict, Callable, List, runtime_checkable
-from mcp.agents.ai_models import AIRequestQuestionModel, AIQuestionModel, AIRequestValidationModel, AIValidationModel, AIQuizModel
+from mcp.agents.ai_models import AIRequestQuestionModel, AIQuestionModel, AIRequestValidationModel, AIValidationModel, AIUserQuizModel, AIQuizModel
 
 @runtime_checkable
 class AgentProtocol(Protocol):
