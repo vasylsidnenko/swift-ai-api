@@ -49,7 +49,7 @@ class AgentProtocol(Protocol):
         """
         ...
 
-    def user_quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+    def user_quiz(self, request: AIRequestQuestionModel) -> AIUserQuizModel:
         """
         Generate programming user quiz.
         
@@ -57,7 +57,7 @@ class AgentProtocol(Protocol):
             request: AIRequestQuestionModel containing model info and quiz parameters
             
         Returns:
-            AIQuizModel with generated content
+            AIUserQuizModel with generated content
         """
         ...
 

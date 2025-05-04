@@ -31,7 +31,9 @@ from mcp.agents.ai_models import (
     ModelCapabilities,
     AICapabilitiesModel,
     AIQuizModel,
-    QuestionModel
+    QuestionModel,
+    AIUserQuizModel, 
+    UserQuizModel
 )
 
 logger = logging.getLogger(__name__)
@@ -282,7 +284,7 @@ Most expensive to use
             logger.exception(f"Error generating quiz with Claude: {e}")
             raise
 
-    def user_quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+    def user_quiz(self, request: AIRequestQuestionModel) -> AIUserQuizModel:
         """
         Generate a programming question (without answers/tests) through Claude, according to the QuizModel/AIQuizModel.
         """
