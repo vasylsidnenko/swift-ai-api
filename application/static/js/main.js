@@ -464,28 +464,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 const resultDict = quizData.quiz.result || {};
                 let resultHtml = '';
                 
+                // Style colors mapping
+                const styleColors = {
+                    'Mistake': '#dc3545', // Red for mistakes
+                    'Pitfall': '#fd7e14', // Orange for pitfalls
+                    'Application': '#20c997', // Teal for applications
+                    'Compare': '#0d6efd', // Blue for comparisons
+                    'Expand': '#6f42c1'  // Purple for expansions
+                };
+                
                 // Create HTML for each style in the result dictionary
                 for (const style in resultDict) {
+                    const styleColor = styleColors[style] || '#6c757d'; // Default gray if style not found
                     resultHtml += `
-                        <div class="mb-3">
-                            <h5>${escapeHtml(style)}</h5>
-                            <p>${formatSingleQuestion(resultDict[style])}</p>
+                        <div class="mb-4 p-3 border rounded" style="border-left-width: 4px !important; border-left-color: ${styleColor} !important;">
+                            <h5 class="mb-3" style="color: ${styleColor}; font-size: 1.1rem; font-weight: 600;">${escapeHtml(style)}</h5>
+                            <div>${formatSingleQuestion(resultDict[style])}</div>
                         </div>
                     `;
                 }
                 
                 quizResultBlock.innerHTML = `
                     <div class='card-header text-white d-flex justify-content-between align-items-center'>
-                        <span>User Check Result</span>
+                        <span>Context Check Result</span>
                         <span class='ms-2 small'>Provider: <b>${escapeHtml(selectedProvider)}</b> | Model: <b>${escapeHtml(selectedModel)}</b></span>
                         <button type='button' class='btn btn-sm btn-outline-light ms-3' title='Close' style='padding:2px 10px;'>&times;</button>
                     </div>
                     <div class='card-body'>
-                        <div><strong>User Input:</strong></div>
-                        <div class='mb-3 quiz-question-block'>
+                        <div class="mb-2" style="font-size: 1.2rem; font-weight: 600;">Context Input:</div>
+                        <div class='mb-4 p-3 border rounded bg-light quiz-question-block'>
                             ${formatSingleQuestion(questionContext)}
                         </div>
-                        <div><strong>Analysis by Styles:</strong></div>
+                        <div class="mt-4 mb-3" style="font-size: 1.2rem; font-weight: 600; border-bottom: 1px solid #dee2e6; padding-bottom: 0.5rem;">Analysis by Styles:</div>
                         ${resultHtml}
                         ${htmlQuizMetaBlock(quizData.quiz.topic)}
                     </div>
