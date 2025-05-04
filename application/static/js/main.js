@@ -495,9 +495,45 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class='mb-4 p-3 border rounded bg-light quiz-question-block'>
                             ${formatSingleQuestion(questionContext)}
                         </div>
+                        <div class="mb-2" style="text-align: right;">
+                            ${(() => {
+                                // Теги спочатку
+                                let tagsHtml = '';
+                                if (quizData.quiz.tags && quizData.quiz.tags.length > 0) {
+                                    tagsHtml = quizData.quiz.tags.map(tag => 
+                                        `<span class="badge" style="background:#e9f4fb; color:#4fa6d3; border:1px solid #b6e2fa; margin-left:0.3em; margin-bottom: 0.3em; display: inline-block;">${escapeHtml(tag)}</span>`
+                                    ).join('');
+                                }
+                                return tagsHtml;
+                            })()}
+                        </div>
+                        <div class="mb-3" style="text-align: right;">
+                            ${(() => {
+                                // Потім Topic, Platform, Technology
+                                let metaHtml = '';
+                                // Перевіряємо, чи є вкладений об'єкт topic
+                                const topicObj = quizData.quiz.topic || {};
+                                
+                                // Отримуємо значення з відповідних полів
+                                const topicName = topicObj.name || '';
+                                const platform = topicObj.platform || '';
+                                const technology = topicObj.technology || '';
+                                
+                                if (topicName) {
+                                    metaHtml += `<span class="badge" style="background:#007bff; color:white; border:none; margin-left:0.3em; margin-bottom: 0.3em; display: inline-block;">Topic: ${escapeHtml(topicName)}</span>`;
+                                }
+                                if (platform) {
+                                    metaHtml += `<span class="badge" style="background:#6610f2; color:white; border:none; margin-left:0.3em; margin-bottom: 0.3em; display: inline-block;">Platform: ${escapeHtml(platform)}</span>`;
+                                }
+                                if (technology) {
+                                    metaHtml += `<span class="badge" style="background:#6f42c1; color:white; border:none; margin-left:0.3em; margin-bottom: 0.3em; display: inline-block;">Technology: ${escapeHtml(technology)}</span>`;
+                                }
+                                
+                                return metaHtml;
+                            })()}
+                        </div>
                         <div class="mt-4 mb-3" style="font-size: 1.2rem; font-weight: 600; border-bottom: 1px solid #dee2e6; padding-bottom: 0.5rem;">Analysis by Styles:</div>
                         ${resultHtml}
-                        ${htmlQuizMetaBlock(quizData.quiz.topic)}
                     </div>
                 `;
                 
