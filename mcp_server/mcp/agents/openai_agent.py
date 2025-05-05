@@ -484,13 +484,17 @@ Follow-up question must:
 - If style is "pitfall" ➔ point to risks, common mistakes, misconceptions, or tricky areas.
 - If style is "application" ➔ ask about real-world use cases or practical implications.
 - If style is "compare" ➔ ask to compare related concepts, tools, methods, or technologies.
-- If style is "mistake" ➔ check mistakes in the student's text.
+- If style is "mistake" ➔ analyze the student's text and determine if it contains any factual, conceptual, or reasoning mistakes. If there are no mistakes, clearly state "No mistakes found in the student's response."
 
 Quiz model structure:
-- topic: { name: string, platform: string, technology: optional string }   
+- topic: { name: string, platform: string, technology: optional string }
 - question: string (clear, focused, and challenging)
 - tags: list of important keywords from the text + extended topic context
-- result: dictionary where key is style (Expand/Pitfall/Application/Compare/Mistake) and value is explanation
+- result: dictionary where the key is the selected style (e.g., "Expand", "Pitfall", etc.) and the value is an explanation based only on the actual student input
+- topic: All fields (name, platform, technology) must be initialized. If any is missing or empty, extract and infer them from the student's text and context.
+
+Important:
+- DO NOT assume mistakes if the student's input is correct. If no mistakes are found, explicitly say so.
 
 Important formatting rules:
 - Return exactly one JSON object matching the QuizModel structure.
@@ -520,7 +524,8 @@ Example output:
             f"The question must match the style: expand, pitfall, application, compare or mistake.\n\n"
             f"For the 'result' field:\n"
             f"- If style is specified (not empty), include only one key-value pair in the result dictionary with that style.\n"
-            f"- If style is empty, include all five key-value pairs: Expand, Pitfall, Application, Compare and Mistake."
+            f"- If style is empty, include all five key-value pairs: Expand, Pitfall, Application, Compare, and Mistake. The 'Mistake' explanation must reflect actual analysis of the student's input — if no issues are found, return 'No mistakes found in the student's response.'\n"
+            f"\nEnsure that the \"topic\" object has all required fields (name, platform, technology). If any of them is empty or missing, infer it from the content of the student's answer or related context.\n"
         )
 
     def _is_support_model(self, model: AIModel) -> bool:
