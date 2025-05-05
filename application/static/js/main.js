@@ -357,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 context: context
             };
             quizBtn.disabled = true;
-            quizBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Trying Quiz...';
+            quizBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading Quiz...';
             try {
                 const resp = await fetch('/api/quiz', {
                     method: 'POST',
@@ -366,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 const data = await resp.json();
                 quizBtn.disabled = false;
-                quizBtn.innerHTML = 'Try Quiz';
+                quizBtn.innerHTML = 'Short Quiz';
                 const quizData = data.data;
                 if (!resp.ok || !quizData || !quizData.quiz) {
                     quizResultDiv.innerHTML = `<div class='alert alert-danger'>Quiz error: ${data.error || 'Unknown error'}</div>`;
@@ -392,10 +392,32 @@ document.addEventListener('DOMContentLoaded', function() {
             <button class='btn apply-quiz-btn' style='background-color:#6c757d !important;color:#fff !important;border:none !important;'>Apply</button>
         </div>
     `;
+                
+                // Clear previous results and add the new quiz result to DOM
+                quizResultDiv.innerHTML = '';
+                quizResultDiv.appendChild(quizResultBlock);
+                quizResultDiv.style.display = 'block';
+                
+                // Set provider color for header
+                quizResultBlock.querySelector('.card-header').style.setProperty('background-color', getProviderColor(selectedProvider), 'important');
+                
+                // Add close button functionality
+                quizResultBlock.querySelector('button[title="Close"]').addEventListener('click', function() {
+                    quizResultDiv.innerHTML = '';
+                    quizResultDiv.style.display = 'none';
+                });
+                
+                // Add apply button functionality
+                quizResultBlock.querySelector('.apply-quiz-btn').addEventListener('click', function() {
+                    document.getElementById('questionContext').value = quizQ;
+                    quizResultDiv.innerHTML = '';
+                    quizResultDiv.style.display = 'none';
+                    validateRequiredFields();
+                });
             } catch (error) {
                 console.error('Quiz error:', error);
                 quizBtn.disabled = false;
-                quizBtn.innerHTML = 'Try Quiz';
+                quizBtn.innerHTML = 'Short Quiz';
                 quizResultDiv.innerHTML = `<div class='alert alert-danger'>Quiz error: ${error.message || 'Unknown error'}</div>`;
                 quizResultDiv.style.display = 'block';
             }
