@@ -523,8 +523,11 @@ Example output:
             f"following the QuizModel JSON structure. "
             f"The question must match the style: expand, pitfall, application, compare or mistake.\n\n"
             f"For the 'result' field:\n"
-            f"- If style is specified (not empty), include only one key-value pair in the result dictionary with that style.\n"
-            f"- If style is empty, include all five key-value pairs: Expand, Pitfall, Application, Compare, and Mistake. The 'Mistake' explanation must reflect actual analysis of the student's input — if no issues are found, return 'No mistakes found in the student's response.'\n"
+            f"- If style is specified (not empty), always include that key in the 'result' dictionary.\n"
+            f"- Additionally, always analyze the student's input for mistakes.\n"
+            f"- If any mistakes are found, include an extra 'Mistake' key with the explanation.\n"
+            f"- If no mistakes are found, you may omit the 'Mistake' key or return 'No mistakes found in the student's response.'\n"
+            f"- If style is empty, include all five key-value pairs: Expand, Pitfall, Application, Compare, and Mistake.\n"
             f"\nEnsure that the \"topic\" object has all required fields (name, platform, technology). If any of them is empty or missing, infer it from the content of the student's answer or related context.\n"
         )
 
