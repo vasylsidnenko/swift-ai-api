@@ -143,6 +143,36 @@ def quiz_question():
         print(f"Quiz generation failed: {str(e)}")
         import sys; sys.exit(1)
 
+def user_quiz_question():
+    """
+    Test run of ClaudeAgent.user_quiz: generates a follow-up question based on student's answer
+    """
+    from mcp.agents.claude_agent import ClaudeAgent
+    from mcp.agents.ai_models import AIModel, AIRequestQuestionModel, RequestQuestionModel
+    import json
+    import logging
+    logger = logging.getLogger("mcp.agents.claude_agent")
+
+    try:
+        agent = ClaudeAgent()
+        quiz_request = AIRequestQuestionModel(
+            model=AIModel(provider="claude", model="claude-3-5-sonnet"),
+            request=RequestQuestionModel(
+                # platform="iOS",
+                # topic="SwiftUI State Management",
+                # technology="Swift",
+                # tags=["SwiftUI", "State"],
+                question="In Objective-C you have to manually manage memory using retain and release. It was tricky sometimes because forgetting to release objects could cause memory leaks."
+            ),
+            temperature=0.85
+        )
+        quiz = agent.user_quiz(quiz_request)
+        print(f"\nUser Quiz result: {json.dumps(quiz.model_dump(), indent=2, ensure_ascii=False)}")
+    except Exception as e:
+        logger.error(f"User Quiz generation failed: {str(e)}")
+        print(f"User Quiz generation failed: {str(e)}")
+        import sys; sys.exit(1)
+
 def main():
     # Ensure environment variable is set
     if not os.environ.get("ANTHROPIC_API_KEY"):
@@ -169,8 +199,10 @@ def main():
         validate_question()
     elif operation == "quiz":
         quiz_question()
+    elif operation == "user":
+        user_quiz_question()
     else:
-        print("Invalid operation. Use 'generate' or 'validate', or run without arguments for generate-then-validate flow")
+        print("Invalid operation. Use 'generate', 'validate', 'quiz', or 'user', or run without arguments for generate-then-validate flow")
         sys.exit(1)
 
 if __name__ == "__main__":
