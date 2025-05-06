@@ -484,7 +484,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Get result dictionary
                 const resultDict = quizData.quiz.result || {};
-                let resultHtml = '';
+                let mistakeHtml = ''; // Mistake block HTML
+                let otherStylesHtml = ''; // HTML for other styles
                 
                 // Style colors mapping
                 const styleColors = {
@@ -495,16 +496,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Expand': '#6f42c1'  // Purple for expansions
                 };
                 
-                // Create HTML for each style in the result dictionary
+                // First check if 'Mistake' key exists in the dictionary
+                if ('Mistake' in resultDict) {
+                    const mistakeColor = styleColors['Mistake'];
+                    mistakeHtml = `
+                        <div class="mb-4 p-3 border rounded" style="border-left-width: 4px !important; border-left-color: ${mistakeColor} !important; background-color: rgba(220, 53, 69, 0.05);">
+                            <h5 class="mb-3" style="color: ${mistakeColor}; font-size: 1.1rem; font-weight: 600;">${escapeHtml('Mistake')}</h5>
+                            <div>${formatSingleQuestion(resultDict['Mistake'])}</div>
+                        </div>
+                    `;
+                }
+                
+                // Create HTML for other styles
                 for (const style in resultDict) {
+                    // Skip 'Mistake', since we've already handled it separately
+                    if (style === 'Mistake') continue;
+                    
                     const styleColor = styleColors[style] || '#6c757d'; // Default gray if style not found
-                    resultHtml += `
+                    otherStylesHtml += `
                         <div class="mb-4 p-3 border rounded" style="border-left-width: 4px !important; border-left-color: ${styleColor} !important;">
                             <h5 class="mb-3" style="color: ${styleColor}; font-size: 1.1rem; font-weight: 600;">${escapeHtml(style)}</h5>
                             <div>${formatSingleQuestion(resultDict[style])}</div>
                         </div>
                     `;
                 }
+                
+                // Combine HTML for Mistake and other styles
+                const resultHtml = mistakeHtml + otherStylesHtml;
                 
                 quizResultBlock.innerHTML = `
                     <div class='card-header text-white d-flex justify-content-between align-items-center'>
@@ -519,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="mb-2" style="text-align: right;">
                             ${(() => {
-                                // Теги спочатку
+                                //  Tags first
                                 let tagsHtml = '';
                                 if (quizData.quiz.tags && quizData.quiz.tags.length > 0) {
                                     tagsHtml = quizData.quiz.tags.map(tag => 
@@ -531,12 +549,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="mb-3" style="text-align: right;">
                             ${(() => {
-                                // Потім Topic, Platform, Technology
+                                // Then Topic, Platform, Technology
                                 let metaHtml = '';
-                                // Перевіряємо, чи є вкладений об'єкт topic
+                                // Check if the nested topic object exists
                                 const topicObj = quizData.quiz.topic || {};
                                 
-                                // Отримуємо значення з відповідних полів
+                                // Get values from the corresponding fields
                                 const topicName = topicObj.name || '';
                                 const platform = topicObj.platform || '';
                                 const technology = topicObj.technology || '';
