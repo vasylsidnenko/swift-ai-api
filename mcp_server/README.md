@@ -31,6 +31,7 @@ All main operations (`generate`, `quiz`, `validate`, `user_quiz`) are handled vi
     - `pitfall`: highlight risks, mistakes, or tricky areas
     - `application`: ask about real-world use cases
     - `compare`: compare related concepts or tools
+    - `mistake`: identify common mistakes or misconceptions
 - The response contains a single question and tags, following the same structure as the standard `quiz` operation, but is tailored to the student's text and style.
 - Not all providers support this operation. If unsupported, the server returns an error.
 
