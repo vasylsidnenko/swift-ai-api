@@ -119,6 +119,32 @@ def quiz_question():
         print(f"Quiz generation failed: {str(e)}")
         import sys; sys.exit(1)
 
+def user_quiz_question():
+    """
+    Test run of GeminiAgent.user_quiz: generates only questions (no answers/tests)
+    """
+    import logging
+    logger = logging.getLogger("mcp.agents.gemini_agent")
+    try:
+        agent = GeminiAgent()
+        quiz_request = AIRequestQuestionModel(
+            model=AIModel(provider="gemini", model="gemini-2.0-flash"),   
+            request=RequestQuestionModel(
+                # platform="iOS",
+                # topic="SwiftUI State Management",
+                # technology="Swift",
+                # tags=["SwiftUI", "State", "Binding", "iOS", "Swift"],
+                question="In Objective-C you have to manually manage memory using retain and release. It was tricky sometimes because forgetting to release objects could cause memory leaks."
+            )
+        )
+        quiz = agent.user_quiz(quiz_request)
+        print(f"\nUser Quiz result: {json.dumps(quiz.model_dump(), indent=2, ensure_ascii=False)}")
+    except Exception as e:
+        logger.error(f"User Quiz generation failed: {str(e)}")
+        print(f"User Quiz generation failed: {str(e)}")
+        import sys; sys.exit(1)
+
+
 def main():
     # load_dotenv()
     if len(sys.argv) == 1:
@@ -137,6 +163,8 @@ def main():
         validate_question()
     elif operation == "quiz":
         quiz_question()
+    elif operation == "user":
+        user_quiz_question()
     else:
         print(f"Unknown operation: {operation}")
         sys.exit(2)

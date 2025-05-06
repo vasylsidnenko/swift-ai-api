@@ -11,7 +11,7 @@ import logging
 import time
 from typing import Dict, List, Optional, Callable, Any
 import demjson3
-from mcp.agents.ai_models import QuestionModel, QuizModel, QuestionValidation
+from mcp.agents.ai_models import (QuestionModel, QuizModel, QuestionValidation, RequestQuestionModel, AIUserQuizModel, UserQuizModel)
 from mcp.agents.utils import remove_triple_backticks_from_outer_markdown, fix_unterminated_strings_in_json, escape_newlines_in_json_strings
 import demjson3, json, re
 
@@ -30,7 +30,9 @@ from mcp.agents.ai_models import (
     ModelCapabilities,
     AICapabilitiesModel,
     AIQuizModel,
-    QuizModel
+    QuizModel,
+    AIUserQuizModel,
+    UserQuizModel
 )
 
 logger = logging.getLogger(__name__)
@@ -242,16 +244,54 @@ Good choice for interactive applications, chatbots, and assistance tools
             logger.exception(f"Error generating quiz with Gemini: {e}")
             raise
 
-    def user_quiz(self, request: AIRequestQuestionModel) -> AIQuizModel:
+    def user_quiz(self, request: AIRequestQuestionModel) -> AIUserQuizModel:
         """
         Generate a programming question (without answers/tests) through Gemini, according to the QuizModel/AIQuizModel.
         """
 
+        import sys
+        logger.info(f"Python version={sys.version}")
+        try:
+            import google.generativeai as genai
+            logger.info(f"Google GenerativeAI version={getattr(genai, '__version__', 'unknown')}")
+        except Exception:
+            logger.info("Google GenerativeAI version=unknown")
+        
         print(f"Python version={sys.version}")
-        print(f"Gemini version={openai.__version__}")
         print(f"USER QUIZ: {request}")
 
-        raise ValueError(f"Unsupported method: user_quiz")
+        model_name = request.model.model
+        logger.info(f"Gemini model: {model_name}, request type: user_quiz")
+        if model_name not in self.supported_models():
+            logger.warning(f"Requested model {model_name} is not officially supported. Attempting to use anyway.")
+
+        # Either both topic and platform must be provided, or the question field must be non-empty
+        if not ((request.request.topic and request.request.platform) or request.request.question):
+            raise ValueError("Either both 'topic' and 'platform' must be provided, or 'question' must be non-empty.")
+
+        try:
+            start_time = time.time()
+
+            # Use official method: create model and call generate_content
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(
+                [self._format_quiz_from_student_answer_system_prompt(), self._format_quiz_from_student_answer_prompt(request.request)],
+                generation_config={"temperature": request.temperature, "max_output_tokens": 2048}
+            )
+            response_text = response.text if hasattr(response, 'text') else response['candidates'][0]['content']['parts'][0]['text']
+            quiz_obj = self._parse_gemini_response(response_text, 'user_quiz')
+            agent_model = self._create_agent_model(
+                request.model,
+                start_time,
+                None
+            )
+            return AIUserQuizModel(
+                agent=agent_model,
+                quiz=quiz_obj
+            )
+        except Exception as e:
+            logger.exception(f"Error generating user quiz with Gemini: {e}")
+            raise
 
     
 
@@ -430,6 +470,9 @@ Question to validate: {request.request.model_dump_json()}
             return QuizModel.model_validate(data)
         elif schema_type == 'validation':
             return QuestionValidation.model_validate(data)
+        elif schema_type == 'user_quiz':
+            from mcp.agents.ai_models import UserQuizModel
+            return UserQuizModel.model_validate(data)
         else:
             raise ValueError(f"Unknown schema type: {schema_type}")
 
@@ -444,4 +487,64 @@ Question to validate: {request.request.model_dump_json()}
                 time=execution_time,
                 tokens=token_count
             )
+        )
+        
+    def _format_quiz_from_student_answer_system_prompt(self) -> str:
+        return """
+You are an expert programming educator.
+
+Your task:
+- Read a short student's text/answer related to a programming topic.
+- Based on the student's content and the requested style, generate one high-quality follow-up question.
+
+Follow-up question must:
+- If style is "expand" ➔ deepen the understanding of the topic or extend its scope.
+- If style is "pitfall" ➔ point to risks, common mistakes, misconceptions, or tricky areas.
+- If style is "application" ➔ ask about real-world use cases or practical implications.
+- If style is "compare" ➔ ask to compare related concepts, tools, methods, or technologies.
+- If style is "mistake" ➔ analyze the student's text and determine if it contains any factual, conceptual, or reasoning mistakes. If there are no mistakes, clearly state "No mistakes found in the student's response."
+
+Quiz model structure:
+- topic: { name: string, platform: string, technology: optional string }
+- question: string (clear, focused, and challenging)
+- tags: list of important keywords from the text + extended topic context
+- result: dictionary where the key is the selected style (e.g., "Expand", "Pitfall", etc.) and the value is an explanation based only on the actual student input
+- topic: All fields (name, platform, technology) must be initialized. If any is missing or empty, extract and infer them from the student's text and context.
+
+Important:
+- DO NOT assume mistakes if the student's input is correct. If no mistakes are found, explicitly say so.
+
+Important formatting rules:
+- Return exactly one JSON object matching the QuizModel structure.
+- DO NOT include explanations, prefaces, or additional comments.
+- Tags must include both main concepts and logically associated subtopics or hidden risks.
+
+Example output:
+{
+  "topic": { "name": "Memory Management", "platform": "Apple", "technology": "Objective-C" },
+  "question": "What are the potential risks of using `retain` and `release` manually in Objective-C, and how does ARC solve them?",
+  "tags": ["Memory Management", "retain", "release", "ARC", "Objective-C"],
+  "result": { "Pitfall": "Manual memory management with retain/release can lead to memory leaks and crashes if not balanced properly, while ARC automates this process to prevent these issues.", "Mistake": "Manual memory management with retain/release can lead to memory leaks and crashes if not balanced properly, while ARC automates this process to prevent these issues." }
+}
+"""
+
+    def _format_quiz_from_student_answer_prompt(self, request: RequestQuestionModel) -> str:
+        return (
+            f"Student's text about the topic:\n"
+            f"'''{request.question}'''\n\n"
+            f"Context for generation:\n"
+            f"- Topic: '{request.topic}'\n"
+            f"- Platform: '{request.platform}'\n"
+            f"{f'- Technology: {request.technology}' if request.technology else ''}\n"
+            f"- Question style: '{request.style}'\n\n"
+            f"Based on the student's text and the provided context, generate one follow-up question and meaningful tags, "
+            f"following the QuizModel JSON structure. "
+            f"The question must match the style: expand, pitfall, application, compare or mistake.\n\n"
+            f"For the 'result' field:\n"
+            f"- If style is specified (not empty), always include that key in the 'result' dictionary.\n"
+            f"- Additionally, always analyze the student's input for mistakes.\n"
+            f"- If any mistakes are found, include an extra 'Mistake' key with the explanation.\n"
+            f"- If no mistakes are found, you may omit the 'Mistake' key or return 'No mistakes found in the student\'s response.'\n"
+            f"- If style is empty, include all five key-value pairs: Expand, Pitfall, Application, Compare, and Mistake.\n"
+            f"\nEnsure that the \"topic\" object has all required fields (name, platform, technology). If any of them is empty or missing, infer it from the content of the student's answer or related context.\n"
         )
