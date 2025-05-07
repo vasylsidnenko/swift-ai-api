@@ -417,12 +417,13 @@ Follow-up question must:
 - If style is "application" ➔ ask about real-world use cases or practical implications.
 - If style is "compare" ➔ ask to compare related concepts, tools, methods, or technologies.
 - If style is "mistake" ➔ analyze the student's text and determine if it contains any factual, conceptual, or reasoning mistakes. If there are no mistakes, clearly state "No mistakes found in the student's response."
+- If style is "humor" ➔ generate a short programming-related joke or witty comment related to the topic in the student's text. The humor should be appropriate, clever, and ideally relevant to the specific concept discussed.
 
 Quiz model structure:
 - topic: { name: string, platform: string, technology: optional string }
 - question: string (clear, focused, and challenging)
 - tags: list of important keywords from the text + extended topic context
-- result: dictionary where the key is the selected style (e.g., "Expand", "Pitfall", etc.) and the value is an explanation based only on the actual student input
+- result: dictionary where the key is the selected style (e.g., "Expand", "Pitfall", etc.) and the value is an explanation or content. If style is empty, include all six key-value pairs plus "Humor".
 - topic: All fields (name, platform, technology) must be initialized. If any is missing or empty, extract and infer them from the student's text and context.
 
 Important:
@@ -438,7 +439,11 @@ Example output:
   "topic": { "name": "Memory Management", "platform": "Apple", "technology": "Objective-C" },
   "question": "What are the potential risks of using `retain` and `release` manually in Objective-C, and how does ARC solve them?",
   "tags": ["Memory Management", "retain", "release", "ARC", "Objective-C"],
-  "result": { "Pitfall": "Manual memory management with retain/release can lead to memory leaks and crashes if not balanced properly, while ARC automates this process to prevent these issues.", "Mistake": "Manual memory management with retain/release can lead to memory leaks and crashes if not balanced properly, while ARC automates this process to prevent these issues." }
+  "result": {
+    "Pitfall": "Manual memory management with retain/release can lead to memory leaks and crashes if not balanced properly, while ARC automates this process to prevent these issues.",
+    "Mistake": "Manual memory management with retain/release can lead to memory leaks and crashes if not balanced properly, while ARC automates this process to prevent these issues.",
+    "Humor": "Why did the Objective-C developer cross the road? To avoid a retain cycle!"
+  }
 }
 """
 
@@ -453,13 +458,14 @@ Example output:
             f"- Question style: '{request.style}'\n\n"
             f"Based on the student's text and the provided context, generate one follow-up question and meaningful tags, "
             f"following the QuizModel JSON structure. "
-            f"The question must match the style: expand, pitfall, application, compare or mistake.\n\n"
+            f"The question must match the style: expand, pitfall, application, compare, mistake, or humor.\n\n"
             f"For the 'result' field:\n"
             f"- If style is specified (not empty), always include that key in the 'result' dictionary.\n"
             f"- Additionally, always analyze the student's input for mistakes.\n"
             f"- If any mistakes are found, include an extra 'Mistake' key with the explanation.\n"
             f"- If no mistakes are found, you may omit the 'Mistake' key or return 'No mistakes found in the student\'s response.'\n"
-            f"- If style is empty, include all five key-value pairs: Expand, Pitfall, Application, Compare, and Mistake.\n"
+            f"- If style is empty, include all six key-value pairs: Expand, Pitfall, Application, Compare, Mistake, and Humor.\n"
+            f"- The 'Humor' field should contain a short joke or witty remark relevant to the student's topic.\n"
             f"\nEnsure that the \"topic\" object has all required fields (name, platform, technology). If any of them is empty or missing, infer it from the content of the student's answer or related context.\n"
         )
 
