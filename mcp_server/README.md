@@ -32,7 +32,9 @@ All main operations (`generate`, `quiz`, `validate`, `user_quiz`) are handled vi
     - `application`: ask about real-world use cases
     - `compare`: compare related concepts or tools
     - `mistake`: identify common mistakes or misconceptions
+    - `humor`: generate a programming-related joke or witty comment related to the topic
 - The response contains a single question and tags, following the same structure as the standard `quiz` operation, but is tailored to the student's text and style.
+- If `style` is empty, the response will include all available styles.
 - Not all providers support this operation. If unsupported, the server returns an error.
 
 **Example request:**
@@ -141,6 +143,12 @@ GET /mcp/v1/models/openai
 See [SCHEMA.md](./SCHEMA.md) for a detailed architecture diagram and request/response flow of the MCP server. Below is a summary:
 
 ## Changelog
+
+### 2025-05-07
+- Feature: Added `humor` style to `user_quiz` operation for all providers (OpenAI, Claude, Gemini)
+- Enhancement: Improved error handling for API quota exceeded errors (429) with proper status code propagation
+- Enhancement: Enhanced frontend error display with detailed error messages
+- Bugfix: Fixed compatibility issue with 'ai' parameter handling in API requests when 'ai' is used as an object with field 'ai'
 
 ### 2025-04-27
 - Feature: Added `user_quiz` operation. This allows generating a follow-up programming question based on a student's answer and a requested style (expand, pitfall, application, compare). See API section for usage and payload details.

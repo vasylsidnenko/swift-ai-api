@@ -93,9 +93,20 @@ async def execute_endpoint(body: dict = Body(...)):
         request_type = body.get("operation")
         payload = body.get("context")
         ai = body.get("ai", {})
-        provider = ai.get("provider")
-        model = ai.get("model")
-        api_key = ai.get("api_key")
+        
+        # Перевірка на випадок, якщо 'ai' використовується як назва провайдера
+        if isinstance(ai, str):
+            provider = ai
+            model = body.get("model")
+            api_key = body.get("api_key")
+        else:
+            provider = ai.get("provider")
+            model = ai.get("model")
+            api_key = ai.get("api_key")
+            
+        # Якщо provider відсутній, але є ai як об'єкт, використовуємо ai як provider
+        if not provider and isinstance(ai, dict) and "ai" in ai:
+            provider = ai.get("ai")
 
         # Validate operation type
         allowed_operations = {"generate", "quiz", "validate", "user_quiz"}
@@ -138,7 +149,20 @@ async def execute_endpoint(body: dict = Body(...)):
             return JSONResponse(status_code=200, content=response.dict())
         else:
             logger.error(f"[POST] /mcp/v1/execute | Error: {response.error_type} | {response.error}")
-            return JSONResponse(status_code=400, content=response.dict())
+            
+            # Визначаємо статус код відповідно до типу помилки
+            status_code = 400  # За замовчуванням
+            
+            # Якщо в повідомленні про помилку є згадка про перевищення квоти
+            if "429" in str(response.error) or "quota" in str(response.error).lower() or "rate limit" in str(response.error).lower():
+                status_code = 429
+                response.error_type = "quota_exceeded"
+            
+            # Додаємо додаткову інформацію для фронтенду
+            content_dict = response.dict()
+            content_dict['status_code'] = status_code
+            
+            return JSONResponse(status_code=status_code, content=content_dict)
     except Exception as e:
         logger.exception(f"[POST] /mcp/v1/execute | Server error: {e}")
         return JSONResponse(

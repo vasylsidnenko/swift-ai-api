@@ -369,7 +369,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 quizBtn.innerHTML = 'Short Quiz';
                 const quizData = data.data;
                 if (!resp.ok || !quizData || !quizData.quiz) {
-                    quizResultDiv.innerHTML = `<div class='alert alert-danger'>Quiz error: ${data.error || 'Unknown error'}</div>`;
+                    // Отримуємо детальну інформацію про помилку
+                    let errorMessage = 'Unknown error';
+                    
+                    if (data.error) {
+                        // Якщо є пряме повідомлення про помилку
+                        errorMessage = data.error;
+                    } else if (data.message) {
+                        // Якщо є повідомлення в іншому форматі
+                        errorMessage = data.message;
+                    } else if (resp.status === 429) {
+                        // Спеціальна обробка для помилки перевищення ліміту запитів
+                        errorMessage = 'You exceeded your current quota for this AI provider. Please try again later or use a different provider.';
+                    }
+                    
+                    quizResultDiv.innerHTML = `<div class='alert alert-danger'>
+                        <h5>Error</h5>
+                        <p>${errorMessage}</p>
+                        ${data.error_type ? `<small class="text-muted">Error type: ${data.error_type}</small>` : ''}
+                    </div>`;
                     quizResultDiv.style.display = 'block';
                     return;
                 }
@@ -472,7 +490,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 checkUserBtn.innerHTML = 'Check Context';
                 
                 if (!resp.ok || !data.data || !data.data.quiz) {
-                    quizResultDiv.innerHTML = `<div class='alert alert-danger'>Check Context error: ${data.error || 'Unknown error'}</div>`;
+                    // Отримуємо детальну інформацію про помилку
+                    let errorMessage = 'Unknown error';
+                    
+                    if (data.error) {
+                        // Якщо є пряме повідомлення про помилку
+                        errorMessage = data.error;
+                    } else if (data.message) {
+                        // Якщо є повідомлення в іншому форматі
+                        errorMessage = data.message;
+                    } else if (resp.status === 429) {
+                        // Спеціальна обробка для помилки перевищення ліміту запитів
+                        errorMessage = 'You exceeded your current quota for this AI provider. Please try again later or use a different provider.';
+                    }
+                    
+                    quizResultDiv.innerHTML = `<div class='alert alert-danger'>
+                        <h5>Error</h5>
+                        <p>${errorMessage}</p>
+                        ${data.error_type ? `<small class="text-muted">Error type: ${data.error_type}</small>` : ''}
+                    </div>`;
                     quizResultDiv.style.display = 'block';
                     return;
                 }
