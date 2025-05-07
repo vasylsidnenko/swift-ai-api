@@ -493,8 +493,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Pitfall': '#fd7e14', // Orange for pitfalls
                     'Application': '#20c997', // Teal for applications
                     'Compare': '#0d6efd', // Blue for comparisons
-                    'Expand': '#6f42c1'  // Purple for expansions
+                    'Expand': '#6f42c1',  // Purple for expansions
+                    'Humor': '#ffc107'    // Yellow for humor (cheerful color)
                 };
+                
+                // Define the order of styles
+                const styleOrder = ['Expand', 'Pitfall', 'Application', 'Compare', 'Mistake', 'Humor'];
                 
                 // First check if 'Mistake' key exists in the dictionary
                 if ('Mistake' in resultDict) {
@@ -507,16 +511,39 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
                 }
                 
-                // Create HTML for other styles
-                for (const style in resultDict) {
-                    // Skip 'Mistake', since we've already handled it separately
-                    if (style === 'Mistake') continue;
+                // Create HTML for other styles (following the defined order)
+                const orderedStyles = Object.keys(resultDict).filter(style => style !== 'Mistake');
+                
+                // Sort styles according to styleOrder
+                orderedStyles.sort((a, b) => {
+                    const indexA = styleOrder.indexOf(a);
+                    const indexB = styleOrder.indexOf(b);
+                    return indexA - indexB;
+                });
+                
+                // Process all styles except Humor and Mistake
+                for (const style of orderedStyles) {
+                    // Skip 'Mistake' and 'Humor', since we handle them separately
+                    if (style === 'Mistake' || style === 'Humor') continue;
                     
                     const styleColor = styleColors[style] || '#6c757d'; // Default gray if style not found
                     otherStylesHtml += `
                         <div class="mb-4 p-3 border rounded" style="border-left-width: 4px !important; border-left-color: ${styleColor} !important;">
                             <h5 class="mb-3" style="color: ${styleColor}; font-size: 1.1rem; font-weight: 600;">${escapeHtml(style)}</h5>
                             <div>${formatSingleQuestion(resultDict[style])}</div>
+                        </div>
+                    `;
+                }
+                
+                // Add Humor at the end if it exists
+                if ('Humor' in resultDict) {
+                    const humorColor = styleColors['Humor'];
+                    otherStylesHtml += `
+                        <div class="mb-4 p-3 border rounded" style="border-left-width: 4px !important; border-left-color: ${humorColor} !important; background-color: rgba(255, 193, 7, 0.1);">
+                            <h5 class="mb-3" style="color: ${humorColor}; font-size: 1.1rem; font-weight: 600;">
+                                <i class="bi bi-emoji-laughing"></i> <!-- Bootstrap Icons laugh emoji -->
+                            </h5>
+                            <div>${formatSingleQuestion(resultDict['Humor'])}</div>
                         </div>
                     `;
                 }
