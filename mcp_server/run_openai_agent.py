@@ -169,7 +169,8 @@ def user_quiz_question():
         )
         raw_request = RequestQuestionModel(
             # style="pitfall",
-            question="In Objective-C you have to manually manage memory using retain and release. It was tricky sometimes because forgetting to release objects could cause memory leaks."
+            question="У Objective-C ми можемо вручну управляти пам'ятью за допомогою `retain` та `release`. Це може бути складно, оскільки якщо ви забудете звільнити об'єкт, це може призвести до витіку пам'яті."
+            # question="In Objective-C you have to manually manage memory using retain and release. It was tricky sometimes because forgetting to release objects could cause memory leaks."
         )
 
         quiz_request = AIRequestQuestionModel(

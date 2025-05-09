@@ -1,5 +1,12 @@
-Пиши коментарі у коді англійськомю мовою.
-Запускай сервер на 10000 порту та прибирай попередній запущений там автоматично, кожного разу.
-Показуй логи сервера.
-Показуй вікно запущеного сервера.
-Описуй всі зміни у README.md англійською мовою.
+1. Write comments in the code in English.
+2. Run server on port 10000 and remove previous running server automatically, each time.
+3. Show server logs.
+4. Show running server window.
+5. Describe all changes in README.md in English.
+6. Stop previous running servers automatically, each time.
+7. To run all servers use run_servers.py script.
+8. To run frontende with mock mcp server use run_mock.sh script. 
+9. To run open agent use run_openai_agent.py script.
+10. To run claud agent use run_claude_agent.py script.
+11. To run gemini agent use run_gemini_agent.py script.
+12. Use .venv virtual environment.
